@@ -1,0 +1,21 @@
+
+@font-face {
+  font-family: 'ComfortaaRegular';
+  src: url('./fonts/comfortaa/Comfortaa-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'ComfortaaBold';
+  src: url('./fonts/comfortaa/Comfortaa-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Android101';
+  src: url('./fonts/Android 101.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}

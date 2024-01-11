@@ -1,0 +1,4 @@
+---
+- name: Add existing controller via OVS
+  command: "ovs-vsctl set-controller {{ bridge_name }} tcp:{{ controller_ip }}:{{ controller_port }}"
+  register: ovs_output

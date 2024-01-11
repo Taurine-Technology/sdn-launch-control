@@ -1,0 +1,38 @@
+---
+- name: Add OVS scripts to PATH for the user
+  lineinfile:
+    path: "{{ ansible_env.HOME }}/.profile"
+    line: 'if [ -d "/usr/local/share/openvswitch/scripts" ] ; then PATH="/usr/local/share/openvswitch/scripts:$PATH"; fi'
+    state: present
+
+- name: Create OVS configuration directory
+  file:
+    path: /usr/local/etc/openvswitch
+    state: directory
+- name: Create OVS configuration database
+  command:
+    cmd: ovsdb-tool create /usr/local/etc/openvswitch/conf.db vswitchd/vswitch.ovsschema
+    chdir: "/tmp/ovs"
+    creates: /usr/local/etc/openvswitch/conf.db
+
+- name: Create OVS run directory
+  file:
+    path: /usr/local/var/run/openvswitch
+    state: directory
+
+- name: Start ovsdb-server
+  command:
+    cmd: >-
+      ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock
+      --remote=db:Open_vSwitch,Open_vSwitch,manager_options
+      --pidfile --detach --log-file
+    creates: /usr/local/var/run/openvswitch/db.sock
+
+- name: Initialize the database
+  command:
+    cmd: ovs-vsctl --no-wait init
+
+- name: Start ovs-vswitchd
+  command:
+    cmd: ovs-vswitchd --pidfile --detach --log-file
+    creates: /usr/local/var/run/openvswitch/ovs-vswitchd.pid

@@ -1,0 +1,6 @@
+---
+- name: Clone OVS repository
+  git:
+    repo: 'https://github.com/openvswitch/ovs.git'
+    dest: '/tmp/ovs'
+    version: 'v2.17.7'

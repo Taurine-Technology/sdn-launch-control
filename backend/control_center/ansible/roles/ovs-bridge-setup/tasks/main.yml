@@ -1,0 +1,5 @@
+---
+- name: Create OVS Bridge
+  import_tasks: add_bridge.yml
+- name: Set bridge to OF 1.3
+  import_tasks: set_of_ver.yml

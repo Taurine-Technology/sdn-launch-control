@@ -1,0 +1,3 @@
+---
+- name: Get Bridge Details
+  import_tasks: show_bridge.yml

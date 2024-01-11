@@ -1,0 +1,5 @@
+---
+- name: Add OVS bridge
+  openvswitch.openvswitch.openvswitch_bridge:
+    bridge: "{{ bridge_name }}"
+    state: present

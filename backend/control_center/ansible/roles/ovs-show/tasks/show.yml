@@ -1,0 +1,7 @@
+---
+- name: Get OVS Details
+  command: "ovs-vsctl show"
+  register: ovs_output
+- name: Show output
+  debug:
+    var: ovs_output.stdout_lines

@@ -1,0 +1,2 @@
+[localserver]
+10.10.10.4 ansible_user='keegan' ansible_password='M@ster789@' ansible_ssh_common_args='-o StrictHostKeyChecking=no' ansible_become_pass='M@ster789@'

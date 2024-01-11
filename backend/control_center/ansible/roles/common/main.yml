@@ -1,0 +1,3 @@
+---
+- name: Connect and check permissions
+  import_tasks: test_connection.yml

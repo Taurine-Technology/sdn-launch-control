@@ -1,0 +1,5 @@
+---
+- name: Get Ports
+  import_tasks: ports.yml
+- name: Get OS and Distribution
+  import_tasks: os-distribution.yml

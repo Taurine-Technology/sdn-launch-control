@@ -1,0 +1,8 @@
+bridge_name: br
+controller_ip: 10.10.10.6
+controller_port: '6653'
+interfaces:
+- eth0
+- eth1
+- eth2
+ip_address: 10.10.10.4

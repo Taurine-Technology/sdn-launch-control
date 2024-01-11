@@ -1,25 +1,44 @@
-import logo from './logo.svg';
-import './App.css';
-
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+import React from 'react';
+import { AuthProvider, useAuth } from './utilities/AuthContext';
+import SignIn from './pages/SignIn';
+import "./fonts.css";
+import { ThemeProvider } from '@mui/material/styles';
+import theme from './theme';
+import HomePage from "./pages/HomePage";
+import {BrowserRouter, Routes, Route, HashRouter} from "react-router-dom";
+import DeviceListPage from "./pages/DeviceListPage";
+function MainComponent() {
+    return <div>
+        <h1>Welcome to the Home Page</h1>
+    </div>;
 }
 
-export default App;
+const App = () => {
+    const { isAuthenticated } = useAuth();
+    const { signIn } = useAuth();
+    signIn();
+    if (isAuthenticated) {
+        return (
+            <ThemeProvider theme={theme}>
+                <HashRouter>
+                    <Routes>
+                            <Route path="/" element={<HomePage/>}/>
+                            <Route path="/devices" element={<DeviceListPage/>}/>
+                    </Routes>
+                </HashRouter>
+            </ThemeProvider>
+        );
+    }
+    return (
+        <ThemeProvider theme={theme}>
+        <SignIn />
+        </ThemeProvider>
+    );
+
+};
+
+export default () => (
+    <AuthProvider>
+        <App />
+    </AuthProvider>
+);

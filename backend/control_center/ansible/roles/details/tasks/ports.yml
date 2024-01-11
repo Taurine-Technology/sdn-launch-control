@@ -1,0 +1,4 @@
+---
+- name: Display Network Interfaces
+  debug:
+    var: ansible_interfaces

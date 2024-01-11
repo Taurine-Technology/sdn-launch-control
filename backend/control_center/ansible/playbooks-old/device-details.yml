@@ -1,0 +1,16 @@
+---
+- name: Gather device details
+  hosts: localserver
+  gather_facts: yes
+  become: true
+
+  tasks:
+    - name: Get target system OS
+      debug:
+        var: ansible_distribution
+    - name: Display OS Version
+      debug:
+        var: ansible_distribution_version
+    - name: Display Network Interfaces
+      debug:
+        var: ansible_interfaces

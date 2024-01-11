@@ -1,0 +1,30 @@
+---
+- name: Create systemd service file for Open vSwitch
+  copy:
+    dest: /etc/systemd/system/openvswitch.service
+    content: |
+      [Unit]
+      Description=Open vSwitch
+      After=network.target
+
+      [Service]
+      ExecStart=/usr/local/share/openvswitch/scripts/ovs-ctl start
+      ExecStop=/usr/local/share/openvswitch/scripts/ovs-ctl stop
+      Restart=always
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Reload systemd
+  command: systemctl daemon-reload
+
+- name: Enable openvswitch service
+  systemd:
+    name: "openvswitch"
+    enabled: yes
+
+- name: Start openvswitch service
+  systemd:
+    name: "openvswitch"
+    state: started

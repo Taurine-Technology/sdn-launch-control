@@ -1,0 +1,7 @@
+---
+- name: Add ports to the bridge
+  openvswitch.openvswitch.openvswitch_port:
+    bridge: "{{ bridge_name }}"
+    port: "{{ item }}"
+    state: present
+  with_items: "{{ interfaces }}"

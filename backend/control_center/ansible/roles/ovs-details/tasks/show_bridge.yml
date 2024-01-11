@@ -1,0 +1,7 @@
+---
+- name: Show OVS Bridge Details
+  command: "ovs-ofctl -O OpenFlow13 show {{ bridge_name }}"
+  register: ovs_bridge_output
+- name: Show bridge output
+  debug:
+    var: ovs_bridge_output.stdout_lines

@@ -1,0 +1,3 @@
+---
+- name: Set bridge protocols to OpenFlow13
+  command: "ovs-vsctl set bridge {{ bridge_name }} protocols=OpenFlow13"

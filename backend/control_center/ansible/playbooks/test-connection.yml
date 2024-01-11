@@ -1,0 +1,7 @@
+---
+- name: Test permissions and device connection
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  roles:
+    - ../roles/common

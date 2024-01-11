@@ -1,0 +1,15 @@
+---
+- name: Setup environment
+  import_tasks: setup_environment.yml
+
+- name: Clone OVS repository
+  import_tasks: clone_repo.yml
+
+- name: Build OVS
+  import_tasks: build_ovs.yml
+
+- name: Setup OVS
+  import_tasks: setup_ovs.yml
+
+- name: Configure systemd
+  import_tasks: configure_systemd.yml

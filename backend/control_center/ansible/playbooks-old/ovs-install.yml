@@ -1,0 +1,122 @@
+---
+- name: Install OVS
+  hosts: localserver
+  gather_facts: yes
+  become: true
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - autoconf
+          - automake
+          - libtool
+          - git
+          - make
+          - gcc
+          - clang
+          - libssl-dev
+          - libcap-ng-dev
+          - python3
+          - python3-pip
+        state: present
+
+    - name: Clone OVS repository
+      git:
+        repo: 'https://github.com/openvswitch/ovs.git'
+        dest: '/tmp/ovs'
+        version: 'v2.17.7'
+
+    - name: Bootstrapping OVS
+      command:
+        cmd: "./boot.sh"
+        chdir: "/tmp/ovs"
+
+    - name: Configure OVS
+      command:
+        cmd: "./configure"
+        chdir: "/tmp/ovs"
+
+    - name: Build OVS
+      command:
+        cmd: "make"
+        chdir: "/tmp/ovs"
+
+    - name: Install OVS
+      command:
+        cmd: "make install"
+        chdir: "/tmp/ovs"
+
+    - name: Add OVS scripts to PATH for the user
+      lineinfile:
+        path: "{{ ansible_env.HOME }}/.profile"
+        line: 'if [ -d "/usr/local/share/openvswitch/scripts" ] ; then PATH="/usr/local/share/openvswitch/scripts:$PATH"; fi'
+        state: present
+
+
+    - name: Create OVS configuration directory
+      file:
+        path: /usr/local/etc/openvswitch
+        state: directory
+
+    - name: Create OVS configuration database
+      command:
+        cmd: ovsdb-tool create /usr/local/etc/openvswitch/conf.db vswitchd/vswitch.ovsschema
+        chdir: "/tmp/ovs"
+        creates: /usr/local/etc/openvswitch/conf.db
+
+    - name: Create OVS run directory
+      file:
+        path: /usr/local/var/run/openvswitch
+        state: directory
+
+    - name: Start ovsdb-server
+      command:
+        cmd: >-
+          ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock
+          --remote=db:Open_vSwitch,Open_vSwitch,manager_options
+          --pidfile --detach --log-file
+        creates: /usr/local/var/run/openvswitch/db.sock
+
+    - name: Initialize the database
+      command:
+        cmd: ovs-vsctl --no-wait init
+
+    - name: Start ovs-vswitchd
+      command:
+        cmd: ovs-vswitchd --pidfile --detach --log-file
+        creates: /usr/local/var/run/openvswitch/ovs-vswitchd.pid
+
+    - name: Create systemd service file for Open vSwitch
+      copy:
+        dest: /etc/systemd/system/openvswitch.service
+        content: |
+          [Unit]
+          Description=Open vSwitch
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/share/openvswitch/scripts/ovs-ctl start
+          ExecStop=/usr/local/share/openvswitch/scripts/ovs-ctl stop
+          Restart=always
+          RemainAfterExit=yes
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      command: systemctl daemon-reload
+
+    - name: Enable ovsdb-server and ovs-vswitchd services
+      systemd:
+        name: "openvswitch"
+        enabled: yes
+
+    - name: Start ovsdb-server and ovs-vswitchd services
+      systemd:
+        name: "openvswitch"
+        state: started

@@ -1,0 +1,7 @@
+---
+- name: Gather Device Details
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  roles:
+    - ../roles/details

@@ -1,0 +1,13 @@
+---
+- name: Test if remote connection and SUDO privileges work
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  vars_files:
+    - config.yml
+  tasks:
+    - name: Add OVS bridge
+      command: "ovs-vsctl add-br {{ bridge_name }}"
+
+    - name: Set bridge protocols to OpenFlow13
+      command: "ovs-vsctl set bridge {{ bridge_name }} protocols=OpenFlow13"

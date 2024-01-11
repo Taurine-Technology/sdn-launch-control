@@ -1,0 +1,5 @@
+---
+- name: Connect Controller
+  import_tasks: set_controller.yml
+- name: See if Controller is Connected
+  import_tasks: show_controller.yml

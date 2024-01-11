@@ -1,0 +1,9 @@
+---
+- name: Connect to existing SDN controller
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  vars_files:
+    - ../group_vars/all.yml
+  roles:
+    - ../roles/ovs-connect-controller

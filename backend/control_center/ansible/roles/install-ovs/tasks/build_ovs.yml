@@ -1,0 +1,20 @@
+---
+- name: Bootstrapping OVS
+  command:
+    cmd: "./boot.sh"
+    chdir: "/tmp/ovs"
+
+- name: Configure OVS
+  command:
+    cmd: "./configure"
+    chdir: "/tmp/ovs"
+
+- name: Build OVS
+  command:
+    cmd: "make"
+    chdir: "/tmp/ovs"
+
+- name: Install OVS
+  command:
+    cmd: "make install"
+    chdir: "/tmp/ovs"

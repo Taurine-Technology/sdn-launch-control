@@ -1,0 +1,7 @@
+---
+- name: Get target system OS
+  debug:
+    var: ansible_distribution
+- name: Display OS Version
+  debug:
+    var: ansible_distribution_version

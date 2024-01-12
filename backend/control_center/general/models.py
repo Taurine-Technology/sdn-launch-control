@@ -19,10 +19,25 @@ class Device(models.Model):
     lan_ip_address = models.GenericIPAddressField(unique=True)
 
     # ovs specific fields
-    ports = models.IntegerField(null=True)
+    ports = models.IntegerField(default=0)
     ovs_enabled = models.BooleanField(default=False)
     ovs_version = models.CharField(max_length=10, null=True)
     openflow_version = models.CharField(max_length=10, null=True)
 
     def __str__(self):
         return f"({self.name} {self.device_type})"
+
+class Bridge(models.Model):
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='bridges')
+    name = models.CharField(max_length=100)
+    dpid = models.CharField(max_length=30)
+
+    def __str__(self):
+        return f"Bridge {self.name} on device {self.device.name}"
+
+class Port(models.Model):
+    bridge = models.ForeignKey(Bridge, on_delete=models.CASCADE, related_name='ports')
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"Port {self.name} on {self.bridge.name}"

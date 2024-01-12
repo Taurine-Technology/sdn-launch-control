@@ -17,7 +17,7 @@ from .utilities.utils import write_to_inventory, save_ip_to_config
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
 logger = logging.getLogger(__name__)
-test_server = "test-connection"
+test_server = "install-ovs"
 playbook_dir_path = f"{parent_dir}/ansible/playbooks"
 inventory_path = f"{parent_dir}/ansible/inventory/inventory"
 config_path = f"{parent_dir}/ansible/group_vars/all.yml"
@@ -27,115 +27,32 @@ class InstallOvsView(APIView):
             data = request.data
             print(data)
             print('about to run')
-            write_to_inventory(data.get('lan_ip_address'), data.get('username'), data.get('password'), inventory_path)
-            save_ip_to_config(data.get('lan_ip_address'), config_path)
+            lan_ip_address = data.get('lan_ip_address')
+            write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
+            save_ip_to_config(lan_ip_address, config_path)
             run_playbook(test_server, playbook_dir_path, inventory_path)
 
-            return Response({"status": "success", "message": "OVS Installed."},
-                            status=status.HTTP_201_CREATED)
+
+            device, created = Device.objects.get_or_create(
+                lan_ip_address=lan_ip_address,
+                defaults={
+                    'name': data.get('name'),
+                    'device_type': data.get('device_type'),
+                    'os_type': data.get('os_type'),
+                    'ovs_enabled': True,
+                    'ovs_version': '2.17.7',
+                    'openflow_version': '1.3',
+                }
+            )
+            # Update ovs_enabled if device already exists and it's false
+            if not created and not device.ovs_enabled:
+                device.ovs_enabled = True
+                device.save(update_fields=['ovs_enabled'])
+
+            message = "OVS Installed." if created else "OVS already installed."
+            return Response({"status": "success", "message": message}, status=status.HTTP_200_OK)
         except Exception as e:
             print(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class AddDeviceView(APIView):
-    def post(self, request):
-        try:
-            data = request.data
-
-            try:
-                validate_ipv4_address(data.get('lan_ip_address'))
-            except ValidationError:
-                return Response({"status": "error", "message": "Invalid IP address format."},
-                                status=status.HTTP_400_BAD_REQUEST)
-            if data.get('ovs_enabled'):
-                ovs_enabled = True
-                ports = data.get('ports')
-                ovs_version = data.get('ovs_version')
-                openflow_version = data.get('openflow_version')
-                device = Device.objects.create(
-                    name=data.get('name'),
-                    device_type=data.get('device_type'),
-                    os_type=data.get('os_type'),
-                    lan_ip_address=data.get('lan_ip_address'),
-                    ports=ports,
-                    ovs_enabled=ovs_enabled,
-                    ovs_version=ovs_version,
-                    openflow_version=openflow_version,
-                )
-            else:
-                device = Device.objects.create(
-                    name=data.get('name'),
-                    device_type=data.get('device_type'),
-                    os_type=data.get('os_type'),
-                    lan_ip_address=data.get('lan_ip_address'),
-                )
-
-            device.save()
-            return Response({"status": "success", "message": "Device added successfully."},
-                            status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class DeviceListView(APIView):
-    def get(self, request):
-        try:
-            devices = Device.objects.all()
-            data = [
-                {
-                    "name": device.name,
-                    "device_type": device.device_type,
-                    "lan_ip_address": device.lan_ip_address,
-                    "os_type": device.os_type,
-                } for device in devices
-            ]
-            return Response(data, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class DeviceDetailsView(APIView):
-    def get(self, request, lan_ip_address):
-        try:
-
-            validate_ipv4_address(lan_ip_address)
-        except ValidationError:
-            return Response({"status": "error", "message": "Invalid IP address format."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
-
-            data = {
-                "name": device.name,
-                "device_type": device.device_type,
-                "os_type": device.os_type,
-                "lan_ip_address": device.lan_ip_address,
-                "ports": device.ports,
-                "ovs_enabled": device.ovs_enabled,
-                "ovs_version": device.ovs_version,
-                "openflow_version": device.openflow_version
-            }
-
-            return Response({"status": "success", "device": data}, status=status.HTTP_200_OK)
-        except Exception as e:
-            print(e)
-            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class DeleteDeviceView(APIView):
-    def delete(self, request):
-        data = request.data
-        try:
-
-            validate_ipv4_address(data.get('lan_ip_address'))
-        except ValidationError:
-            return Response({"status": "error", "message": "Invalid IP address format."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        lan_ip_address = data.get('lan_ip_address')
-        device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
-        device.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)

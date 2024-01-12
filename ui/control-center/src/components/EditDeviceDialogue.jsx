@@ -34,7 +34,7 @@ function EditDeviceDialog({ open, handleClose, device, handleUpdate }) {
 
     return (
         <Dialog open={open} onClose={handleClose}>
-            <DialogTitle>Edit Device</DialogTitle>
+            <DialogTitle>Edit Basic Device Details</DialogTitle>
             <DialogContent>
                 <TextField
                     autoFocus
@@ -55,15 +55,7 @@ function EditDeviceDialog({ open, handleClose, device, handleUpdate }) {
                     value={editedDevice.lan_ip_address}
                     onChange={handleFieldChange}
                 />
-                <TextField
-                    margin="dense"
-                    name="wireguard_ip_address"
-                    label="Wireguard IP Address"
-                    type="text"
-                    fullWidth
-                    value={editedDevice.wireguard_ip_address}
-                    onChange={handleFieldChange}
-                />
+
                 <FormControl fullWidth margin="dense">
                     <InputLabel id="os-select-label">Operating System</InputLabel>
                     <Select

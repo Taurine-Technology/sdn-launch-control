@@ -14,7 +14,7 @@ import {
 import axios from 'axios';
 // Set the base URL for axios
 // axios.defaults.baseURL = 'http://localhost';
-const VPNInitFormDialogue = () => {
+const InstallOvsFormDialogue = () => {
     const [open, setOpen] = useState(false);
     const [host, setHost] = useState('');
     const [name, setDeviceName] = useState('');
@@ -87,11 +87,11 @@ const VPNInitFormDialogue = () => {
             const deployResponse = await axios.post('http://localhost:8000/install-ovs/', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            const addDeviceResponse = await axios.post('http://localhost:8000/add-device/', addDevicePayload);
+            // const addDeviceResponse = await axios.post('http://localhost:8000/add-device/', addDevicePayload);
             console.log('Deploy Response:', deployResponse.data.message);
-            console.log('Add Device Response:', addDeviceResponse.data.message);
-
-            setResponseMessage(deployResponse.data.message || addDeviceResponse.data.message);
+            // console.log('Add Device Response:', addDeviceResponse.data.message);
+            // || addDeviceResponse.data.message
+            setResponseMessage(deployResponse.data.message);
             setResponseType('success');
         } catch (error) {
             console.error('Error:', error || 'Deployment failed');
@@ -116,7 +116,7 @@ const VPNInitFormDialogue = () => {
                     </Alert>
                 )}
                 <Button variant="contained" onClick={handleClickOpen}>
-                    Initialise Wireguard
+                    Install Open vSwitch
                 </Button>
                 <Dialog open={open} onClose={handleClose}>
                     <DialogTitle>Wireguard Configuration</DialogTitle>
@@ -203,7 +203,6 @@ const VPNInitFormDialogue = () => {
                                 <MenuItem value="server">Server</MenuItem>
                             </Select>
                         </FormControl>
-
                     </DialogContent>
                     <DialogActions>
                         <Button
@@ -228,4 +227,4 @@ const VPNInitFormDialogue = () => {
     );
 };
 
-export default VPNInitFormDialogue;
+export default InstallOvsFormDialogue;

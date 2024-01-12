@@ -3,7 +3,7 @@ import NavBar from "../components/NavBar";
 import Box from "@mui/material/Box";
 import Footer from "../components/Footer";
 import Button from '@mui/material/Button';
-import VPNInitFormDialogue from "../components/VPNInitFormDialogue";
+import InstallOvsFormDialogue from "../components/InstallOvsFormDialogue";
 const HomePage = () => {
     const [isTerminalOpen, setIsTerminalOpen] = useState(false);
 
@@ -39,7 +39,7 @@ const HomePage = () => {
                     backgroundPosition: 'center',
                 }}
             >
-                <VPNInitFormDialogue />
+                <InstallOvsFormDialogue />
                 {/*<Terminal isOpen={isTerminalOpen} sshConfig={sshConfig} />*/}
                 {/*<Button variant="contained" onClick={toggleTerminal} sx={{ margin: 2}}>*/}
                 {/*    {isTerminalOpen ? 'Close Terminal' : 'Open Terminal'}*/}

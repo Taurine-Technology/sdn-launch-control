@@ -4,7 +4,6 @@ import Box from "@mui/material/Box";
 import Footer from "../components/Footer";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialogue";
 import Alert from '@mui/material/Alert';
-import EditDeviceDialogue from "../components/EditDeviceDialogue";
 import axios from "axios";
 import DeviceList from "../components/DeviceList";
 import Theme from "../theme";
@@ -12,7 +11,9 @@ import EditDeviceDialog from "../components/EditDeviceDialogue";
 import {ThemeProvider} from "@mui/material/styles";
 import theme from "../theme";
 import InternalServerErrorDialogue from "../components/InternalServerErrorDialogue";
-
+import PortManagementDialogue from "../components/PortManagementDialogue";
+import { useNavigate } from 'react-router-dom';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 const DeviceListPage = () => {
     const [openDeleteDialogue, setOpenDeleteDialogue] = useState(false);
     const [deviceToDelete, setDeviceToDelete] = useState(null);
@@ -25,6 +26,13 @@ const DeviceListPage = () => {
     const [responseMessage, setResponseMessage] = useState('');
     const [responseType, setResponseType] = useState(''); // 'success' or 'error'
     const [error, setError] = useState(null);
+    const [openPortDialogue, setOpenPortDialogue] = useState(false)
+
+    const navigate = useNavigate();
+
+    const handleDetailsClick = (ipAddress) => {
+        navigate(`/devices/${ipAddress}`);
+    };
     const handleCloseAlert = () => {
         setResponseMessage('');
     };
@@ -43,12 +51,11 @@ const DeviceListPage = () => {
 
                 const payload = {
                     lan_ip_address: deviceToDelete.lan_ip_address,
-                    wireguard_ip_address: deviceToDelete.wireguard_ip_address
                 };
 
                 const response = await axios.delete('http://localhost:8000/delete-device/', { data: payload });
 
-                setDevices(devices.filter(device => device.lan_ip_address !== deviceToDelete.lan_ip_address && device.wireguard_ip_address !== deviceToDelete.wireguard_ip_address));
+                setDevices(devices.filter(device => device.lan_ip_address !== deviceToDelete.lan_ip_address));
                 setResponseMessage('Successfully deleted device.');
                 setResponseType('success');
             } catch (error) {
@@ -72,7 +79,21 @@ const DeviceListPage = () => {
         console.log(device)
         setOpenEditDialogue(true);
     };
+    const handleEditPortClick = (device) => {
+        setDeviceToEdit(device);
+        console.log(device)
+        setOpenPortDialogue(true);
+    };
 
+    const handleClosePortDialogue = () => {
+        setOpenPortDialogue(false);
+    }
+    const selectedDeviceForPortManagement = (device) => {
+        console.log('selecting ports')
+        setDeviceToEdit(device);
+        console.log(device)
+        setOpenEditDialogue(true);
+    }
     const handleCloseEditDialogue = () => {
         setOpenEditDialogue(false);
     };
@@ -139,7 +160,12 @@ const DeviceListPage = () => {
                         }}
                     >
 
-                        <DeviceList devices={devices} onDelete={handleDeleteClick} onEdit={handleEditClick}/>
+                        <DeviceList devices={devices}
+                                    onDelete={handleDeleteClick}
+                                    onEdit={handleEditClick}
+                                    // onEditPorts={handleEditPortClick}
+                                    onViewDetails={handleDetailsClick}
+                        />
                         <ConfirmDeleteDialog
                             open={openDeleteDialogue}
                             handleClose={handleCloseDeleteDialog}
@@ -151,6 +177,11 @@ const DeviceListPage = () => {
                             device={deviceToEdit}
                             handleUpdate={handleUpdateDevice}
                         />
+                        {/*<PortManagementDialogue*/}
+                        {/*    open={openPortDialogue}*/}
+                        {/*    handleClose={handleClosePortDialogue}*/}
+                        {/*    device={deviceToEdit}*/}
+                        {/*/>*/}
                     </Box>
 
                 </Box>

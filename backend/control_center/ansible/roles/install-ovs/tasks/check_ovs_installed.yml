@@ -1,0 +1,10 @@
+---
+- name: Check OVS installation
+  command: ovs-vsctl show
+  register: ovs_check
+  ignore_errors: true
+  changed_when: false
+
+- name: Stop playbook if OVS is already installed
+  meta: end_play
+  when: ovs_check.rc == 0

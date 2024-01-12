@@ -1,15 +1,23 @@
 ---
+- name: Check if Open vSwitch is installed
+  import_tasks: check_ovs_installed.yml
+
 - name: Setup environment
   import_tasks: setup_environment.yml
+  when: ovs_check.rc != 0
 
 - name: Clone OVS repository
   import_tasks: clone_repo.yml
+  when: ovs_check.rc != 0
 
 - name: Build OVS
   import_tasks: build_ovs.yml
+  when: ovs_check.rc != 0
 
 - name: Setup OVS
   import_tasks: setup_ovs.yml
+  when: ovs_check.rc != 0
 
 - name: Configure systemd
   import_tasks: configure_systemd.yml
+  when: ovs_check.rc != 0

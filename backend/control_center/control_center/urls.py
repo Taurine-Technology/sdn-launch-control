@@ -18,11 +18,13 @@ from django.contrib import admin
 from django.urls import path
 
 from ovs_install.views import InstallOvsView
-from general.views import AddDeviceView, DeviceDetailsView, DeviceListView
+from general.views import AddDeviceView, DeviceDetailsView, DeviceListView, DeviceBridgesView, DevicePortsView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('add-device/', AddDeviceView.as_view(), name='add-device'),
     path('device-details/<str:lan_ip_address>/', DeviceDetailsView.as_view(), name='device-details'),
     path('install-ovs/', InstallOvsView.as_view(), name='install-ovs'),
     path('devices/', DeviceListView.as_view(), name='device-list'),
+    path('device-bridges/<str:lan_ip_address>/', DeviceBridgesView.as_view(), name='device-bridges'),
+    path('device-ports/<str:lan_ip_address>/', DevicePortsView.as_view(), name='device-ports'),
 ]

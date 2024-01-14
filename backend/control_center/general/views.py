@@ -2,19 +2,22 @@ from django.shortcuts import render
 
 # Create your views here.
 import os
-
+from django.shortcuts import get_object_or_404
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.views import APIView
 from django.http import JsonResponse
 from rest_framework.response import Response
-from .models import Device
+from .models import Device, Port
 from django.shortcuts import get_object_or_404
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+# *---------- Basic device get and post methods ----------*
 class AddDeviceView(APIView):
     def post(self, request):
         try:
@@ -116,3 +119,40 @@ class DeleteDeviceView(APIView):
         device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
         device.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# *---------- OVS get and post methods ----------*
+class DeviceBridgesView(APIView):
+    def get(self, request, lan_ip_address):
+        try:
+            # Find the device by LAN IP address
+            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+
+            # Retrieve bridges related to the device
+            bridges = device.bridges.all()
+            if bridges.exists():
+                bridges_data = [{'name': bridge.name, 'dpid': bridge.dpid} for bridge in bridges]
+                return Response({'status': 'success', 'bridges': bridges_data})
+            else:
+                return Response({'status': 'info', 'message': 'No bridges assigned to this device.'})
+
+        except ValueError:
+            # Handle invalid IP address format
+            return Response({'status': 'error', 'message': 'Invalid IP address format.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Generic error handling
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class DevicePortsView(APIView):
+    def get(self, request, lan_ip_address):
+        try:
+            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+            ports = Port.objects.filter(bridge__device=device)
+            if ports.exists():
+                ports_data = [{'name': port.name} for port in ports]
+                return Response({'status': 'success', 'ports': ports_data})
+            else:
+                return Response({'status': 'info', 'message': 'No ports assigned to this device.'})
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

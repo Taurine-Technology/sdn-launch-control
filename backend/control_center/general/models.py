@@ -1,5 +1,6 @@
 from django.db import models
 
+
 # Create your models here.
 class Device(models.Model):
     DEVICE_TYPES = (
@@ -27,6 +28,7 @@ class Device(models.Model):
     def __str__(self):
         return f"({self.name} {self.device_type})"
 
+
 class Bridge(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='bridges')
     name = models.CharField(max_length=100)
@@ -34,6 +36,7 @@ class Bridge(models.Model):
 
     def __str__(self):
         return f"Bridge {self.name} on device {self.device.name}"
+
 
 class Port(models.Model):
     bridge = models.ForeignKey(Bridge, on_delete=models.CASCADE, related_name='ports')

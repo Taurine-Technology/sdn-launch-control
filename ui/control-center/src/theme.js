@@ -60,6 +60,10 @@ const theme = createTheme({
             color: '#ffffff',
             fontFamily: 'ComfortaaRegular, Arial, sans-serif',
         },
+        body_dark: {
+            color: '#3D019F',
+            fontFamily: 'ComfortaaRegular, Arial, sans-serif',
+        },
         body_footer: {
             color: '#ffffff',
             fontFamily: 'ComfortaaRegular, Arial, sans-serif',

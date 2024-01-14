@@ -18,6 +18,7 @@ import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
 
 const DeviceDetailsPage = () => {
+    // Variables For the First Card
     const { deviceIp } = useParams();
     const navigate = useNavigate();
     const [device, setDevice] = useState(null);
@@ -32,15 +33,48 @@ const DeviceDetailsPage = () => {
         { value: 'access_point', label: 'Access Point' },
         { value: 'server', label: 'Server' },
     ];
+
+    // Variables for the second card
+    const [bridges, setBridges] = useState([]);
+    const [bridgesFetched, setBridgesFetched] = useState(false);
+
+    // Variables for third card
+    const [ports, setPorts] = useState([]);
+    const [portsFetched, setPortsFetched] = useState(false);
+
+
     useEffect(() => {
+
+        // Device details for the first card
         axios.get(`http://localhost:8000/device-details/${deviceIp}/`)
             .then(response => {
                 setDevice(response.data.device);
                 setOriginalDevice(response.data.device);
             })
             .catch(error => console.error('Error fetching device:', error));
+
+        // Fetch Bridges for the second card
+        axios.get(`http://localhost:8000/device-bridges/${deviceIp}/`)
+            .then(response => {
+                if (response.data.status === 'success') {
+                    setBridges(response.data.bridges);
+                }
+                setBridgesFetched(true);
+            })
+            .catch(error => console.error('Error fetching bridges:', error));
+
+        // Fetch ports for third card
+        axios.get(`http://localhost:8000/device-ports/${deviceIp}/`)
+            .then(response => {
+                if (response.data.status === 'success') {
+                    setPorts(response.data.ports);
+                }
+                setPortsFetched(true);
+            })
+            .catch(error => console.error('Error fetching ports:', error));
     }, [deviceIp]);
 
+    // Methods for the first card
     const handleChange = (event) => {
         setDevice({ ...device, [event.target.name]: event.target.value });
         setIsEdited(true);
@@ -60,6 +94,10 @@ const DeviceDetailsPage = () => {
     const handleCancel = () => {
         navigate('/devices'); // Redirect or refresh the page as needed
     };
+
+    // Methods for the second card
+
+
     return (
         <Box
             sx={{
@@ -83,7 +121,7 @@ const DeviceDetailsPage = () => {
                 </Button>
                 <Card raised>
                     <CardContent>
-                        <Typography variant="h5" component="div">
+                        <Typography variant="h1" component="div" sx={{ marginBottom: 2 }}>
                             {device.name}
                             {/* Add Icon next to name */}
                         </Typography>
@@ -142,6 +180,68 @@ const DeviceDetailsPage = () => {
                         </Button>
                     </CardContent>
                 </Card>
+
+                {/*The devices bridges. If there are no bridges then a button to add a bridge*/}
+                <Card raised sx={{ marginTop: 4 }}>
+                    <CardContent>
+                        <Typography variant="h1" component="div" sx={{ marginBottom: 2 }}>
+                            Bridges
+                        </Typography>
+                        {bridgesFetched ? (
+                            bridges.length > 0 ? (
+                                bridges.map(bridge => (
+                                    <Typography key={bridge.name}>
+                                        {bridge.name}
+                                        {/* Add additional bridge details here if needed */}
+                                    </Typography>
+                                ))
+                            ) : (
+                                <Box>
+                                    <Typography variant="body_dark" component="div">
+                                    There are no OVS bridges assigned to this device.
+                                    </Typography>
+                                    <Button variant='contained' sx={{marginTop: 4 }}>
+                                        Add Bridge
+                                    </Button>
+                                </Box>
+                            )
+                        ) : (
+                            <Typography>Loading bridges...</Typography>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/*The devices ports. If there are no ports then a button to add ports*/}
+                <Card raised sx={{ marginTop: 4 }}>
+                    <CardContent>
+                        <Typography variant="h1" component="div" sx = {{ marginBottom: 2 }}>
+                            Ports
+                        </Typography>
+                        {portsFetched ? (
+                            ports.length > 0 ? (
+                                ports.map(port => (
+                                    <Typography key={port.name}>
+                                        {port.name}
+                                        {/* Add additional port details here if needed */}
+                                    </Typography>
+                                ))
+                            ) : (
+                                <Box>
+                                    <Typography variant="body_dark" component="div">
+                                        There are no ports assigned to this device.
+                                    </Typography>
+                                    <Button variant='contained' sx={{marginTop: 4 }}>
+                                        Add Ports
+                                    </Button>
+                                </Box>
+
+                            )
+                        ) : (
+                            <Typography>Loading ports...</Typography>
+                        )}
+                    </CardContent>
+                </Card>
+
             </Box>
             <Footer />
         </Box>

@@ -17,7 +17,9 @@ const NavBar = () => {
                     sx={{ padding: '0 20px' }} // Add padding here
                 >
                     <Grid item>
-                        <img src="./logo100.png" alt="Logo" style={{height: '80px' }}/>
+                        <Link to="/">
+                            <img src="./logo100.png" alt="Logo" style={{height: '80px' }}/>
+                        </Link>
                     </Grid>
                     <Grid item>
                         <Button color="inherit" component={Link} to="/">Home</Button>

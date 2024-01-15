@@ -11,11 +11,12 @@ import {
     MenuItem,
     FormControl,
     Select,
-    InputLabel
+    InputLabel, Tooltip
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
+import AddBridgeFormDialogue from "../components/AddBridgeFormDialogue";
 
 const DeviceDetailsPage = () => {
     // Variables For the First Card
@@ -34,11 +35,12 @@ const DeviceDetailsPage = () => {
         { value: 'server', label: 'Server' },
     ];
 
-    // Variables for the second card
+    // *--- Variables for the second card ---*
     const [bridges, setBridges] = useState([]);
     const [bridgesFetched, setBridgesFetched] = useState(false);
+    const [openAddBridgeDialog, setOpenAddBridgeDialog] = useState(false);
 
-    // Variables for third card
+    // *--- Variables for third card ---*
     const [ports, setPorts] = useState([]);
     const [portsFetched, setPortsFetched] = useState(false);
 
@@ -54,6 +56,15 @@ const DeviceDetailsPage = () => {
             .catch(error => console.error('Error fetching device:', error));
 
         // Fetch Bridges for the second card
+        axios.get(`http://localhost:8000/get-bridges/${deviceIp}/`)
+            .then(response => {
+                if (response.data.status === 'success') {
+                    console.log(response.data);
+                }
+                // setBridgesFetched(true);
+            })
+            .catch(error => console.error('Error fetching bridges:', error));
+        // DB bridges
         axios.get(`http://localhost:8000/device-bridges/${deviceIp}/`)
             .then(response => {
                 if (response.data.status === 'success') {
@@ -74,7 +85,7 @@ const DeviceDetailsPage = () => {
             .catch(error => console.error('Error fetching ports:', error));
     }, [deviceIp]);
 
-    // Methods for the first card
+    // *--- Methods for the first card ---*
     const handleChange = (event) => {
         setDevice({ ...device, [event.target.name]: event.target.value });
         setIsEdited(true);
@@ -95,8 +106,14 @@ const DeviceDetailsPage = () => {
         navigate('/devices'); // Redirect or refresh the page as needed
     };
 
-    // Methods for the second card
+    // *--- Methods for the second card ---*
+    const handleOpenAddBridge = () => {
+        setOpenAddBridgeDialog(true);
+    };
 
+    const handleCloseAddBridge = () => {
+        setOpenAddBridgeDialog(false);
+    };
 
     return (
         <Box
@@ -184,7 +201,7 @@ const DeviceDetailsPage = () => {
                 {/*The devices bridges. If there are no bridges then a button to add a bridge*/}
                 <Card raised sx={{ marginTop: 4 }}>
                     <CardContent>
-                        <Typography variant="h1" component="div" sx={{ marginBottom: 2 }}>
+                      <Typography variant="h1" component="div" sx={{ marginBottom: 2 }}>
                             Bridges
                         </Typography>
                         {bridgesFetched ? (
@@ -200,14 +217,16 @@ const DeviceDetailsPage = () => {
                                     <Typography variant="body_dark" component="div">
                                     There are no OVS bridges assigned to this device.
                                     </Typography>
-                                    <Button variant='contained' sx={{marginTop: 4 }}>
-                                        Add Bridge
-                                    </Button>
+
                                 </Box>
                             )
                         ) : (
                             <Typography>Loading bridges...</Typography>
                         )}
+                        <AddBridgeFormDialogue
+                            deviceIp={deviceIp}
+                        />
+
                     </CardContent>
                 </Card>
 
@@ -241,9 +260,9 @@ const DeviceDetailsPage = () => {
                         )}
                     </CardContent>
                 </Card>
-
             </Box>
             <Footer />
+
         </Box>
     );
 };

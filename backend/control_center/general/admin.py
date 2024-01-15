@@ -16,4 +16,4 @@ class DeviceBridgeAdmin(admin.ModelAdmin):
 
 @admin.register(Port)
 class BridgePorts(admin.ModelAdmin):
-    list_display = ('bridge', 'name')
+    list_display = ('name', 'device')

@@ -1,0 +1,7 @@
+---
+- name: Get device ports
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  roles:
+    - ../roles/device-ports

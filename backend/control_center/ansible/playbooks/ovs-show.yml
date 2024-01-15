@@ -7,4 +7,3 @@
     - ../group_vars/all.yml
   roles:
     - ../roles/ovs-show
-    - ../roles/ovs-details

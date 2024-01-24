@@ -14,6 +14,7 @@ import InternalServerErrorDialogue from "../components/InternalServerErrorDialog
 import PortManagementDialogue from "../components/PortManagementDialogue";
 import { useNavigate } from 'react-router-dom';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import {Backdrop, CircularProgress} from "@mui/material";
 const DeviceListPage = () => {
     const [openDeleteDialogue, setOpenDeleteDialogue] = useState(false);
     const [deviceToDelete, setDeviceToDelete] = useState(null);
@@ -27,12 +28,30 @@ const DeviceListPage = () => {
     const [responseType, setResponseType] = useState(''); // 'success' or 'error'
     const [error, setError] = useState(null);
     const [openPortDialogue, setOpenPortDialogue] = useState(false)
+    const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
 
-    const handleDetailsClick = (ipAddress) => {
-        navigate(`/devices/${ipAddress}`);
-    };
+
+        const handleDetailsClick = async (ipAddress) => {
+            setLoading(true);
+            try {
+                const response = await axios.get(`http://localhost:8000/check-connection/${ipAddress}/`);
+                if (response.data.status === 'success') {
+                    navigate(`/devices/${ipAddress}`);
+                } else {
+                    // Handle unsuccessful connection check
+                    setAlert({ show: true, message: 'Device connection failed.' });
+                }
+            } catch (error) {
+                // Handle error
+                console.error('Error:', error || 'Deployment failed');
+                setResponseMessage(error.response?.data?.message || error.message || 'Deployment failed');
+                setResponseType('error');
+            } finally {
+                setLoading(false);
+            }
+        };
     const handleCloseAlert = () => {
         setResponseMessage('');
     };
@@ -126,11 +145,10 @@ const DeviceListPage = () => {
                 }}
             >
                 <NavBar />
-                {responseMessage && (
-                    <Alert severity={responseType} onClose={handleCloseAlert}>
-                        {responseMessage}
-                    </Alert>
-                )}
+                <Backdrop open={loading} style={{ zIndex: theme.zIndex.drawer + 1 }}>
+                    <CircularProgress color="inherit" />
+                </Backdrop>
+
                 <InternalServerErrorDialogue
                     open={error != null}
                     errorMessage={'There has been an internal error. Please contact support.'}
@@ -147,6 +165,11 @@ const DeviceListPage = () => {
                         backgroundPosition: 'center',
                     }}
                 >
+                    {responseMessage && (
+                        <Alert severity={responseType} onClose={handleCloseAlert}>
+                            {responseMessage}
+                        </Alert>
+                    )}
                     <Box
                         sx={{
                             flexGrow: 1,
@@ -159,6 +182,7 @@ const DeviceListPage = () => {
 
                         }}
                     >
+
 
                         <DeviceList devices={devices}
                                     onDelete={handleDeleteClick}

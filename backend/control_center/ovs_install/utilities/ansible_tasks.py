@@ -3,7 +3,7 @@ Author: Keegan White
 Maintainer: Keegan White
 Contact: keeganthomaswhite@gmail.com
 Created: Jan 11, 2024
-Last Modified: Jan 11, 2024
+Last Modified: Jan 24, 2024
 
 Description:
 This script is designed to automate and manage the execution of Ansible playbooks for network configuration and
@@ -45,6 +45,10 @@ def my_event_handler(data):
         if event_data.get('res') and event_data.get('task'):
             task = event_data['task']
             result = event_data['res']
+            # print(result)
+            msg = result['msg']
+            if 'Failed to connect to the host via ssh' in msg:
+                results['failed'] = msg
     if task and result:
         if task != 'Gathering Facts':
             results[task] = result
@@ -54,26 +58,28 @@ def run_playbook(playbook_name, playbook_dir_path, inventory_path, quiet=True):
     playbook_path = f"{playbook_dir_path}/{playbook_name}.yml"
     try:
         r = ansible_runner.run(private_data_dir="./", playbook=playbook_path, inventory=inventory_path,
-                               status_handler=my_status_handler, quiet=False, event_handler=my_event_handler)
-        # Check if playbook run was successful
+                               status_handler=my_status_handler, quiet=True, event_handler=my_event_handler)
         if r.rc != 0:
-            # print(results)
-            # Specific error message for the missing ovs-vsctl command
-            if playbook_name == 'ovs-show':
-                msg = results['Get OVS Details']['msg']
-                installation_err = "No such file or directory: b'ovs-vsctl'"
-                if installation_err in msg:
-                    print("It seems Open vSwitch (OVS) is not installed or isn't installed correctly "
-                          "on the target machine, as the 'ovs-vsctl show' command failed.")
+            print(f'*** RESULTS IN ERROR CHECK {results} ***')
+            unreachable_err = 'Failed to connect to the host via ssh:'
+            if results:
+                if results.get('Get OVS Details'):
+                    msg = results['Get OVS Details']['msg']
+                    installation_err = "No such file or directory: b'ovs-vsctl'"
+                    if installation_err in msg:
+                        error_explanation = "It seems Open vSwitch (OVS) is not installed or isn't installed correctly on the target machine, as the 'ovs-vsctl show' command failed."
+                        print("ovs-vsctl show command failed.")
+                        return {'status': 'failed', 'error': error_explanation}
+                elif unreachable_err in results['failed']:
+                    return {'status': 'failed', 'error': results['failed']}
+                else:
+                    return {'status': 'failed', 'error': 'unknown error.'}
             else:
-                print(f"Error running playbook: {playbook_name}")
-                if hasattr(r, 'stdout'):
-                    print("Details:", r.stdout)
-                if hasattr(r, 'stderr'):
-                    print("Error details:", r.stderr)
-            sys.exit(1)
+                return {'status': 'failed', 'error': 'unknown error.'}
+
+        return {'status': 'success', 'results': results}
+
     except Exception as e:
-        print(f"Unexpected error while running playbook: {playbook_name}")
-        print(str(e))
-        sys.exit(1)
-    return results
+        print(f'***___RETURNING ERROR {e}___***')
+        print(results)
+        return {'status': 'failed', 'error': str(e)}

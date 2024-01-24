@@ -119,7 +119,7 @@ const InstallOvsFormDialogue = () => {
                     Install Open vSwitch
                 </Button>
                 <Dialog open={open} onClose={handleClose}>
-                    <DialogTitle>Wireguard Configuration</DialogTitle>
+                    <DialogTitle>Install OVS</DialogTitle>
                     {isLoading && (
                         <CircularProgress style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex:1000}} />
                     )}

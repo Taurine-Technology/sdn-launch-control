@@ -32,14 +32,17 @@ class GetDevicePorts(APIView):
     def get(self, request, lan_ip_address):
         try:
             validate_ipv4_address(lan_ip_address)
+
             result = run_playbook(get_ports, playbook_dir_path, inventory_path)
             interfaces = check_system_details(result)
+
             return Response({"status": "success", "interfaces": interfaces})
         except ValidationError:
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(e, exc_info=True)
+            print('ERROR HERE')
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -56,12 +59,20 @@ class AssignPorts(APIView):
 
 class GetDeviceBridges(APIView):
     def get(self, request, lan_ip_address):
-        validate_ipv4_address(lan_ip_address)
-        result = run_playbook(ovs_show, playbook_dir_path, inventory_path)
-        bridges = format_ovs_show(result)
-        print(bridges)
-        return Response({'status': 'success', 'bridges': bridges},
-                        status=status.HTTP_200_OK)
+        try:
+            validate_ipv4_address(lan_ip_address)
+            result = run_playbook(ovs_show, playbook_dir_path, inventory_path)
+            if result['status'] == 'failed':
+                return Response({'status': 'error', 'message': result['error']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            bridges = format_ovs_show(result)
+            return Response({'status': 'success', 'bridges': bridges}, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            logger.error(f'Validation error: {str(e)}', exc_info=True)
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f'Error in GetDeviceBridges: {str(e)}', exc_info=True)
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class CreateBridge(APIView):
     def post(self, request):
         try:

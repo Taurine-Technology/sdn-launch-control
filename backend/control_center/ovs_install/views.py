@@ -46,6 +46,8 @@ class InstallOvsView(APIView):
                 defaults={
                     'name': data.get('name'),
                     'device_type': data.get('device_type'),
+                    'username': data.get('username'),
+                    'password': data.get('password'),
                     'os_type': data.get('os_type'),
                     'ovs_enabled': True,
                     'ovs_version': '2.17.7',

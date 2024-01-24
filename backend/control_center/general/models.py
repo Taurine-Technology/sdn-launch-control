@@ -16,6 +16,8 @@ class Device(models.Model):
     name = models.CharField(max_length=100)
     device_type = models.CharField(max_length=20, choices=DEVICE_TYPES)
     os_type = models.CharField(max_length=20, choices=OS_TYPES)
+    username = models.CharField(max_length=100)
+    password = models.CharField(max_length=100)
 
     lan_ip_address = models.GenericIPAddressField(unique=True)
 

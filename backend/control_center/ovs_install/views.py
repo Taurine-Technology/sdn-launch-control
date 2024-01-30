@@ -64,14 +64,15 @@ class InstallOvsView(APIView):
                 device.ovs_enabled = True
                 device.save(update_fields=['ovs_enabled'])
             if created:
-                print('Creating ports')
-                for interface in interfaces:
-                    port, created_ports = Port.objects.get_or_create(
-                        name=interface,
-                        defaults={
-                            'device': device
-                        }
-                    )
+                if interfaces is not None:
+                    print('Creating ports')
+                    for interface in interfaces:
+                        port, created_ports = Port.objects.get_or_create(
+                            name=interface,
+                            defaults={
+                                'device': device
+                            }
+                        )
 
             message = "OVS Installed." if created else "OVS already installed."
             return Response({"status": "success", "message": message}, status=status.HTTP_200_OK)

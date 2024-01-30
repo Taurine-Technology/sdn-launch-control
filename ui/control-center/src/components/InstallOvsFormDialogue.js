@@ -217,7 +217,7 @@ const InstallOvsFormDialogue = () => {
                             variant="contained"
                             onClick={handleSubmit}
                         >
-                            Connect
+                            Install
                         </Button>
                     </DialogActions>
                 </Dialog>

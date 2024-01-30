@@ -15,6 +15,7 @@ import PortManagementDialogue from "../components/PortManagementDialogue";
 import { useNavigate } from 'react-router-dom';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import {Backdrop, CircularProgress} from "@mui/material";
+
 const DeviceListPage = () => {
     const [openDeleteDialogue, setOpenDeleteDialogue] = useState(false);
     const [deviceToDelete, setDeviceToDelete] = useState(null);
@@ -74,7 +75,8 @@ const DeviceListPage = () => {
 
                 const response = await axios.delete('http://localhost:8000/delete-device/', { data: payload });
 
-                setDevices(devices.filter(device => device.lan_ip_address !== deviceToDelete.lan_ip_address));
+                // setDevices(devices.filter(device => device.lan_ip_address !== deviceToDelete.lan_ip_address));
+                fetchDevices()
                 setResponseMessage('Successfully deleted device.');
                 setResponseType('success');
             } catch (error) {
@@ -88,12 +90,43 @@ const DeviceListPage = () => {
     };
 
 
-    const handleUpdateDevice = (oldIpAddress, updatedDevice) => {
-        console.log('We are editing...');
-        setOpenEditDialogue(false);
+    const handleUpdateDevice = async (oldIpAddress, updatedDevice) => {
+        console.log('Updating device...');
 
+        try {
+            const response = await fetch(`http://localhost:8000/update_device/${oldIpAddress}/`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updatedDevice),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                console.log('Device updated successfully.');
+                fetchDevices()
+                setResponseMessage('Successfully deleted device.');
+                setResponseType('success');
+                setOpenEditDialogue(false);
+            } else {
+                console.error('Failed to update device:', result.message);
+                setResponseMessage(`Failed to update device: ${result.message}`);
+                setResponseType('error');
+                setOpenEditDialogue(false);
+
+            }
+        } catch (error) {
+            console.error('Error updating device:', error);
+            setResponseMessage(`Failed to update device: ${error}`);
+            setResponseType('error');
+            setOpenEditDialogue(false);
+
+        }
     };
     const handleEditClick = (device) => {
+        console.log(device)
         setDeviceToEdit(device);
         console.log(device)
         setOpenEditDialogue(true);
@@ -116,17 +149,18 @@ const DeviceListPage = () => {
     const handleCloseEditDialogue = () => {
         setOpenEditDialogue(false);
     };
+    const fetchDevices = async () => {
+        try {
+            const response = await axios.get('http://localhost:8000/devices/');
+            setDevices(response.data); // Axios automatically handles JSON parsing
+            console.log(response.data)
+        } catch (error) {
+            console.error('Error fetching devices:', error);
+            setError(error.message);
+        }
+    };
     useEffect(() => {
-        const fetchDevices = async () => {
-            try {
-                const response = await axios.get('http://localhost:8000/devices/');
-                setDevices(response.data); // Axios automatically handles JSON parsing
-                console.log(response.data)
-            } catch (error) {
-                console.error('Error fetching devices:', error);
-                setError(error.message);
-            }
-        };
+
 
         fetchDevices();
     }, []);

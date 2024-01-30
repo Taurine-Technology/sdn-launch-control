@@ -12,11 +12,30 @@ import {
 import theme from "../theme";
 
 function EditDeviceDialog({ open, handleClose, device, handleUpdate }) {
-    const [editedDevice, setEditedDevice] = useState({ name: '', lan_ip_address: '', device_type: '', wireguard_ip_address: '', os_type: '',});
+    const [editedDevice, setEditedDevice] = useState({
+        name: '',
+        lan_ip_address: '',
+        device_type: '',
+        os_type: 'ubuntu_20_server',
+        openflow_version: '',
+        ovs_enabled: false,
+        ovs_version: '',
+        ports: 0,
+    });
+
 
     useEffect(() => {
         if (device) {
-            setEditedDevice(device);
+            setEditedDevice({
+                name: device.name || '',
+                lan_ip_address: device.lan_ip_address || '',
+                device_type: device.device_type || '',
+                os_type: device.os_type || '',
+                openflow_version: device.openflow_version || '',
+                ovs_enabled: device.ovs_enabled || false,
+                ovs_version: device.ovs_version || '',
+                ports: device.ports || 0,
+            });
         }
     }, [device]);
 
@@ -25,7 +44,7 @@ function EditDeviceDialog({ open, handleClose, device, handleUpdate }) {
     };
 
     const handleSubmit = () => {
-        handleUpdate(device.ip_address, editedDevice);
+        handleUpdate(device.lan_ip_address, editedDevice);
     };
 
     if (!device) {
@@ -60,7 +79,7 @@ function EditDeviceDialog({ open, handleClose, device, handleUpdate }) {
                     <InputLabel id="os-select-label">Operating System</InputLabel>
                     <Select
                         labelId="os-select-label"
-                        value={editedDevice.os_type}
+                        value={editedDevice.os_type || ''}
                         onChange={handleFieldChange}
                         label="Operating System"
                     >

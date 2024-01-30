@@ -30,7 +30,6 @@ def write_to_inventory(ip, user, password, inventory_path):
                 f"ansible_ssh_common_args='-o StrictHostKeyChecking=no' ansible_become_pass='{password}'\n")
 
 
-
 def update_config(data, config_path):
     # Read the existing YAML file
     with open(config_path, 'r') as file:
@@ -43,19 +42,26 @@ def update_config(data, config_path):
     with open(config_path, 'w') as file:
         yaml.safe_dump(existing_data, file)
 
+
 def save_ip_to_config(ip, config_path):
     update_config({'ip_address': ip}, config_path)
+
 
 def save_interfaces_to_config(interfaces, config_path):
     update_config({'interfaces': interfaces}, config_path)
 
+
 def save_controller_ip_to_config(ip, config_path):
     update_config({'controller_ip': ip}, config_path)
 
+
 def save_controller_port_to_config(port, config_path):
     update_config({'controller_port': port}, config_path)
+
+
 def save_bridge_name_to_config(name, config_path):
     update_config({'bridge_name': name}, config_path)
+
 
 def get_os_from_results(results):
     key = 'Get target system OS'
@@ -85,11 +91,12 @@ def get_interfaces_from_results(results):
         # print(interfaces)
         return interfaces
 
+
 def check_system_details(results):
     interfaces_to_return = ''
     os_details = get_os_from_results(results)
     interfaces_arr = get_interfaces_from_results(results)
-    interfaces_to_return=interfaces_arr
+    interfaces_to_return = interfaces_arr
     opr_system = 'Unknown'
     if os_details.get('os'):
         opr_system = os_details['os']
@@ -108,6 +115,7 @@ def check_system_details(results):
         print("We have not tested this code on your target OS. Please provide me with feedback on x.com "
               "@keeganwhitetech if it is successful or open an issue of GitHub if there are issues providing the"
               f"details below:\n OS: {opr_system}\Distribution: {distribution}")
+    print('returning')
     return interfaces_to_return
 
 
@@ -158,7 +166,8 @@ def update_devices(device_name, bridges, user, password, ip, file_name):
     # Check if device_name already exists
     existing_device = next((device for device in data['devices'] if device['device_name'] == device_name), None)
     while existing_device:
-        choice = input(f"Device named '{device_name}' already exists. Do you want to overwrite it? (y/n): ").strip().lower()
+        choice = input(
+            f"Device named '{device_name}' already exists. Do you want to overwrite it? (y/n): ").strip().lower()
         if choice == 'y':
             data['devices'].remove(existing_device)
             break
@@ -169,7 +178,7 @@ def update_devices(device_name, bridges, user, password, ip, file_name):
     # Construct device data
     device = {
         'device_name': device_name,
-        'active': True, # Default to True
+        'active': True,  # Default to True
         'user_name': user,
         'password': password,
         'ip_address': ip,
@@ -178,7 +187,8 @@ def update_devices(device_name, bridges, user, password, ip, file_name):
     # Construct OVS bridges data
     ovs_bridges = []
     for bridge, details in bridges.items():
-        bridge_ports = [port for port in details['Ports'] if port != bridge]  # Excluding port if it's same as bridge name
+        bridge_ports = [port for port in details['Ports'] if
+                        port != bridge]  # Excluding port if it's same as bridge name
         bridge_data = {
             'bridge_name': bridge,
             'ports': [{'port_name': port} for port in bridge_ports]

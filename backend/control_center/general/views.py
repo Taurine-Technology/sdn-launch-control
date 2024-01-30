@@ -171,6 +171,29 @@ class DeleteDeviceView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class UpdateDeviceView(APIView):
+    def put(self, request, lan_ip_address):
+        try:
+            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+            data = request.data
+
+            # Update fields if they are present in the request
+            for field in ['name', 'device_type', 'os_type', 'username', 'password', 'num_ports', 'ovs_enabled',
+                          'ovs_version', 'openflow_version']:
+                if field in data:
+                    setattr(device, field, data[field])
+
+            # Validate and save the device
+            device.full_clean()
+            device.save()
+            return Response({"status": "success", "message": "Device updated successfully."}, status=status.HTTP_200_OK)
+
+        except ValidationError as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # *---------- OVS get and post methods ----------*
 class DeviceBridgesView(APIView):
     def get(self, request, lan_ip_address):

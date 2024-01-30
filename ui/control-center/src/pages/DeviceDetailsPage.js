@@ -78,7 +78,12 @@ const DeviceDetailsPage = () => {
         axios.get(`http://localhost:8000/device-ports/${deviceIp}/`)
             .then(response => {
                 if (response.data.status === 'success') {
-                    setPorts(response.data.ports);
+                    if (response.data.ports == null) {
+                        setPorts([]);
+                        console.log('here')
+                    } else {
+                        setPorts(response.data.ports);
+                    }
                 }
                 setPortsFetched(true);
             })

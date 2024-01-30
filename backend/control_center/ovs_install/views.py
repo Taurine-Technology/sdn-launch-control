@@ -39,7 +39,10 @@ class InstallOvsView(APIView):
             result = run_playbook(get_ports, playbook_dir_path, inventory_path)
             interfaces = check_system_details(result)
             print(f'Interfaces: {interfaces}')
-            num_ports = len(interfaces)
+            if interfaces is not None:
+                num_ports = len(interfaces)
+            else:
+                num_ports = 0
 
             device, created = Device.objects.get_or_create(
                 lan_ip_address=lan_ip_address,

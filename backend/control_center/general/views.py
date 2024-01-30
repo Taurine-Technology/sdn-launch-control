@@ -155,7 +155,6 @@ class DeleteDeviceView(APIView):
     def delete(self, request):
         data = request.data
         try:
-
             validate_ipv4_address(data.get('lan_ip_address'))
         except ValidationError:
             return Response({"status": "error", "message": "Invalid IP address format."},

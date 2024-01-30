@@ -46,9 +46,10 @@ def my_event_handler(data):
             task = event_data['task']
             result = event_data['res']
             # print(result)
-            msg = result['msg']
-            if 'Failed to connect to the host via ssh' in msg:
-                results['failed'] = msg
+            if 'msg' in result:
+                msg = result['msg']
+                if 'Failed to connect to the host via ssh' in msg:
+                    results['failed'] = msg
     if task and result:
         if task != 'Gathering Facts':
             results[task] = result

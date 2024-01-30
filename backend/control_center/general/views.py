@@ -113,8 +113,12 @@ class DeviceListView(APIView):
                 {
                     "name": device.name,
                     "device_type": device.device_type,
-                    "lan_ip_address": device.lan_ip_address,
                     "os_type": device.os_type,
+                    "lan_ip_address": device.lan_ip_address,
+                    "ports": device.num_ports,
+                    "ovs_enabled": device.ovs_enabled,
+                    "ovs_version": device.ovs_version,
+                    "openflow_version": device.openflow_version
                 } for device in devices
             ]
             return Response(data, status=status.HTTP_200_OK)
@@ -144,6 +148,7 @@ class DeviceDetailsView(APIView):
                 "ovs_version": device.ovs_version,
                 "openflow_version": device.openflow_version
             }
+            print(data)
 
             return Response({"status": "success", "device": data}, status=status.HTTP_200_OK)
         except Exception as e:

@@ -52,6 +52,7 @@ const DeviceDetailsPage = () => {
             .then(response => {
                 setDevice(response.data.device);
                 setOriginalDevice(response.data.device);
+                console.log(response.data.device);
             })
             .catch(error => console.error('Error fetching device:', error));
 

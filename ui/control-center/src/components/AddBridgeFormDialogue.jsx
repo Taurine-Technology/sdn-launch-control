@@ -44,7 +44,13 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
             console.log(deviceIp)
             const response = await axios.get(`http://localhost:8000/get-device-ports/${deviceIp}/`);
             if (response.data.status === 'success') {
-                setPortOptions(['none', ...response.data.interfaces]);
+                if (response.data.ports == null) {
+                    setPortOptions(['none']);
+                    console.log('here')
+                } else {
+                    setPortOptions(response.data.ports);
+                }
+
                 console.log(response.data.interfaces)
             }
             // Handle other statuses if needed

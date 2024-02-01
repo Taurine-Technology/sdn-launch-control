@@ -94,7 +94,7 @@ const DeviceListPage = () => {
         console.log('Updating device...');
 
         try {
-            const response = await fetch(`http://localhost:8000/update_device/${oldIpAddress}/`, {
+            const response = await fetch(`http://localhost:8000/update-device/${oldIpAddress}/`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

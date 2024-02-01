@@ -33,6 +33,6 @@ urlpatterns = [
     path('get-bridges/<str:lan_ip_address>/', GetDeviceBridges.as_view(), name='get-bridges'),
     path('check-connection/<str:lan_ip_address>/', CheckDeviceConnectionView.as_view(), name='check-connection'),
     path('delete-device/', DeleteDeviceView.as_view(), name='delete-device'),
-    path('update_device/<str:lan_ip_address>/', UpdateDeviceView.as_view(), name='update_device'),
+    path('update-device/<str:lan_ip_address>/', UpdateDeviceView.as_view(), name='update_device'),
 ]
 

@@ -11,15 +11,21 @@ import {
     MenuItem,
     FormControl,
     Select,
-    InputLabel, Tooltip
+    Alert,
+    InputLabel, Tooltip, CircularProgress, IconButton
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
 import AddBridgeFormDialogue from "../components/AddBridgeFormDialogue";
+import CloseIcon from '@mui/icons-material/Close';
 
 const DeviceDetailsPage = () => {
+    // general variables
+    const [isLoading, setIsLoading] = useState(false);
+    const [alert, setAlert] = useState({ show: false, type: '', message: '' });
     // Variables For the First Card
+
     const { deviceIp } = useParams();
     const navigate = useNavigate();
     const [device, setDevice] = useState(null);
@@ -103,12 +109,20 @@ const DeviceDetailsPage = () => {
     const handleApply = () => {
         if (!isEdited) return;
 
-        axios.put(`http://localhost:8000/edit-device/${deviceIp}`, device)
+        axios.put(`http://localhost:8000/update-device/${deviceIp}/`, device)
+
             .then(response => {
-                navigate('/devices'); // Redirect or handle as needed
+                // navigate('/devices'); // Redirect or handle as needed
+                setIsLoading(true)
+
+                if (response.data.status === 'success') {
+                    setIsLoading(false)
+                    setAlert({ show: true, type: 'success', message: 'Device edited successfully' });
+                }
             })
             .catch(error => {
                 console.error('Error updating device:', error);
+                setAlert({ show: true, type: 'error', message: error });
             });
     };
     if (!device) return <div>Loading...</div>;
@@ -123,7 +137,11 @@ const DeviceDetailsPage = () => {
 
     const handleCloseAddBridge = () => {
         setOpenAddBridgeDialog(false);
+
     };
+    const handleClose = () => {
+        setAlert({ show: false, type: '', message: '' })
+    }
 
     return (
         <Box
@@ -146,8 +164,28 @@ const DeviceDetailsPage = () => {
                 >
                     Back
                 </Button>
+                {alert.show && (
+                    <Alert
+                        severity={alert.type}
+                        action={
+                            <IconButton
+                                aria-label="close"
+                                color="inherit"
+                                size="small"
+                                onClick={handleClose}
+                            >
+                                <CloseIcon fontSize="inherit" />
+                            </IconButton>
+                        }
+                    >
+                        {alert.message}
+                    </Alert>
+                )}
                 <Card raised>
                     <CardContent>
+                        {isLoading && <CircularProgress />}
+                        {!isLoading && (
+                            <div>
                         <Typography variant="h1" component="div" sx={{ marginBottom: 2 }}>
                             {device.name}
                             {/* Add Icon next to name */}
@@ -223,6 +261,8 @@ const DeviceDetailsPage = () => {
                         <Button color="button_red"  onClick={handleCancel} sx={{ marginLeft: 2 }}>
                             Cancel
                         </Button>
+        </div>
+            )}
                     </CardContent>
                 </Card>
 

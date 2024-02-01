@@ -41,14 +41,17 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
     }, [open, deviceIp]);
     const fetchPorts = async () => {
         try {
+            setIsLoading(true)
             console.log(deviceIp)
             const response = await axios.get(`http://localhost:8000/get-device-ports/${deviceIp}/`);
             if (response.data.status === 'success') {
-                if (response.data.ports == null) {
+                if (response.data.interfaces == null) {
                     setPortOptions(['none']);
                     console.log('here')
+                    setIsLoading(false)
                 } else {
-                    setPortOptions(response.data.ports);
+                    setPortOptions(response.data.interfaces);
+                    setIsLoading(false)
                 }
 
                 console.log(response.data.interfaces)
@@ -79,6 +82,7 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
     };
 
     const handlePortChange = (event) => {
+        console.log(event.target.value)
         setSelectedPorts(event.target.value);
     };
 

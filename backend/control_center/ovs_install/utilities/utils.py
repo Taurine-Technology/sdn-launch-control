@@ -64,9 +64,14 @@ def save_bridge_name_to_config(name, config_path):
 
 
 def get_os_from_results(results):
+    results_key = 'results'
+    if results.get(results_key):
+        results = results[results_key]
     key = 'Get target system OS'
     target = 'ansible_distribution'
     results_to_return = {}
+    # print('*** in get_os_from_results ***')
+    # print(results)
     if results.get(key):
         results_dic = results[key]
         # print(results)
@@ -94,6 +99,12 @@ def get_interfaces_from_results(results):
 
 def check_system_details(results):
     interfaces_to_return = ''
+    # print('*** in check_system_details ***')
+    # print(results)
+    results_key = 'results'
+    if results.get(results_key):
+        results = results[results_key]
+    # print(results)
     os_details = get_os_from_results(results)
     interfaces_arr = get_interfaces_from_results(results)
     interfaces_to_return = interfaces_arr
@@ -115,7 +126,7 @@ def check_system_details(results):
         print("We have not tested this code on your target OS. Please provide me with feedback on x.com "
               "@keeganwhitetech if it is successful or open an issue of GitHub if there are issues providing the"
               f"details below:\n OS: {opr_system}\Distribution: {distribution}")
-    print('returning')
+    # print('returning')
     return interfaces_to_return
 
 

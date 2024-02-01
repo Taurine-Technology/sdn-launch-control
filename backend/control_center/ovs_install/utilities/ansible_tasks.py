@@ -64,15 +64,35 @@ def run_playbook(playbook_name, playbook_dir_path, inventory_path, quiet=True):
             print(f'*** RESULTS IN ERROR CHECK {results} ***')
             unreachable_err = 'Failed to connect to the host via ssh:'
             if results:
-                if results.get('Get OVS Details'):
-                    msg = results['Get OVS Details']['msg']
-                    installation_err = "No such file or directory: b'ovs-vsctl'"
-                    if installation_err in msg:
-                        error_explanation = "It seems Open vSwitch (OVS) is not installed or isn't installed correctly on the target machine, as the 'ovs-vsctl show' command failed."
-                        print("ovs-vsctl show command failed.")
-                        return {'status': 'failed', 'error': error_explanation}
-                elif unreachable_err in results['failed']:
-                    return {'status': 'failed', 'error': results['failed']}
+                # if results.get('Get OVS Details'):
+                #     msg = results['Get OVS Details']['msg']
+                #     installation_err = "No such file or directory: b'ovs-vsctl'"
+                #     if installation_err in msg:
+                #         error_explanation = "It seems Open vSwitch (OVS) is not installed or isn't installed correctly on the target machine, as the 'ovs-vsctl show' command failed."
+                #         print("ovs-vsctl show command failed.")
+                #         return {'status': 'failed', 'error': error_explanation}
+                # SSH error
+                if results.get('failed'):
+                    if results['failed'].get(unreachable_err):
+                        return {'status': 'failed', 'error': results['failed']}
+                # Apt update error
+                elif results.get('Install required packages'):
+                    print('made it to apt get install')
+                    print(results['Install required packages'])
+                    results_apt = results['Install required packages']
+                    print(results_apt)
+                    #  'stderr': 'E: Could not get lock /var/lib/dpkg/lock-frontend
+                    if results_apt.get('stderr'):
+                        results_err = results_apt['stderr']
+                        print('results error found')
+                        print(results_err)
+
+                        if 'Could not get lock' in results_err:
+                            return {'status': 'failed', 'error': 'Cannot get lock while running apt install. Try restarting your device and trying again.'}
+                        else:
+                            return {'status': 'failed', 'error': results_err}
+                    else:
+                        return {'status': 'failed', 'error': 'unknown error.'}
                 else:
                     return {'status': 'failed', 'error': 'unknown error.'}
             else:

@@ -28,6 +28,10 @@ const DeviceDetailsPage = () => {
     const osOptions = [
         { value: 'ubuntu_20_server', label: 'Ubuntu 20.04 Server' },
     ];
+    const ovsEnabledOptions = [
+        { value: true, label: 'Enabled' },
+        { value: false, label: 'Disabled' },
+    ];
 
     const deviceTypeOptions = [
         { value: 'switch', label: 'Switch' },
@@ -183,6 +187,22 @@ const DeviceDetailsPage = () => {
                                             ))}
                                         </Select>
                                     </FormControl>
+                                ) : key === 'ovs_enabled' ? (
+                                    <FormControl fullWidth>
+                                        <InputLabel>OVS Status</InputLabel>
+                                        <Select
+                                            name="ovs_enabled"
+                                            value={device.ovs_enabled}
+                                            label="OVS Status"
+                                            onChange={handleChange}
+                                        >
+                                            {ovsEnabledOptions.map(option => (
+                                                <MenuItem key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
                                 ) : (
                                     <TextField
                                         label={key}
@@ -191,7 +211,9 @@ const DeviceDetailsPage = () => {
                                         onChange={handleChange}
                                         fullWidth
                                     />
-                                )}
+                                )
+
+                                }
                             </Box>
                         ))}
 
@@ -234,10 +256,10 @@ const DeviceDetailsPage = () => {
                         />
 
                     </CardContent>
-                </Card>
+                    </Card>
 
-                {/*The devices ports. If there are no ports then a button to add ports*/}
-                <Card raised sx={{ marginTop: 4 }}>
+
+                {/*<Card raised sx={{ marginTop: 4 }}>
                     <CardContent>
                         <Typography variant="h1" component="div" sx = {{ marginBottom: 2 }}>
                             Ports
@@ -247,7 +269,7 @@ const DeviceDetailsPage = () => {
                                 ports.map(port => (
                                     <Typography key={port.name}>
                                         {port.name}
-                                        {/* Add additional port details here if needed */}
+
                                     </Typography>
                                 ))
                             ) : (
@@ -265,7 +287,7 @@ const DeviceDetailsPage = () => {
                             <Typography>Loading ports...</Typography>
                         )}
                     </CardContent>
-                </Card>
+                </Card>*/}
             </Box>
             <Footer />
 

@@ -56,7 +56,19 @@ const InstallOvsFormDialogue = () => {
         setOpen(false)
         setFile(null);
     };
-
+    const handleOnClose = (event, reason) => {
+        if (isLoading && reason && reason === "backdropClick") {
+            // Prevent closing the dialog
+            return;
+        } else if (isLoading && reason && reason === "escapeKeyDown") {
+            // Prevent closing the dialog on escape key press
+            return;
+        }
+        // Call handleClose if provided
+        if (typeof handleClose === 'function') {
+            handleClose();
+        }
+    };
     const handleOSChange = (e) => {
         setOs(e.target.value)
         updateFormValidity();
@@ -118,7 +130,7 @@ const InstallOvsFormDialogue = () => {
                 <Button variant="contained" onClick={handleClickOpen}>
                     Install Open vSwitch
                 </Button>
-                <Dialog open={open} onClose={handleClose}>
+                <Dialog open={open} onClose={handleOnClose}>
                     <DialogTitle>Install OVS</DialogTitle>
                     {isLoading && (
                         <CircularProgress style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex:1000}} />

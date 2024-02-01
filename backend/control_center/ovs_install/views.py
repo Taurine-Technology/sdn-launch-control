@@ -18,7 +18,7 @@ from .utilities.utils import write_to_inventory, save_ip_to_config
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
 logger = logging.getLogger(__name__)
-test_server = "install-ovs"
+install_ovs = "install-ovs"
 playbook_dir_path = f"{parent_dir}/ansible/playbooks"
 inventory_path = f"{parent_dir}/ansible/inventory/inventory"
 config_path = f"{parent_dir}/ansible/group_vars/all.yml"
@@ -34,7 +34,9 @@ class InstallOvsView(APIView):
             lan_ip_address = data.get('lan_ip_address')
             write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
             save_ip_to_config(lan_ip_address, config_path)
-            run_playbook(test_server, playbook_dir_path, inventory_path)
+            result_install = run_playbook(install_ovs, playbook_dir_path, inventory_path)
+            if result_install['status'] == 'failed':
+                return Response({"status": "error", "message": result_install['error']}, status=status.HTTP_400_BAD_REQUEST)
 
             result = run_playbook(get_ports, playbook_dir_path, inventory_path)
             interfaces = check_system_details(result)

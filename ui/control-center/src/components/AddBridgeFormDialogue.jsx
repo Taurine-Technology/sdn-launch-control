@@ -24,7 +24,9 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
     const [isLoading, setIsLoading] = useState(false);
     const [alert, setAlert] = useState({ show: false, type: '', message: '' });
 
-
+    const handleCloseAlert = () => {
+        setAlert({show: false, type: '', message: ''});
+    };
     const handleClickOpen = () => setOpen(true);
     const handleClose = () => {
         setOpen(false);
@@ -76,14 +78,15 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
             const response = await axios.post('http://localhost:8000/add-bridge/', payload);
             setAlert({ show: true, type: 'success', message: 'Bridge added successfully' });
         } catch (error) {
-            setAlert({ show: true, type: 'error', message: 'Error adding bridge' });
+            console.log('Error Response:', error.response);
+            setAlert({ show: true, type: 'error', message: error.response?.data?.message || error.message || 'Error adding bridge' });
         } finally {
             setIsLoading(false);
-            setOpen(false);
-            setBridgeName('');
-            setOpenFlowVersion('1.3');
-            setSelectedPorts([]);
-            setPortOptions(['none'])
+            // setOpen(false);
+            // setBridgeName('');
+            // setOpenFlowVersion('1.3');
+            // setSelectedPorts([]);
+            // setPortOptions(['none'])
         }
     };
 
@@ -100,6 +103,7 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
             <Dialog open={open} onClose={handleClose}>
                 <DialogTitle>Add Bridge</DialogTitle>
                 <DialogContent>
+                    {alert.show && <Alert severity={alert.type} onClose={handleCloseAlert} >{alert.message}</Alert>}
                     {isLoading && <CircularProgress />}
                     {!isLoading && (
                         <div>
@@ -156,7 +160,7 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
                 Submit
             </Button>
         </DialogActions>
-{alert.show && <Alert severity={alert.type}>{alert.message}</Alert>}
+
 </Dialog>
         </div>
     );

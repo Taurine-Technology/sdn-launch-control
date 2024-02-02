@@ -83,10 +83,15 @@ class CreateBridge(APIView):
             lan_ip_address = data.get('lan_ip_address')
             validate_ipv4_address(lan_ip_address)
             device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+
             bridge_name = data.get('name')
+
+            if Bridge.objects.filter(device=device, name=bridge_name).exists():
+                return Response({'status': 'error', 'message': 'A bridge with this name already exists for the device'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
             open_flow_version = data.get('openFlowVersion')
             ports = data.get('ports')
-            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
             save_bridge_name_to_config(bridge_name, config_path)
             write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
             save_ip_to_config(lan_ip_address, config_path)

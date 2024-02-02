@@ -1,1 +1,3 @@
 .idea
+ui/control-center/node_modules
+backend/control_center/artifacts

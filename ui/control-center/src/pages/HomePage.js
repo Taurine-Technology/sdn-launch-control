@@ -5,18 +5,6 @@ import Footer from "../components/Footer";
 import Button from '@mui/material/Button';
 import InstallOvsFormDialogue from "../components/InstallOvsFormDialogue";
 const HomePage = () => {
-    const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-
-    // const toggleTerminal = () => {
-    //     setIsTerminalOpen(!isTerminalOpen);
-    // };
-    //
-    // const sshConfig = {
-    //     host: '10.0.0.17',
-    //     port: 22,
-    //     username: 'inethi',
-    //     password: 'inethi'
-    // };
 
     return (
         <Box

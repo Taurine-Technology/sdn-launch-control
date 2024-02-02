@@ -1,6 +1,4 @@
 import React from 'react';
-import { AuthProvider, useAuth } from './utilities/AuthContext';
-import SignIn from './pages/SignIn';
 import "./fonts.css";
 import { ThemeProvider } from '@mui/material/styles';
 import theme from './theme';
@@ -15,10 +13,7 @@ function MainComponent() {
 }
 
 const App = () => {
-    const { isAuthenticated } = useAuth();
-    const { signIn } = useAuth();
-    signIn();
-    if (isAuthenticated) {
+
         return (
             <ThemeProvider theme={theme}>
                 <HashRouter>
@@ -31,17 +26,10 @@ const App = () => {
                 </HashRouter>
             </ThemeProvider>
         );
-    }
-    return (
-        <ThemeProvider theme={theme}>
-        <SignIn />
-        </ThemeProvider>
-    );
-
-};
+    };
 
 export default () => (
-    <AuthProvider>
+
         <App />
-    </AuthProvider>
+
 );

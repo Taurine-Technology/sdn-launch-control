@@ -11,11 +11,11 @@ import {
     InputLabel,
     FormControl,
     CircularProgress,
-    Alert, Chip, OutlinedInput,
+    Alert, Chip, OutlinedInput, Box,
 } from '@mui/material';
 import axios from 'axios';
 
-const AddBridgeFormDialogue = ({deviceIp} ) => {
+const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
     const [open, setOpen] = useState(false);
     const [bridgeName, setBridgeName] = useState('');
     const [openFlowVersion, setOpenFlowVersion] = useState('1.3');
@@ -23,6 +23,8 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
     const [portOptions, setPortOptions] = useState(['none']);
     const [isLoading, setIsLoading] = useState(false);
     const [alert, setAlert] = useState({ show: false, type: '', message: '' });
+
+
 
     const handleCloseAlert = () => {
         setAlert({show: false, type: '', message: ''});
@@ -35,7 +37,11 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
         setSelectedPorts([]);
         setPortOptions(['none'])
         setAlert({ show: false, type: '', message: '' })
+        if (onDialogueClose) {
+            onDialogueClose(); // Call the callback function to refresh bridges
+        }
     };
+
     const handleOnClose = (event, reason) => {
         if (isLoading && reason && reason === "backdropClick") {
             // Prevent closing the dialog
@@ -90,6 +96,9 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
         try {
             const response = await axios.post('http://localhost:8000/add-bridge/', payload);
             setAlert({ show: true, type: 'success', message: 'Bridge added successfully' });
+            if (onDialogueClose) {
+                onDialogueClose(); // Call the callback function to refresh bridges
+            }
         } catch (error) {
             console.log('Error Response:', error.response);
             setAlert({ show: true, type: 'error', message: error.response?.data?.message || error.message || 'Error adding bridge' });
@@ -116,56 +125,60 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
             <Dialog open={open} onClose={handleOnClose}>
                 <DialogTitle>Add Bridge</DialogTitle>
                 <DialogContent>
-                    {alert.show && <Alert severity={alert.type} onClose={handleCloseAlert} >{alert.message}</Alert>}
-                    {isLoading && <CircularProgress />}
-                    {!isLoading && (
+                    {alert.show && <Alert severity={alert.type} onClose={handleCloseAlert}>{alert.message}</Alert>}
+                    {isLoading ? (
+                        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                            <CircularProgress />
+                        </Box>
+                    ) : (
                         <div>
-                        <TextField
-                            autoFocus
-                            margin="dense"
-                            label="Bridge Name"
-                            fullWidth
-                            variant="outlined"
-                            value={bridgeName}
-                            onChange={e => setBridgeName(e.target.value)}
-                            required
-                        />
-                    <FormControl fullWidth margin="dense">
-                        <InputLabel>OpenFlow Version</InputLabel>
-                        <Select
-                            value={openFlowVersion}
-                            onChange={e => setOpenFlowVersion(e.target.value)}
-                            label="OpenFlow Version"
-                        >
-                            <MenuItem value="1.3">1.3</MenuItem>
-                        </Select>
-                    </FormControl>
-                    <FormControl fullWidth margin="dense">
-                        <InputLabel>Ports</InputLabel>
-                        <Select
-                            multiple
-                            value={selectedPorts}
-                            onChange={handlePortChange}
-                            input={<OutlinedInput label="Ports" />}
-                            renderValue={(selected) => (
-                                <div>
-                                    {selected.map((value) => (
-                                        <Chip key={value} label={value} />
+                            <TextField
+                                autoFocus
+                                margin="dense"
+                                label="Bridge Name"
+                                fullWidth
+                                variant="outlined"
+                                value={bridgeName}
+                                onChange={e => setBridgeName(e.target.value)}
+                                required
+                            />
+                            <FormControl fullWidth margin="dense">
+                                <InputLabel>OpenFlow Version</InputLabel>
+                                <Select
+                                    value={openFlowVersion}
+                                    onChange={e => setOpenFlowVersion(e.target.value)}
+                                    label="OpenFlow Version"
+                                >
+                                    <MenuItem value="1.3">1.3</MenuItem>
+                                </Select>
+                            </FormControl>
+                            <FormControl fullWidth margin="dense">
+                                <InputLabel>Ports</InputLabel>
+                                <Select
+                                    multiple
+                                    value={selectedPorts}
+                                    onChange={handlePortChange}
+                                    input={<OutlinedInput label="Ports" />}
+                                    renderValue={(selected) => (
+                                        <div>
+                                            {selected.map((value) => (
+                                                <Chip key={value} label={value} />
+                                            ))}
+                                        </div>
+                                    )}
+                                >
+                                    {portOptions.map((port) => (
+                                        <MenuItem key={port} value={port}>
+                                            {port}
+                                        </MenuItem>
                                     ))}
-                                </div>
-                            )}
-                        >
-                            {portOptions.map((port) => (
-                                <MenuItem key={port} value={port}>
-                                    {port}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                                </Select>
+                            </FormControl>
                         </div>
                     )}
-        </DialogContent>
-        <DialogActions>
+                </DialogContent>
+
+                <DialogActions>
             <Button onClick={handleClose} color="button_red" disabled={isLoading}>
                 Cancel
             </Button>

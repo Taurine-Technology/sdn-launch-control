@@ -1,5 +1,11 @@
 from rest_framework import serializers
-from .models import Device, Bridge
+from .models import Device, Bridge, Port
+
+
+class PortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Port
+        fields = ['name', ]
 
 
 class DeviceSerializer(serializers.ModelSerializer):
@@ -11,7 +17,8 @@ class DeviceSerializer(serializers.ModelSerializer):
 
 class BridgeSerializer(serializers.ModelSerializer):
     device = DeviceSerializer(read_only=True)
+    ports = PortSerializer(many=True, read_only=True)
 
     class Meta:
         model = Bridge
-        fields = ['name', 'dpid', 'device']
+        fields = ['name', 'dpid', 'device', 'ports']

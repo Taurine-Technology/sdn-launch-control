@@ -107,7 +107,7 @@ const DeviceListPage = () => {
             if (response.ok) {
                 console.log('Device updated successfully.');
                 fetchDevices()
-                setResponseMessage('Successfully deleted device.');
+                setResponseMessage('Successfully Updated device.');
                 setResponseType('success');
                 setOpenEditDialogue(false);
             } else {
@@ -228,6 +228,7 @@ const DeviceListPage = () => {
                             open={openDeleteDialogue}
                             handleClose={handleCloseDeleteDialog}
                             handleConfirm={handleConfirmDelete}
+                            itemName='device'
                         />
                         <EditDeviceDialog
                             open={openEditDialogue}

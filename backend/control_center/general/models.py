@@ -41,7 +41,7 @@ class Bridge(models.Model):
 
 
 class Port(models.Model):
-    bridge = models.ForeignKey(Bridge, on_delete=models.CASCADE, related_name='ports', null=True)
+    bridge = models.ForeignKey(Bridge, on_delete=models.SET_NULL, related_name='ports', null=True, blank=True)
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='ports')
     name = models.CharField(max_length=100, unique=True)
 

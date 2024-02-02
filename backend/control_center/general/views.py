@@ -203,13 +203,17 @@ class DeviceBridgesView(APIView):
             bridges = device.bridges.all()
             if bridges.exists():
                 serializer = BridgeSerializer(bridges, many=True)
+                print(serializer.data)
                 return Response({'status': 'success', 'bridges': serializer.data})
             else:
                 return Response({'status': 'info', 'message': 'No bridges assigned to this device.'})
         except ValueError:
-            return Response({'status': 'error', 'message': 'Invalid IP address format.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status': 'error', 'message': 'Invalid IP address format.'},
+                            status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class DevicePortsView(APIView):
     def get(self, request, lan_ip_address):
         try:

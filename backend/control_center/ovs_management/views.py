@@ -17,7 +17,8 @@ from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
 from general.serializers import BridgeSerializer
-from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, save_interfaces_to_config
+from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, \
+    save_interfaces_to_config
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
@@ -65,7 +66,8 @@ class GetDeviceBridges(APIView):
             validate_ipv4_address(lan_ip_address)
             result = run_playbook(ovs_show, playbook_dir_path, inventory_path)
             if result['status'] == 'failed':
-                return Response({'status': 'error', 'message': result['error']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({'status': 'error', 'message': result['error']},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             bridges = format_ovs_show(result)
             return Response({'status': 'success', 'bridges': bridges}, status=status.HTTP_200_OK)
         except ValidationError as e:
@@ -74,6 +76,7 @@ class GetDeviceBridges(APIView):
         except Exception as e:
             logger.error(f'Error in GetDeviceBridges: {str(e)}', exc_info=True)
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class CreateBridge(APIView):
     def post(self, request):
@@ -99,7 +102,8 @@ class CreateBridge(APIView):
             create_bridge = run_playbook('ovs-bridge-setup', playbook_dir_path, inventory_path)
 
             if create_bridge['status'] == 'failed':
-                return Response({'status': 'error', 'message': 'error creating bridge'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'status': 'error', 'message': 'error creating bridge'},
+                                status=status.HTTP_400_BAD_REQUEST)
             bridge = Bridge.objects.create(
                 name=data.get('name'),
                 device=device,
@@ -107,7 +111,8 @@ class CreateBridge(APIView):
             )
             add_interfaces = run_playbook('ovs-port-setup', playbook_dir_path, inventory_path)
             if add_interfaces['status'] == 'failed':
-                return Response({'status': 'error', 'message': f'error adding interfaces to  bridge {bridge_name}'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'status': 'error', 'message': f'error adding interfaces to  bridge {bridge_name}'},
+                                status=status.HTTP_400_BAD_REQUEST)
             for i in ports:
                 port = Port.objects.get(
                     name=i,
@@ -125,3 +130,39 @@ class CreateBridge(APIView):
         except Exception as e:
             logger.error(f'Error in CreateBridge: {str(e)}', exc_info=True)
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DeleteBridge(APIView):
+    def post(self, request):
+        try:
+            data = request.data
+            lan_ip_address = data.get('lan_ip_address')
+            validate_ipv4_address(lan_ip_address)
+            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+            bridge_name = data.get('name')
+
+            bridge = Bridge.objects.filter(device=device, name=bridge_name).first()
+            if bridge:
+                save_bridge_name_to_config(bridge_name, config_path)
+                write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
+                save_ip_to_config(lan_ip_address, config_path)
+                delete_bridge = run_playbook('ovs-delete-bridge', playbook_dir_path, inventory_path)
+                if delete_bridge.get('status') == 'success':
+                    # Delete the bridge from the database
+                    bridge.delete()
+
+                    return Response({'status': 'success', 'message': f'Bridge {bridge_name} deleted successfully.'},
+                                    status=status.HTTP_202_ACCEPTED)
+                else:
+                    return Response({'status': 'failed', 'message': 'Unable to delete bridge due to external system failure.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'status': 'error', 'message': 'Bridge not found.'},
+                                status=status.HTTP_404_NOT_FOUND)
+        except ValidationError:
+            return Response({'status': 'error', 'message': 'Invalid IP address format.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

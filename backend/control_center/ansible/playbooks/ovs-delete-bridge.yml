@@ -1,0 +1,9 @@
+---
+- name: Delete an OVS Bridge
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  vars_files:
+    - ../group_vars/all.yml
+  roles:
+    - ../roles/ovs-del-bridge

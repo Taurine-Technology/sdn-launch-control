@@ -20,6 +20,7 @@ import Footer from "../components/Footer";
 import AddBridgeFormDialogue from "../components/AddBridgeFormDialogue";
 import CloseIcon from '@mui/icons-material/Close';
 import BridgeList from "../components/BridgeList";
+import ConfirmDeleteDialog from "../components/ConfirmDeleteDialogue";
 
 const DeviceDetailsPage = () => {
     // Inside DeviceDetailsPage component
@@ -34,6 +35,8 @@ const DeviceDetailsPage = () => {
     };
     // general variables
     const [isLoading, setIsLoading] = useState(false);
+    const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+
     const [alert, setAlert] = useState({ show: false, type: '', message: '' });
     // Variables For the First Card
 
@@ -57,6 +60,8 @@ const DeviceDetailsPage = () => {
     ];
 
     // *--- Variables for the second card ---*
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+    const [bridgeToDelete, setBridgeToDelete] = useState(null);
     const [bridges, setBridges] = useState([]);
     const [bridgesFetched, setBridgesFetched] = useState(false);
     const [openAddBridgeDialog, setOpenAddBridgeDialog] = useState(false);
@@ -64,7 +69,52 @@ const DeviceDetailsPage = () => {
     // *--- Variables for third card ---*
     const [ports, setPorts] = useState([]);
     const [portsFetched, setPortsFetched] = useState(false);
+    const handleOpenDeleteDialogue = (bridge) => {
+        setBridgeToDelete(bridge);
+        setConfirmDeleteOpen(true);
+    };
 
+    const handleCloseDeleteDialog = () => {
+        setConfirmDeleteOpen(false);
+    };
+    const fetchBridges = () => {
+        axios.get(`http://localhost:8000/device-bridges/${deviceIp}/`)
+            .then(response => {
+                const bridgesData = response.data.bridges || [];
+                setBridges(bridgesData);
+                setBridgesFetched(true);
+            })
+            .catch(error => console.error('Error fetching bridges:', error));
+    };
+
+    const handleConfirmDelete = () => {
+        if (bridgeToDelete) {
+            setIsDeleteLoading(true); // Enable loading indicator
+            axios.post(`http://localhost:8000/delete-bridge/`, {
+                lan_ip_address: deviceIp,
+                name: bridgeToDelete.name,
+            })
+                .then(response => {
+                    setAlert({
+                        show: true,
+                        type: 'success',
+                        message: `Bridge ${bridgeToDelete.name} deleted successfully.`
+                    });
+                    fetchBridges(); // Refresh bridges list
+                })
+                .catch(error => {
+                    setAlert({
+                        show: true,
+                        type: 'error',
+                        message: error.response?.data?.message || 'Failed to delete bridge.'
+                    });
+                })
+                .finally(() => {
+                    setIsDeleteLoading(false); // Disable loading indicator
+                    setConfirmDeleteOpen(false); // Close confirmation dialog
+                });
+        }
+    };
 
     useEffect(() => {
 
@@ -87,15 +137,17 @@ const DeviceDetailsPage = () => {
         //     })
         //     .catch(error => console.error('Error fetching bridges:', error));
         // DB bridges
-        axios.get(`http://localhost:8000/device-bridges/${deviceIp}/`)
-            .then(response => {
-                // Check if bridges data exists and is not null, otherwise set to empty array
-                const bridgesData = response.data.bridges || [];
-                console.log(bridgesData); // Debugging line
-                setBridges(bridgesData);
-                setBridgesFetched(true);
-            })
-            .catch(error => console.error('Error fetching bridges:', error));
+        fetchBridges();
+        // axios.get(`http://localhost:8000/device-bridges/${deviceIp}/`)
+        //     .then(response => {
+        //         console.log(response.data.bridges)
+        //         // Check if bridges data exists and is not null, otherwise set to empty array
+        //         const bridgesData = response.data.bridges || [];
+        //         console.log(bridgesData); // Debugging line
+        //         setBridges(bridgesData);
+        //         setBridgesFetched(true);
+        //     })
+        //     .catch(error => console.error('Error fetching bridges:', error));
 
 
         // Fetch ports for third card
@@ -150,6 +202,7 @@ const DeviceDetailsPage = () => {
 
     const handleCloseAddBridge = () => {
         setOpenAddBridgeDialog(false);
+        fetchBridges();
 
     };
     const handleClose = () => {
@@ -282,13 +335,20 @@ const DeviceDetailsPage = () => {
                 {/*The device's bridges */}
                 <Card raised sx={{ marginTop: 4 }}>
                     <CardContent>
+                        <ConfirmDeleteDialog
+                            open={confirmDeleteOpen}
+                            handleClose={handleCloseDeleteDialog}
+                            handleConfirm={handleConfirmDelete}
+                            itemName="bridge" // Customizing the dialog's message
+                            isLoading={isDeleteLoading} // Pass isLoading state to the dialog
+                        />
                       <Typography variant="h1" component="div" sx={{ marginBottom: 2 }}>
                             Bridges
                         </Typography>
                         {
                             bridgesFetched ? (
                                 bridges.length > 0 ? (
-                                    <BridgeList bridges={bridges} onEdit={handleEditBridge} onDelete={handleDeleteBridge} />
+                                    <BridgeList bridges={bridges} onEdit={handleEditBridge} onDelete={handleOpenDeleteDialogue}  />
                                 ) : (
                                     <Box>
                                         <Typography variant="body_dark" component="div">
@@ -302,6 +362,7 @@ const DeviceDetailsPage = () => {
                         }
                         <AddBridgeFormDialogue
                             deviceIp={deviceIp}
+                            onDialogueClose={fetchBridges} // Pass fetchBridges as a prop to be called on dialog close or after successful submission
                         />
 
                     </CardContent>

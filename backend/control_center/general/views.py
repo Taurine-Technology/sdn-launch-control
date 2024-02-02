@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
+from .serializers import BridgeSerializer
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
@@ -198,26 +199,17 @@ class UpdateDeviceView(APIView):
 class DeviceBridgesView(APIView):
     def get(self, request, lan_ip_address):
         try:
-            # Find the device by LAN IP address
             device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
-
-            # Retrieve bridges related to the device
             bridges = device.bridges.all()
             if bridges.exists():
-                bridges_data = [{'name': bridge.name, 'dpid': bridge.dpid} for bridge in bridges]
-                return Response({'status': 'success', 'bridges': bridges_data})
+                serializer = BridgeSerializer(bridges, many=True)
+                return Response({'status': 'success', 'bridges': serializer.data})
             else:
                 return Response({'status': 'info', 'message': 'No bridges assigned to this device.'})
-
         except ValueError:
-            # Handle invalid IP address format
-            return Response({'status': 'error', 'message': 'Invalid IP address format.'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status': 'error', 'message': 'Invalid IP address format.'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            # Generic error handling
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 class DevicePortsView(APIView):
     def get(self, request, lan_ip_address):
         try:

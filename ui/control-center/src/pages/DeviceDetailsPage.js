@@ -19,8 +19,19 @@ import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
 import AddBridgeFormDialogue from "../components/AddBridgeFormDialogue";
 import CloseIcon from '@mui/icons-material/Close';
+import BridgeList from "../components/BridgeList";
 
 const DeviceDetailsPage = () => {
+    // Inside DeviceDetailsPage component
+    const handleEditBridge = (bridge) => {
+        console.log("Edit", bridge);
+        // Open a dialog or navigate to a page for editing the bridge
+    };
+
+    const handleDeleteBridge = (bridge) => {
+        console.log("Delete", bridge);
+        // Call an API to delete the bridge or handle it as needed
+    };
     // general variables
     const [isLoading, setIsLoading] = useState(false);
     const [alert, setAlert] = useState({ show: false, type: '', message: '' });
@@ -67,23 +78,25 @@ const DeviceDetailsPage = () => {
             .catch(error => console.error('Error fetching device:', error));
 
         // Fetch Bridges for the second card
-        axios.get(`http://localhost:8000/get-bridges/${deviceIp}/`)
-            .then(response => {
-                if (response.data.status === 'success') {
-                    console.log(response.data);
-                }
-                // setBridgesFetched(true);
-            })
-            .catch(error => console.error('Error fetching bridges:', error));
+        // axios.get(`http://localhost:8000/get-bridges/${deviceIp}/`)
+        //     .then(response => {
+        //         if (response.data.status === 'success') {
+        //             console.log(response.data);
+        //         }
+        //         // setBridgesFetched(true);
+        //     })
+        //     .catch(error => console.error('Error fetching bridges:', error));
         // DB bridges
         axios.get(`http://localhost:8000/device-bridges/${deviceIp}/`)
             .then(response => {
-                if (response.data.status === 'success') {
-                    setBridges(response.data.bridges);
-                }
+                // Check if bridges data exists and is not null, otherwise set to empty array
+                const bridgesData = response.data.bridges || [];
+                console.log(bridgesData); // Debugging line
+                setBridges(bridgesData);
                 setBridgesFetched(true);
             })
             .catch(error => console.error('Error fetching bridges:', error));
+
 
         // Fetch ports for third card
         axios.get(`http://localhost:8000/device-ports/${deviceIp}/`)
@@ -266,31 +279,27 @@ const DeviceDetailsPage = () => {
                     </CardContent>
                 </Card>
 
-                {/*The devices bridges. If there are no bridges then a button to add a bridge*/}
+                {/*The device's bridges */}
                 <Card raised sx={{ marginTop: 4 }}>
                     <CardContent>
                       <Typography variant="h1" component="div" sx={{ marginBottom: 2 }}>
                             Bridges
                         </Typography>
-                        {bridgesFetched ? (
-                            bridges.length > 0 ? (
-                                bridges.map(bridge => (
-                                    <Typography key={bridge.name}>
-                                        {bridge.name}
-                                        {/* Add additional bridge details here if needed */}
-                                    </Typography>
-                                ))
+                        {
+                            bridgesFetched ? (
+                                bridges.length > 0 ? (
+                                    <BridgeList bridges={bridges} onEdit={handleEditBridge} onDelete={handleDeleteBridge} />
+                                ) : (
+                                    <Box>
+                                        <Typography variant="body_dark" component="div">
+                                            There are no OVS bridges assigned to this device.
+                                        </Typography>
+                                    </Box>
+                                )
                             ) : (
-                                <Box>
-                                    <Typography variant="body_dark" component="div">
-                                    There are no OVS bridges assigned to this device.
-                                    </Typography>
-
-                                </Box>
+                                <Typography>Loading bridges...</Typography>
                             )
-                        ) : (
-                            <Typography>Loading bridges...</Typography>
-                        )}
+                        }
                         <AddBridgeFormDialogue
                             deviceIp={deviceIp}
                         />

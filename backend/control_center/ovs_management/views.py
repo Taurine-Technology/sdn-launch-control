@@ -16,7 +16,7 @@ from django.shortcuts import get_object_or_404
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
-
+from general.serializers import BridgeSerializer
 from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, save_interfaces_to_config
 
 script_dir = os.path.dirname(os.path.abspath(__file__))

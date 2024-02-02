@@ -66,6 +66,7 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
         setIsLoading(true);
         setAlert({ show: false, type: '', message: '' })
         const payload = {
+            lan_ip_address: deviceIp,
             name: bridgeName,
             openFlowVersion: openFlowVersion,
             ports: selectedPorts,
@@ -78,6 +79,11 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
             setAlert({ show: true, type: 'error', message: 'Error adding bridge' });
         } finally {
             setIsLoading(false);
+            setOpen(false);
+            setBridgeName('');
+            setOpenFlowVersion('1.3');
+            setSelectedPorts([]);
+            setPortOptions(['none'])
         }
     };
 

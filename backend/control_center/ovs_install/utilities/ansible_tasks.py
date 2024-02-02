@@ -73,8 +73,11 @@ def run_playbook(playbook_name, playbook_dir_path, inventory_path, quiet=True):
                 #         return {'status': 'failed', 'error': error_explanation}
                 # SSH error
                 if results.get('failed'):
-                    if results['failed'].get(unreachable_err):
+                    if isinstance(results['failed'], str):
                         return {'status': 'failed', 'error': results['failed']}
+                    elif results['failed'].get(unreachable_err):
+                        return {'status': 'failed', 'error': results['failed']}
+
                 # Apt update error
                 elif results.get('Install required packages'):
                     print('made it to apt get install')

@@ -36,6 +36,19 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
         setPortOptions(['none'])
         setAlert({ show: false, type: '', message: '' })
     };
+    const handleOnClose = (event, reason) => {
+        if (isLoading && reason && reason === "backdropClick") {
+            // Prevent closing the dialog
+            return;
+        } else if (isLoading && reason && reason === "escapeKeyDown") {
+            // Prevent closing the dialog on escape key press
+            return;
+        }
+        // Call handleClose if provided
+        if (typeof handleClose === 'function') {
+            handleClose();
+        }
+    };
     useEffect(() => {
         if (open) {
             fetchPorts();
@@ -100,7 +113,7 @@ const AddBridgeFormDialogue = ({deviceIp} ) => {
             <Button variant="contained" onClick={handleClickOpen} sx={{marginTop: 4}}>
                 Add Bridge
             </Button>
-            <Dialog open={open} onClose={handleClose}>
+            <Dialog open={open} onClose={handleOnClose}>
                 <DialogTitle>Add Bridge</DialogTitle>
                 <DialogContent>
                     {alert.show && <Alert severity={alert.type} onClose={handleCloseAlert} >{alert.message}</Alert>}

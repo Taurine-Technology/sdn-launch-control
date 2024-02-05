@@ -1,7 +1,7 @@
 from django.shortcuts import render
 
 from ovs_install.utilities.ansible_tasks import run_playbook
-from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config
+from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, save_interfaces_to_config
 import os
 from django.shortcuts import get_object_or_404
 from django.shortcuts import render
@@ -9,7 +9,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from django.http import JsonResponse
 from rest_framework.response import Response
-from .models import Device, Port
+from .models import Device, Port, Bridge
 from django.shortcuts import get_object_or_404
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
@@ -166,9 +166,30 @@ class DeleteDeviceView(APIView):
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        lan_ip_address = data.get('lan_ip_address')
-        device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
-        device.delete()
+        try:
+            lan_ip_address = data.get('lan_ip_address')
+            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+            bridges = Bridge.objects.filter(device=device)
+            if bridges:
+                for b in bridges:
+                    save_bridge_name_to_config(b.name, config_path)
+                    write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
+                    save_ip_to_config(lan_ip_address, config_path)
+                    delete_bridge = run_playbook('ovs-delete-bridge', playbook_dir_path, inventory_path)
+                    if delete_bridge.get('status') == 'success':
+                        # Delete the bridge from the database
+                        b.delete()
+                    else:
+                        return Response({'status': 'error', 'message': f'unable to delete bridge {b.name}'},
+                                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                device.delete()
+            else:
+                device.delete()
+
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

@@ -23,16 +23,6 @@ import BridgeList from "../components/BridgeList";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialogue";
 
 const DeviceDetailsPage = () => {
-    // Inside DeviceDetailsPage component
-    const handleEditBridge = (bridge) => {
-        console.log("Edit", bridge);
-        // Open a dialog or navigate to a page for editing the bridge
-    };
-
-    const handleDeleteBridge = (bridge) => {
-        console.log("Delete", bridge);
-        // Call an API to delete the bridge or handle it as needed
-    };
     // general variables
     const [isLoading, setIsLoading] = useState(false);
     const [isDeleteLoading, setIsDeleteLoading] = useState(false);
@@ -52,6 +42,17 @@ const DeviceDetailsPage = () => {
         { value: true, label: 'Enabled' },
         { value: false, label: 'Disabled' },
     ];
+    const [oldIpAddress, setOldIpAddress] = useState('');
+    const handleEditBridge = (bridge) => {
+        console.log("Edit", bridge);
+        // Open a dialog or navigate to a page for editing the bridge
+    };
+
+    const handleDeleteBridge = (bridge) => {
+        console.log("Delete", bridge);
+        // Call an API to delete the bridge or handle it as needed
+    };
+
 
     const deviceTypeOptions = [
         { value: 'switch', label: 'Switch' },
@@ -117,7 +118,7 @@ const DeviceDetailsPage = () => {
     };
 
     useEffect(() => {
-
+        setOldIpAddress(deviceIp)
         // Device details for the first card
         axios.get(`http://localhost:8000/device-details/${deviceIp}/`)
             .then(response => {
@@ -174,7 +175,7 @@ const DeviceDetailsPage = () => {
     const handleApply = () => {
         if (!isEdited) return;
 
-        axios.put(`http://localhost:8000/update-device/${deviceIp}/`, device)
+        axios.put(`http://localhost:8000/update-device/${oldIpAddress}/`, device)
 
             .then(response => {
                 // navigate('/devices'); // Redirect or handle as needed

@@ -200,9 +200,11 @@ class UpdateDeviceView(APIView):
             data = request.data
 
             # Update fields if they are present in the request
-            for field in ['name', 'device_type', 'os_type', 'username', 'password', 'num_ports', 'ovs_enabled',
+            for field in ['lan_ip_address', 'name', 'device_type', 'os_type', 'username', 'password', 'num_ports', 'ovs_enabled',
                           'ovs_version', 'openflow_version']:
                 if field in data:
+                    if field == 'lan_ip_address':
+                        validate_ipv4_address(data[field])
                     setattr(device, field, data[field])
 
             # Validate and save the device

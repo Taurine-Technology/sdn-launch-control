@@ -15,6 +15,7 @@ import PortManagementDialogue from "../components/PortManagementDialogue";
 import { useNavigate } from 'react-router-dom';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import {Backdrop, CircularProgress} from "@mui/material";
+import AddDeviceDialogue from "../components/AddDeviceDialogue";
 
 const DeviceListPage = () => {
     const [openDeleteDialogue, setOpenDeleteDialogue] = useState(false);
@@ -30,7 +31,7 @@ const DeviceListPage = () => {
     const [error, setError] = useState(null);
     const [openPortDialogue, setOpenPortDialogue] = useState(false)
     const [loading, setLoading] = useState(false);
-
+    const [isDeleteLoading, setIsDeleteLoading] = useState(false);
     const navigate = useNavigate();
 
 
@@ -64,29 +65,43 @@ const DeviceListPage = () => {
     const handleCloseDeleteDialog = () => {
         setOpenDeleteDialogue(false);
     };
+    const handleCloseAddDevice = () => {
+        fetchDevices();
+    };
 
     const handleConfirmDelete = async () => {
         if (deviceToDelete) {
             try {
-
+                setIsDeleteLoading(true);
                 const payload = {
                     lan_ip_address: deviceToDelete.lan_ip_address,
                 };
 
-                const response = await axios.delete('http://localhost:8000/delete-device/', { data: payload });
+                const response = await axios.delete('http://localhost:8000/delete-device/', { data: payload })
+                    .then(response =>
+                {
+
+                    setResponseMessage('Successfully deleted device.');
+                    setResponseType('success');
+                    fetchDevices()
+                }).catch(error => {
+                        setResponseMessage(`Failed to delete device: ${error.message}`);
+                        setResponseType('error');
+                }).finally(() =>{
+                        setIsDeleteLoading(false);
+                        setOpenDeleteDialogue(false);
+                        setDeviceToDelete(null);
+                    });
 
                 // setDevices(devices.filter(device => device.lan_ip_address !== deviceToDelete.lan_ip_address));
-                fetchDevices()
-                setResponseMessage('Successfully deleted device.');
-                setResponseType('success');
+
             } catch (error) {
                 // console.error('Error deleting device:', error);
                 setResponseMessage(`Failed to delete device: ${error.message}`);
                 setResponseType('error');
             }
         }
-        setOpenDeleteDialogue(false);
-        setDeviceToDelete(null);
+
     };
 
 
@@ -183,11 +198,6 @@ const DeviceListPage = () => {
                     <CircularProgress color="inherit" />
                 </Backdrop>
 
-                <InternalServerErrorDialogue
-                    open={error != null}
-                    errorMessage={'There has been an internal error. Please contact support.'}
-                    onClose={handleClose}
-                />
                 <Box
                     sx={{
                         flexGrow: 1,
@@ -229,6 +239,7 @@ const DeviceListPage = () => {
                             handleClose={handleCloseDeleteDialog}
                             handleConfirm={handleConfirmDelete}
                             itemName='device'
+                            isLoading={isDeleteLoading}
                         />
                         <EditDeviceDialog
                             open={openEditDialogue}
@@ -236,13 +247,9 @@ const DeviceListPage = () => {
                             device={deviceToEdit}
                             handleUpdate={handleUpdateDevice}
                         />
-                        {/*<PortManagementDialogue*/}
-                        {/*    open={openPortDialogue}*/}
-                        {/*    handleClose={handleClosePortDialogue}*/}
-                        {/*    device={deviceToEdit}*/}
-                        {/*/>*/}
-                    </Box>
 
+                    </Box>
+                <AddDeviceDialogue fetchDevices={fetchDevices} />
                 </Box>
                 <Footer />
             </Box>

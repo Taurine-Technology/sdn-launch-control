@@ -11,6 +11,7 @@ class Device(models.Model):
     OS_TYPES = (
         ('ubuntu_20_server', 'Ubuntu 20 Server'),
         ('ubuntu_22_server', 'Ubuntu 22 Server'),
+        ('other', 'Other'),
     )
 
     name = models.CharField(max_length=100)

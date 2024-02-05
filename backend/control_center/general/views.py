@@ -84,7 +84,7 @@ class AddDeviceView(APIView):
                     password=data.get('password'),
                     os_type=data.get('os_type'),
                     lan_ip_address=data.get('lan_ip_address'),
-                    ports=ports,
+                    num_ports=ports,
                     ovs_enabled=ovs_enabled,
                     ovs_version=ovs_version,
                     openflow_version=openflow_version,

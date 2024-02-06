@@ -29,8 +29,7 @@ class InstallOvsView(APIView):
     def post(self, request):
         try:
             data = request.data
-            print(data)
-            print('about to run')
+            validate_ipv4_address(data.get('lan_ip_address'))
             lan_ip_address = data.get('lan_ip_address')
             write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
             save_ip_to_config(lan_ip_address, config_path)
@@ -78,6 +77,9 @@ class InstallOvsView(APIView):
 
             message = "OVS Installed." if created else "OVS already installed."
             return Response({"status": "success", "message": message}, status=status.HTTP_200_OK)
+        except ValidationError:
+            return Response({"status": "error", "message": "Invalid IP address format."},
+                            status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)

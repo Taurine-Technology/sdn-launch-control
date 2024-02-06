@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'general',
     'ovs_install',
     'corsheaders',
+    'controller',
 
 ]
 

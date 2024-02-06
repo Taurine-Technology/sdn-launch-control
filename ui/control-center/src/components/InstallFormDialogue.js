@@ -14,8 +14,11 @@ import {
 import axios from 'axios';
 // Set the base URL for axios
 // axios.defaults.baseURL = 'http://localhost';
-const InstallOvsFormDialogue = () => {
+const InstallFormDialogue = ({ installationType, endpoint }) => {
     const [open, setOpen] = useState(false);
+    const [devices, setDevices] = useState([]);
+    const [selectedDevice, setSelectedDevice] = useState('');
+    const [fetchingDevices, setFetchingDevices] = useState(false);
     const [host, setHost] = useState('');
     const [name, setDeviceName] = useState('');
     const [deviceType, setDeviceType] = useState('switch');
@@ -30,8 +33,24 @@ const InstallOvsFormDialogue = () => {
     const [isFormValid, setIsFormValid] = useState(false);
 
     useEffect(() => {
+        fetchDevices();
+    }, []);
+
+    const fetchDevices = async () => {
+        setFetchingDevices(true);
+        try {
+            const response = await axios.get('http://localhost:8000/devices/'); // Adjust the URL as needed
+            setDevices(response.data);
+        } catch (error) {
+            console.error('Failed to fetch devices', error);
+        } finally {
+            setFetchingDevices(false);
+        }
+    };
+
+    useEffect(() => {
         updateFormValidity();
-    }, [name, host, username, password, file]);
+    }, [name, host, username, password]);
     useEffect(() => {
         if (window && window.process && window.process.type) {
             const { ipcRenderer } = window.require('electron');
@@ -44,9 +63,36 @@ const InstallOvsFormDialogue = () => {
         console.log('isLoading state updated:', isLoading);
     }, [isLoading]);
     const updateFormValidity = () => {
-        const isValid = name && host && username && password;
+        const isValid = (name && host && username && password);
         setIsFormValid(isValid);
     };
+
+    const handleSelectDevice = (event) => {
+        const deviceID = event.target.value;
+        if (deviceID === "" || deviceID === "none") { // Check if "None" option is selected
+            // Reset form fields for manual input
+            setSelectedDevice('');
+            setDeviceName('');
+            setHost('');
+            setDeviceType('switch'); // Reset to default or keep empty
+            setUsername('');
+            setPassword('');
+            setOs('ubuntu_20_server'); // Reset to default or keep empty
+        } else {
+            const device = devices.find(d => d.lan_ip_address === deviceID);
+            if (device) {
+                setSelectedDevice(deviceID);
+                setDeviceName(device.name);
+                setHost(device.lan_ip_address);
+                setDeviceType(device.device_type);
+                setUsername(device.username);
+                setPassword(device.password);
+                setOs(device.os_type);
+            }
+        }
+        updateFormValidity();
+    };
+
 
     const handleCloseAlert = () => {
         setResponseMessage('');
@@ -96,7 +142,7 @@ const InstallOvsFormDialogue = () => {
             lan_ip_address: host,
         };
         try {
-            const deployResponse = await axios.post('http://localhost:8000/install-ovs/', formData, {
+            const deployResponse = await axios.post(`http://localhost:8000/${endpoint}/`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             // const addDeviceResponse = await axios.post('http://localhost:8000/add-device/', addDevicePayload);
@@ -127,15 +173,34 @@ const InstallOvsFormDialogue = () => {
                         {responseMessage}
                     </Alert>
                 )}
-                <Button variant="contained" onClick={handleClickOpen}>
-                    Install Open vSwitch
+                <Button variant="contained" onClick={handleClickOpen} sx={{ width: '250px' }}>
+                    {`Install ${installationType}`}
                 </Button>
                 <Dialog open={open} onClose={handleOnClose}>
-                    <DialogTitle>Install OVS</DialogTitle>
-                    {isLoading && (
-                        <CircularProgress style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex:1000}} />
+                    <DialogTitle>{`Install ${installationType}`}</DialogTitle>
+                    { (isLoading || fetchingDevices) && (
+                        <CircularProgress style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex:1000 }} />
                     )}
+
                     <DialogContent>
+                        <FormControl fullWidth margin="dense">
+                            <InputLabel id="device-select-label">Select Device</InputLabel>
+                            <Select
+                                labelId="device-select-label"
+                                value={selectedDevice}
+                                onChange={handleSelectDevice}
+                                label="Select Device"
+                                disabled={isLoading}
+                            >
+                                <MenuItem value="">Manual Device Entry</MenuItem>
+                                {devices.map((device) => (
+                                    <MenuItem key={device.lan_ip_address} value={device.lan_ip_address}>
+                                        {device.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
                         <TextField
                             autoFocus
                             margin="dense"
@@ -239,4 +304,4 @@ const InstallOvsFormDialogue = () => {
     );
 };
 
-export default InstallOvsFormDialogue;
+export default InstallFormDialogue;

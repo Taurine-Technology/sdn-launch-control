@@ -1,11 +1,10 @@
 import React, {useState} from 'react';
 import NavBar from "../components/NavBar";
-import Box from "@mui/material/Box";
+import { Box, Stack } from '@mui/material';
 import Footer from "../components/Footer";
 import Button from '@mui/material/Button';
-import InstallOvsFormDialogue from "../components/InstallOvsFormDialogue";
+import InstallFormDialogue from "../components/InstallFormDialogue";
 const HomePage = () => {
-
     return (
         <Box
             sx={{
@@ -27,17 +26,24 @@ const HomePage = () => {
                     backgroundPosition: 'center',
                 }}
             >
-                <InstallOvsFormDialogue />
-                {/*<Terminal isOpen={isTerminalOpen} sshConfig={sshConfig} />*/}
-                {/*<Button variant="contained" onClick={toggleTerminal} sx={{ margin: 2}}>*/}
-                {/*    {isTerminalOpen ? 'Close Terminal' : 'Open Terminal'}*/}
-                {/*</Button>*/}
-
-                {/* Main content of the HomePage goes here */}
+                <Stack
+                    direction="column"
+                    spacing={2} // Adjust spacing as needed
+                    sx={{
+                        width: '100%', // Ensures Stack takes full width of its parent
+                        maxWidth: '600px', // Adjust maximum width as needed
+                        alignItems: 'center', // Centers the children horizontally
+                    }}
+                >
+                    <InstallFormDialogue installationType="Open vSwitch" endpoint="install-ovs" />
+                    <InstallFormDialogue installationType="ONOS" endpoint="install-onos" />
+                    {/* Add other buttons or content here, wrapped in Stack if needed */}
+                </Stack>
+                {/* Additional content can go here */}
             </Box>
             <Footer />
         </Box>
     );
-}
+};
 
-export default HomePage
+export default HomePage;

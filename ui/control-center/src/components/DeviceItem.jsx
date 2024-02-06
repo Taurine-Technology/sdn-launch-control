@@ -4,12 +4,18 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import apIcon from '../images/wifi.png';
 import switchIcon from '../images/hub.png';
+import serverIcon from '../images/server.png';
 import SettingsInputHdmiIcon from '@mui/icons-material/SettingsInputHdmi';
 import LanIcon from '@mui/icons-material/Lan';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 function DeviceItem({ device, onDelete, onEdit, onViewDetails}) {
-    const deviceIcon = device.device_type === 'access_point' ? apIcon : switchIcon;
+    const deviceIcons = {
+        'access_point': apIcon,
+        'switch': switchIcon,
+        'server': serverIcon, // Add more device types and their icons as needed
+    };
+    const deviceIcon = deviceIcons[device.device_type]
 
     return (
         <Card sx={{

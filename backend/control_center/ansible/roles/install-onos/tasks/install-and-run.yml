@@ -1,0 +1,26 @@
+---
+- name: Check if ONOS container is already present
+  community.general.docker_container_info:
+    name: onos
+  register: onos_container
+
+- name: Pull the latest ONOS Docker image
+  community.general.docker_image:
+    name: onosproject/onos:2.7-latest
+    source: pull
+  when: onos_container.exists == false
+
+- name: Start the ONOS container
+  community.general.docker_container:
+    name: onos
+    image: onosproject/onos:2.7-latest
+    state: started
+    recreate: yes
+    published_ports:
+      - "8181:8181"
+      - "8101:8101"
+      - "5005:5005"
+      - "830:830"
+      - "6653:6653"
+    network_mode: host
+  when: onos_container.exists == false or onos_container.container.State.Running == false

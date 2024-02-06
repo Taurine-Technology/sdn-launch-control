@@ -1,0 +1,49 @@
+---
+- name: Check if Docker is installed
+  command: docker --version
+  register: docker_installed
+  ignore_errors: yes
+
+- name: Install Docker and Docker Compose
+  block:
+    - name: Install required packages
+      apt:
+        name: "{{ packages }}"
+        state: latest
+        update_cache: yes
+      vars:
+        packages:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+
+    - name: Add Docker’s official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Set up the stable repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+
+    - name: Install Docker Engine
+      apt:
+        name: "{{ packages }}"
+        state: latest
+        update_cache: yes
+      vars:
+        packages:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+
+  when: docker_installed is failed
+
+- name: Stop playbook if Docker is already installed
+  meta: end_play
+  when: docker_installed is succeeded

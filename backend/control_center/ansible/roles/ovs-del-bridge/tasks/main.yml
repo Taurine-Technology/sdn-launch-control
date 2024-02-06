@@ -1,0 +1,3 @@
+---
+- name: Delete OVS Bridge
+  import_tasks: delete_bridge.yml

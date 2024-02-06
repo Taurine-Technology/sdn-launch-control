@@ -1,0 +1,5 @@
+---
+- name: Install Docker and Docker Compose
+  import_tasks: install-docker.yml
+- name: Pull ONOS 2.7 and run it
+  import_tasks: install-and-run.yml

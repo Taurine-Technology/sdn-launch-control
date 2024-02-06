@@ -1,0 +1,7 @@
+---
+- name: Docker Setup
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  roles:
+    - ../roles/install-onos

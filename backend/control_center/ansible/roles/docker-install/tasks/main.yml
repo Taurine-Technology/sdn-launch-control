@@ -1,0 +1,5 @@
+---
+- name: Install Docker and Docker Compose
+  import_tasks: install.yml
+- name: Modify user to be able to run docker commands
+  import_tasks: user-modify.yml

@@ -1,7 +1,8 @@
 from django.shortcuts import render
 
 from ovs_install.utilities.ansible_tasks import run_playbook
-from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, save_interfaces_to_config
+from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, \
+    save_interfaces_to_config
 import os
 from django.shortcuts import get_object_or_404
 from django.shortcuts import render
@@ -15,6 +16,8 @@ from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
 from .serializers import BridgeSerializer
+from controller.serializers import ControllerSerializer
+from controller.models import Controller
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
@@ -200,7 +203,8 @@ class UpdateDeviceView(APIView):
             data = request.data
 
             # Update fields if they are present in the request
-            for field in ['lan_ip_address', 'name', 'device_type', 'os_type', 'username', 'password', 'num_ports', 'ovs_enabled',
+            for field in ['lan_ip_address', 'name', 'device_type', 'os_type', 'username', 'password', 'num_ports',
+                          'ovs_enabled',
                           'ovs_version', 'openflow_version']:
                 if field in data:
                     if field == 'lan_ip_address':
@@ -249,3 +253,45 @@ class DevicePortsView(APIView):
                 return Response({'status': 'info', 'message': 'No ports assigned to this device.'})
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# *---------- Controller get and post methods ----------*
+class AddControllerView(APIView):
+    def post(self, request):
+        try:
+            data = request.data
+            lan_ip_address = data.get('lan_ip_address')
+            validate_ipv4_address(lan_ip_address)
+            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+            controller = Controller.objects.create(
+                type=data.get('type'),
+                device=device,
+                lan_ip_address=lan_ip_address,
+            )
+        except ValidationError:
+            return Response({"status": "error", "message": "Invalid IP address format."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+
+class ControllerListView(APIView):
+    def get(self, request):
+        try:
+            controllers = Controller.objects.all()
+            data = [
+                {
+                    "type": controller.type,
+                    "device": controller.device.name,
+                    "lan_ip_address": controller.lan_ip_address,
+                    "switches": [
+                        {
+                            "name": switch.name,
+                            "lan_ip_address": switch.lan_ip_address,
+                        }
+                        for switch in controller.switches.all()
+                    ],
+                } for controller in controllers
+            ]
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

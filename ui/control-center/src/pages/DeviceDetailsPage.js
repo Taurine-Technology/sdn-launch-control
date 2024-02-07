@@ -334,40 +334,41 @@ const DeviceDetailsPage = () => {
                 </Card>
 
                 {/*The device's bridges */}
-                <Card raised sx={{ marginTop: 4 }}>
-                    <CardContent>
-                        <ConfirmDeleteDialog
-                            open={confirmDeleteOpen}
-                            handleClose={handleCloseDeleteDialog}
-                            handleConfirm={handleConfirmDelete}
-                            itemName="bridge" // Customizing the dialog's message
-                            isLoading={isDeleteLoading} // Pass isLoading state to the dialog
-                        />
-                      <Typography variant="h1" component="div" sx={{ marginBottom: 2 }}>
-                            Bridges
-                        </Typography>
-                        {
-                            bridgesFetched ? (
-                                bridges.length > 0 ? (
-                                    <BridgeList bridges={bridges} onEdit={handleEditBridge} onDelete={handleOpenDeleteDialogue}  />
+                {device.ovs_enabled && (
+                    <Card raised sx={{ marginTop: 4 }}>
+                        <CardContent>
+                            <ConfirmDeleteDialog
+                                open={confirmDeleteOpen}
+                                handleClose={handleCloseDeleteDialog}
+                                handleConfirm={handleConfirmDelete}
+                                itemName="bridge" // Customizing the dialog's message
+                                isLoading={isDeleteLoading} // Pass isLoading state to the dialog
+                            />
+                            <Typography variant="h1" component="div" sx={{ marginBottom: 2 }}>
+                                Bridges
+                            </Typography>
+                            {
+                                bridgesFetched ? (
+                                    bridges.length > 0 ? (
+                                        <BridgeList bridges={bridges} onEdit={handleEditBridge} onDelete={handleOpenDeleteDialogue}  />
+                                    ) : (
+                                        <Box>
+                                            <Typography variant="body_dark" component="div">
+                                                There are no OVS bridges assigned to this device.
+                                            </Typography>
+                                        </Box>
+                                    )
                                 ) : (
-                                    <Box>
-                                        <Typography variant="body_dark" component="div">
-                                            There are no OVS bridges assigned to this device.
-                                        </Typography>
-                                    </Box>
+                                    <Typography>Loading bridges...</Typography>
                                 )
-                            ) : (
-                                <Typography>Loading bridges...</Typography>
-                            )
-                        }
-                        <AddBridgeFormDialogue
-                            deviceIp={deviceIp}
-                            onDialogueClose={fetchBridges} // Pass fetchBridges as a prop to be called on dialog close or after successful submission
-                        />
-
-                    </CardContent>
+                            }
+                            <AddBridgeFormDialogue
+                                deviceIp={deviceIp}
+                                onDialogueClose={fetchBridges} // Pass fetchBridges as a prop to be called on dialog close or after successful submission
+                            />
+                        </CardContent>
                     </Card>
+                )}
 
 
                 {/*<Card raised sx={{ marginTop: 4 }}>

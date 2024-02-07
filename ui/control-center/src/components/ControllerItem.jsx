@@ -5,7 +5,7 @@ import controllerIcon from '../images/controller.png';
 import SettingsIcon from "@mui/icons-material/Settings";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-function ControllerItem({ controller }) {
+function ControllerItem({ controller, onDelete }) {
     console.log(`${controller.switches}`)
     return (
         <Card sx={{ margin: 2, bgcolor: '#02032F', boxShadow: 3, }}>
@@ -36,7 +36,7 @@ function ControllerItem({ controller }) {
                     </Tooltip>
 
                     <Tooltip title='Delete this controller'>
-                    <IconButton edge="end" aria-label="delete"  onClick={() => console.log('clicked delete')} sx={{
+                    <IconButton edge="end" aria-label="delete"  onClick={() => onDelete(controller)} sx={{
                         color: '#bf0000',
                         padding: 1,
                     }} >

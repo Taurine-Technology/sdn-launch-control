@@ -205,7 +205,7 @@ class AssignPortsView(APIView):
 from django.db import transaction
 
 class DeleteControllerView(APIView):
-    def post(self, request):
+    def delete(self, request):
         try:
             data = request.data
             controller_ip = data.get('controller_ip')
@@ -229,7 +229,6 @@ class DeleteControllerView(APIView):
                             save_ip_to_config(lan_ip_address, config_path)
                             delete_controller = run_playbook('remove-controller', playbook_dir_path, inventory_path)
                             if delete_controller.get('status') == 'success':
-                                print(delete_controller)
                                 bridge.controller = None
                                 bridge.save()
                             else:

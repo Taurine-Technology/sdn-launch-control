@@ -12,14 +12,14 @@ import {
 
 function ConfirmDeleteDialog({ open, handleClose, handleConfirm, itemName = "item", isLoading }) {
     return (
-        <Dialog open={open} onClose={handleClose}>
+        <Dialog open={open} onClose={handleClose} sx={{ '& .MuiDialog-paper': { minWidth: '600px' }} }>
             <DialogTitle>{"Confirm Deletion"}</DialogTitle>
             {isLoading ? (
                 <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
                     <CircularProgress />
                 </Box>
             ) : (
-                <DialogContentText>
+                <DialogContentText sx={{paddingLeft:3}}>
                     Are you sure you want to delete this {itemName}? This action is permanent.
                 </DialogContentText>
             )}

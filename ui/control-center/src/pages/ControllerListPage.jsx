@@ -10,11 +10,16 @@ import { ThemeProvider } from "@mui/material/styles";
 import theme from "../theme";
 import { CircularProgress, Backdrop } from "@mui/material";
 import Theme from "../theme";
+import ConfirmDeleteDialog from "../components/ConfirmDeleteDialogue";
 const ControllerListPage = () => {
     const [controllers, setControllers] = useState([]);
+    const [openDeleteDialogue, setOpenDeleteDialogue] = useState(false);
+    const [controllerToDelete, setControllerToDelete] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
+    const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+    const [responseMessage, setResponseMessage] = useState('');
+    const [responseType, setResponseType] = useState(''); // 'success' or 'error'
     const fetchControllers = async () => {
         setLoading(true);
         try {
@@ -26,6 +31,50 @@ const ControllerListPage = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleDeleteClick = (device) => {
+        setControllerToDelete(device);
+        setOpenDeleteDialogue(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (controllerToDelete) {
+            try {
+                setIsDeleteLoading(true);
+                const payload = {
+                    controller_ip: controllerToDelete.lan_ip_address,
+                };
+
+                const response = await axios.delete('http://localhost:8000/delete-controller/', { data: payload })
+                    .then(response =>
+                    {
+
+                        setResponseMessage('Successfully deleted device.');
+                        setResponseType('success');
+                        fetchControllers()
+                    }).catch(error => {
+                        setResponseMessage(`Failed to delete device: ${error.message}`);
+                        setResponseType('error');
+                    }).finally(() =>{
+                        setOpenDeleteDialogue(false);
+                        setIsDeleteLoading(false);
+                        setControllerToDelete(null);
+                    });
+
+                // setDevices(devices.filter(device => device.lan_ip_address !== deviceToDelete.lan_ip_address));
+
+            } catch (error) {
+                // console.error('Error deleting device:', error);
+                setResponseMessage(`Failed to delete controller: ${error.message}`);
+                setResponseType('error');
+            }
+        }
+
+    };
+
+    const handleCloseDeleteDialog = () => {
+        setOpenDeleteDialogue(false);
     };
 
     useEffect(() => {
@@ -60,7 +109,14 @@ const ControllerListPage = () => {
 
                     }}
                 >
-                    <ControllerList controllers={controllers} />
+                    <ControllerList controllers={controllers} onDelete={handleDeleteClick} />
+                    <ConfirmDeleteDialog
+                        open={openDeleteDialogue}
+                        handleClose={handleCloseDeleteDialog}
+                        handleConfirm={handleConfirmDelete}
+                        itemName='controller'
+                        isLoading={isDeleteLoading}
+                    />
                 </Box>
                 <Footer />
             </Box>

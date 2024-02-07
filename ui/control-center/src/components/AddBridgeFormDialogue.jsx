@@ -147,7 +147,7 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
             <Button variant="contained" onClick={handleClickOpen} sx={{marginTop: 4}}>
                 Add Bridge
             </Button>
-            <Dialog open={open} onClose={handleOnClose}>
+            <Dialog open={open} onClose={handleOnClose} sx={{ '& .MuiDialog-paper': { minWidth: '600px' } }} >
                 <DialogTitle>Add Bridge</DialogTitle>
                 <DialogContent>
                     {alert.show && <Alert severity={alert.type} onClose={handleCloseAlert}>{alert.message}</Alert>}

@@ -21,6 +21,7 @@ import AddBridgeFormDialogue from "../components/AddBridgeFormDialogue";
 import CloseIcon from '@mui/icons-material/Close';
 import BridgeList from "../components/BridgeList";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialogue";
+import EditBridgeDialogue from "../components/EditBridgeDialogue";
 
 const DeviceDetailsPage = () => {
     // general variables
@@ -43,9 +44,19 @@ const DeviceDetailsPage = () => {
         { value: false, label: 'Disabled' },
     ];
     const [oldIpAddress, setOldIpAddress] = useState('');
+    const [editBridgeDialogOpen, setEditBridgeDialogOpen] = useState(false);
+    const [bridgeToEdit, setBridgeToEdit] = useState(null);
+
     const handleEditBridge = (bridge) => {
-        console.log("Edit", bridge);
-        // Open a dialog or navigate to a page for editing the bridge
+        setBridgeToEdit(bridge);
+        setEditBridgeDialogOpen(true);
+    };
+
+    const handleCloseEditBridgeDialog = () => {
+        setEditBridgeDialogOpen(false);
+        setBridgeToEdit(null);
+        // Optionally, refresh bridges or perform other actions upon closing the dialog
+        fetchBridges();
     };
 
     const handleDeleteBridge = (bridge) => {
@@ -366,6 +377,14 @@ const DeviceDetailsPage = () => {
                                 deviceIp={deviceIp}
                                 onDialogueClose={fetchBridges} // Pass fetchBridges as a prop to be called on dialog close or after successful submission
                             />
+                            {device.ovs_enabled && editBridgeDialogOpen && (
+                                <EditBridgeDialogue
+                                    open={editBridgeDialogOpen}
+                                    bridge={bridgeToEdit}
+                                    handleClose={handleCloseEditBridgeDialog}
+
+                                />
+                            )}
                         </CardContent>
                     </Card>
                 )}

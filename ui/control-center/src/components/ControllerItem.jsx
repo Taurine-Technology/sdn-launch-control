@@ -45,7 +45,7 @@ function ControllerItem({ controller }) {
                 </Tooltip>
                 </ListItem>
                 {controller.switches && controller.switches.length > 0 && (
-                    <div style={{ paddingLeft: '10px'}}>
+                    <div style={{ paddingLeft: '30px'}}>
                         <Typography color="white" gutterBottom component="div">
                             Switches
                         </Typography>

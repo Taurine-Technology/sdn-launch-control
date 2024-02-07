@@ -60,8 +60,10 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
     };
     useEffect(() => {
         if (open) {
+
             fetchPorts();
             fetchControllers();
+
         }
     }, [open, deviceIp]);
     const fetchPorts = async () => {
@@ -90,16 +92,12 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
 
     const fetchControllers = async () => {
         try {
-            setIsLoading(true)
             const response = await axios.get(`http://localhost:8000/controllers/`);
             console.log(response.data)
             setControllers(response.data);
         } catch (error) {
             console.error('Error fetching controllers:', error);
             console.log('could not fetch controllers')
-        } finally
-        {
-            setIsLoading(false);
         }
     };
     const handleSubmit = async () => {

@@ -30,7 +30,12 @@ const BridgeItem = ({ bridge, onEdit, onDelete }) => {
                 </ListItem>
                 <ListItemText secondary={`DPID: ${bridge.dpid}`} sx={{paddingLeft: 4, paddingRight: 4}}/>
                 <ListItemText secondary={`Ports: ${bridge.ports.map(port => port.name).join(', ')}`} sx={{paddingLeft:4, paddingRight:4}} />
-
+                {bridge.controller && (
+                    <div>
+                <ListItemText secondary={`Controller Type: ${bridge.controller.type}`} sx={{paddingLeft:4, paddingRight:4}} />
+                <ListItemText secondary={`Controller IP: ${bridge.controller.lan_ip_address}`} sx={{paddingLeft:4, paddingRight:4}} />
+                    </div>
+            )}
 
             </CardContent>
         </Card>

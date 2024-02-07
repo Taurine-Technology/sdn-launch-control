@@ -25,7 +25,8 @@ class DeviceSerializer(serializers.ModelSerializer):
 class BridgeSerializer(serializers.ModelSerializer):
     device = DeviceSerializer(read_only=True)
     ports = PortSerializer(many=True, read_only=True)
+    controller = ControllerSerializer(read_only=True)
 
     class Meta:
         model = Bridge
-        fields = ['name', 'dpid', 'device', 'ports']
+        fields = ['name', 'dpid', 'device', 'ports', 'controller']

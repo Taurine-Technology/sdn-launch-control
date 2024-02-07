@@ -1,6 +1,6 @@
 
 import React from 'react';
-import {Card, CardContent, ListItem, ListItemText, ListItemIcon, Tooltip, IconButton} from '@mui/material';
+import {Card, CardContent, ListItem, ListItemText, ListItemIcon, Tooltip, IconButton, Typography} from '@mui/material';
 import controllerIcon from '../images/controller.png';
 import SettingsIcon from "@mui/icons-material/Settings";
 import EditIcon from "@mui/icons-material/Edit";
@@ -44,6 +44,18 @@ function ControllerItem({ controller }) {
                     </IconButton>
                 </Tooltip>
                 </ListItem>
+                {controller.switches && controller.switches.length > 0 && (
+                    <div style={{ paddingLeft: '10px'}}>
+                        <Typography color="white" gutterBottom component="div">
+                            Switches
+                        </Typography>
+                        {controller.switches.map((switchDevice, index) => (
+                            <Typography color="white" key={index}>
+                                {switchDevice.lan_ip_address}
+                            </Typography>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

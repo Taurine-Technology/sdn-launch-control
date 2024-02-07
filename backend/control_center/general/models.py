@@ -25,8 +25,8 @@ class Device(models.Model):
     # ovs specific fields
     num_ports = models.IntegerField(default=0)
     ovs_enabled = models.BooleanField(default=False)
-    ovs_version = models.CharField(max_length=10, null=True)
-    openflow_version = models.CharField(max_length=10, null=True)
+    ovs_version = models.CharField(max_length=10, blank=True, null=True)
+    openflow_version = models.CharField(max_length=10, blank=True, null=True)
 
     def __str__(self):
         return f"({self.name} {self.device_type})"

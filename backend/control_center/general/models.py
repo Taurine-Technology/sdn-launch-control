@@ -36,7 +36,7 @@ class Bridge(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='bridges')
     name = models.CharField(max_length=100)
     dpid = models.CharField(max_length=30)
-
+    controller = models.ForeignKey('Controller', on_delete=models.SET_NULL, null=True, blank=True, related_name='bridges')
     def __str__(self):
         return f"Bridge {self.name} on device {self.device.name}"
 
@@ -48,3 +48,16 @@ class Port(models.Model):
 
     def __str__(self):
         return f"Port {self.name} on {self.device.name}"
+
+
+class Controller(models.Model):
+    TYPES = (
+        ('onos', 'Onos'),
+        ('odl', 'Open Daylight'),
+        ('other', 'Other')
+    )
+    type = models.CharField(max_length=20, choices=TYPES)
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='controller')
+    lan_ip_address = models.GenericIPAddressField(unique=True)
+    switches = models.ManyToManyField(Device, related_name='switch_controllers')
+

@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 # Register your models here.
-from .models import Device, Bridge, Port
+from .models import Device, Bridge, Port, Controller
 
 
 @admin.register(Device)
@@ -17,3 +17,8 @@ class DeviceBridgeAdmin(admin.ModelAdmin):
 @admin.register(Port)
 class BridgePorts(admin.ModelAdmin):
     list_display = ('name', 'device')
+
+
+@admin.register(Controller)
+class ControllerAdmin(admin.ModelAdmin):
+    list_display = ('lan_ip_address', 'type', 'device')

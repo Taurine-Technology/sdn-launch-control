@@ -16,8 +16,7 @@ from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
 from .serializers import BridgeSerializer
-from controller.serializers import ControllerSerializer
-from controller.models import Controller
+from .models import Controller
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)

@@ -6,13 +6,12 @@ from rest_framework.views import APIView
 from django.http import JsonResponse
 from rest_framework.response import Response
 from ovs_install.utilities.ansible_tasks import run_playbook
-from general.models import Device, Port
+from general.models import Device, Port, Controller
 from ovs_install.utilities.utils import check_system_details
 from django.shortcuts import get_object_or_404
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
-from .models import Controller
 
 from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config
 

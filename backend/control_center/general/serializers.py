@@ -1,5 +1,12 @@
 from rest_framework import serializers
 from .models import Device, Bridge, Port
+from .models import Controller
+
+
+class ControllerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Controller
+        fields = '__all__'
 
 
 class PortSerializer(serializers.ModelSerializer):

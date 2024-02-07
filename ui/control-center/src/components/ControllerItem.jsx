@@ -17,7 +17,6 @@ function ControllerItem({ controller }) {
                         <img src={controllerIcon} alt='controller icon' style={{ width: '48px', height: '48px' }} />
                     </ListItemIcon>
                     <ListItemText primary={`${controller.type}`} secondary={`${controller.lan_ip_address}`} sx={{paddingLeft: 4, paddingRight: 4}} />
-
                     <Tooltip title="Contorller Overview and Settings">
                         <IconButton edge="end" onClick={() => console.log('clicked overview')} aria-label="view details" sx={{
                             color: '#b1b1e1',

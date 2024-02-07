@@ -4,7 +4,6 @@ from ovs_install.utilities.ansible_tasks import run_playbook
 from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, \
     save_interfaces_to_config
 import os
-from django.shortcuts import get_object_or_404
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.views import APIView
@@ -276,8 +275,13 @@ class ControllerListView(APIView):
     def get(self, request):
         try:
             controllers = Controller.objects.all()
+            for controller in controllers:
+                print(controller.switches.all())  # Check the output
+
+
+
             data = [
-                {
+                            {
                     "type": controller.type,
                     "device": controller.device.name,
                     "lan_ip_address": controller.lan_ip_address,
@@ -290,6 +294,7 @@ class ControllerListView(APIView):
                     ],
                 } for controller in controllers
             ]
+
             return Response(data, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(e, exc_info=True)

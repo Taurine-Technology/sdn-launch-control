@@ -23,6 +23,9 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
     const [portOptions, setPortOptions] = useState(['none']);
     const [isLoading, setIsLoading] = useState(false);
     const [alert, setAlert] = useState({ show: false, type: '', message: '' });
+    const [controllers, setControllers] = useState([]);
+    const [selectedController, setSelectedController] = useState('');
+    const [controllerPort, setControllerPort] = useState('6653');
 
 
 
@@ -58,6 +61,7 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
     useEffect(() => {
         if (open) {
             fetchPorts();
+            fetchControllers();
         }
     }, [open, deviceIp]);
     const fetchPorts = async () => {
@@ -83,15 +87,38 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
             // Handle error
         }
     };
+
+    const fetchControllers = async () => {
+        try {
+            setIsLoading(true)
+            const response = await axios.get(`http://localhost:8000/controllers/`);
+            console.log(response.data)
+            setControllers(response.data);
+        } catch (error) {
+            console.error('Error fetching controllers:', error);
+            console.log('could not fetch controllers')
+        } finally
+        {
+            setIsLoading(false);
+        }
+    };
     const handleSubmit = async () => {
         setIsLoading(true);
         setAlert({ show: false, type: '', message: '' })
-        const payload = {
+        let payload = {
             lan_ip_address: deviceIp,
             name: bridgeName,
             openFlowVersion: openFlowVersion,
             ports: selectedPorts,
         };
+
+        if (selectedController) {
+            payload = {
+                ...payload,
+                controller_ip: selectedController,
+                controller_port: controllerPort,
+            };
+        }
 
         try {
             const response = await axios.post('http://localhost:8000/add-bridge/', payload);
@@ -174,6 +201,36 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
                                     ))}
                                 </Select>
                             </FormControl>
+                            <FormControl fullWidth margin="dense">
+                                <InputLabel>Controller</InputLabel>
+                                <Select
+                                    value={selectedController}
+                                    onChange={e => {
+                                        setSelectedController(e.target.value);
+                                        // Set default port if a controller is selected, otherwise empty
+                                        setControllerPort(e.target.value ? '6653' : '');
+                                    }}
+                                    label="Controller"
+                                >
+                                    <MenuItem value="">None</MenuItem>
+                                    {controllers.map((controller) => (
+                                        <MenuItem key={controller.id} value={controller.lan_ip_address}>
+                                            {controller.lan_ip_address}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            {selectedController && (
+                                <TextField
+                                    margin="dense"
+                                    label="Controller Port"
+                                    fullWidth
+                                    variant="outlined"
+                                    value={controllerPort}
+                                    onChange={e => setControllerPort(e.target.value)}
+                                    required
+                                />
+                            )}
                         </div>
                     )}
                 </DialogContent>

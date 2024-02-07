@@ -24,10 +24,10 @@ function ConfirmDeleteDialog({ open, handleClose, handleConfirm, itemName = "ite
                 </DialogContentText>
             )}
             <DialogActions>
-                <Button onClick={handleClose} color="button_green">
+                <Button onClick={handleClose} color="button_green" disabled={isLoading}>
                     Cancel
                 </Button>
-                <Button onClick={handleConfirm} color="button_red" autoFocus>
+                <Button onClick={handleConfirm} color="button_red" disabled={isLoading} autoFocus>
                     OK
                 </Button>
             </DialogActions>

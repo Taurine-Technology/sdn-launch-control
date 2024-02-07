@@ -18,7 +18,9 @@ from django.core.exceptions import ValidationError
 import logging
 from general.serializers import BridgeSerializer
 from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, \
-    save_interfaces_to_config
+    save_interfaces_to_config, save_controller_port_to_config, save_controller_ip_to_config
+
+from general.models import Controller
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
@@ -104,11 +106,31 @@ class CreateBridge(APIView):
             if create_bridge['status'] == 'failed':
                 return Response({'status': 'error', 'message': 'error creating bridge'},
                                 status=status.HTTP_400_BAD_REQUEST)
-            bridge = Bridge.objects.create(
-                name=data.get('name'),
-                device=device,
-                dpid='123',
-            )
+            if data.get('controller_ip'):
+                port = data.get('controller_port')
+                controller_ip = data.get('controller_ip')
+                controller = get_object_or_404(Controller, lan_ip_address=controller_ip)
+
+                save_controller_port_to_config(port, config_path)
+                save_controller_ip_to_config(controller_ip, config_path)
+                assign_controller = run_playbook('connect-to-controller', playbook_dir_path, inventory_path)
+                if assign_controller['status'] == 'failed':
+                    return Response({'status': 'error', 'message': 'error creating bridge'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                controller.switches.add(device)
+                bridge = Bridge.objects.create(
+                    name=data.get('name'),
+                    device=device,
+                    dpid='123',
+                    controller=controller,
+                )
+            else:
+                bridge = Bridge.objects.create(
+                    name=data.get('name'),
+                    device=device,
+                    dpid='123',
+                )
+
             add_interfaces = run_playbook('ovs-port-setup', playbook_dir_path, inventory_path)
             if add_interfaces['status'] == 'failed':
                 return Response({'status': 'error', 'message': f'error adding interfaces to  bridge {bridge_name}'},
@@ -122,7 +144,7 @@ class CreateBridge(APIView):
                 port.save(update_fields=['bridge', 'device'])
             return Response({'status': 'success', 'message': f'Bridge {bridge_name} created successfully.'},
                             status=status.HTTP_201_CREATED)
-
+        # TODO on fail delete bridge if it has been created
         except ValidationError as e:
             logger.error(f'Validation error: {str(e)}', exc_info=True)
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -166,3 +188,16 @@ class DeleteBridge(APIView):
             return Response({'status': 'error', 'message': str(e)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+class AssignPortsView(APIView):
+    def post(self, request):
+        try:
+            data = request.data
+            lan_ip_address = data.get('lan_ip_address')
+            validate_ipv4_address(lan_ip_address)
+        except ValidationError:
+            return Response({'status': 'error', 'message': 'Invalid IP address format.'},
+                    status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)

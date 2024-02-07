@@ -201,3 +201,45 @@ class AssignPortsView(APIView):
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+from django.db import transaction
+
+class DeleteControllerView(APIView):
+    def post(self, request):
+        try:
+            data = request.data
+            controller_ip = data.get('controller_ip')
+            validate_ipv4_address(controller_ip)
+            controller = get_object_or_404(Controller, lan_ip_address=controller_ip)
+
+            with transaction.atomic():
+                switches = controller.switches.all()
+                for switch in switches:
+                    bridges = switch.bridges.all()
+                    for bridge in bridges:
+                        if bridge.controller == controller:
+
+                            bridge_name = bridge.name
+                            device = bridge.device
+                            lan_ip_address = device.lan_ip_address
+                            print(lan_ip_address)
+                            print(bridge_name)
+                            save_bridge_name_to_config(bridge_name, config_path)
+                            write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
+                            save_ip_to_config(lan_ip_address, config_path)
+                            delete_controller = run_playbook('remove-controller', playbook_dir_path, inventory_path)
+                            if delete_controller.get('status') == 'success':
+                                print(delete_controller)
+                                bridge.controller = None
+                                bridge.save()
+                            else:
+                                return Response({'status': 'failed', 'message': 'Unable to delete controller due to external system failure.'},
+                                                status=status.HTTP_400_BAD_REQUEST)
+                controller.delete()
+            return Response({'status': 'success', 'message': 'Controller and its references successfully deleted.'},
+                            status=status.HTTP_202_ACCEPTED)
+
+        except ValidationError:
+            return Response({'status': 'error', 'message': 'Invalid IP address format.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

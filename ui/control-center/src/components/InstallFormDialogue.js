@@ -158,21 +158,17 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
         } finally {
             setIsLoading(false);
             setFile(null);
-            handleClose();
+            // handleClose();
         }
 
-        handleClose();
+        // handleClose();
     };
 
     return (
         <div>
 
             <div>
-                {responseMessage && (
-                    <Alert severity={responseType} onClose={handleCloseAlert}>
-                        {responseMessage}
-                    </Alert>
-                )}
+
                 <Button variant="contained" onClick={handleClickOpen} sx={{ width: '250px' }}>
                     {`Install ${installationType}`}
                 </Button>
@@ -180,6 +176,11 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
                     <DialogTitle>{`Install ${installationType}`}</DialogTitle>
                     { (isLoading || fetchingDevices) && (
                         <CircularProgress style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex:1000 }} />
+                    )}
+                    {responseMessage && (
+                        <Alert severity={responseType} onClose={handleCloseAlert}>
+                            {responseMessage}
+                        </Alert>
                     )}
 
                     <DialogContent>

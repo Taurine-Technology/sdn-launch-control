@@ -35,6 +35,12 @@ config_path = f"{parent_dir}/ansible/group_vars/all.yml"
 
 class GetDevicePorts(APIView):
     def get(self, request, lan_ip_address):
+        """
+        Returns all ports (assigned and unassigned) without the bridge ports
+        :param request: type of request
+        :param lan_ip_address: ip address of device
+        :return: interfaces on the device without the bridges
+        """
         try:
             validate_ipv4_address(lan_ip_address)
             device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
@@ -56,7 +62,17 @@ class GetDevicePorts(APIView):
                     new_ports.append(new_port.name)
             if new_ports:
                 print(f'New ports added: {new_ports}')
-            return Response({"status": "success", "interfaces": interfaces}, status=status.HTTP_200_OK)
+            # remove bridges from port list returned
+            bridges = device.bridges.all()
+            bridge_names = [bridge.name for bridge in bridges]
+            ports = device.ports.all()
+            # Filter ports that do not match any bridge names
+            all_ports = [port for port in ports if port.name not in bridge_names and port.name != 'ovs-system']
+            # Extracting interface names for the response
+            all_interface_names = [port.name for port in all_ports]
+            print(f'All ports: {all_ports}')
+            return Response({"status": "success", "interfaces": all_interface_names}, status=status.HTTP_200_OK)
+
         except ValidationError:
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -68,6 +84,12 @@ class GetDevicePorts(APIView):
 
 class GetUnassignedDevicePorts(APIView):
     def get(self, request, lan_ip_address):
+        """
+        Returns unassigned ports for a device without the bridge ports
+        :param request: type of request
+        :param lan_ip_address: ip address of device
+        :return: interfaces on the device without the bridges
+        """
         try:
             validate_ipv4_address(lan_ip_address)
             device = get_object_or_404(Device, lan_ip_address=lan_ip_address)

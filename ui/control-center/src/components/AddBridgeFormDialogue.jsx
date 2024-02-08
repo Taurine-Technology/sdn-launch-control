@@ -70,7 +70,7 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
         try {
             setIsLoading(true)
             console.log(deviceIp)
-            const response = await axios.get(`http://localhost:8000/get-device-ports/${deviceIp}/`);
+            const response = await axios.get(`http://localhost:8000/unassigned-device-ports/${deviceIp}/`);
             if (response.data.status === 'success') {
                 if (response.data.interfaces == null) {
                     setPortOptions(['none']);
@@ -128,12 +128,14 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
             console.log('Error Response:', error.response);
             setAlert({ show: true, type: 'error', message: error.response?.data?.message || error.message || 'Error adding bridge' });
         } finally {
+            fetchPorts();
+            setBridgeName('');
+            setOpenFlowVersion('1.3');
+            setSelectedPorts([]);
             setIsLoading(false);
+            setSelectedController('')
             // setOpen(false);
-            // setBridgeName('');
-            // setOpenFlowVersion('1.3');
-            // setSelectedPorts([]);
-            // setPortOptions(['none'])
+
         }
     };
 

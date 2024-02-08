@@ -37,11 +37,26 @@ class GetDevicePorts(APIView):
     def get(self, request, lan_ip_address):
         try:
             validate_ipv4_address(lan_ip_address)
+            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
 
-            result = run_playbook(get_ports, playbook_dir_path, inventory_path)
+            # Assuming run_playbook and check_system_details are implemented and return interface names
+            result = run_playbook(get_ports, playbook_dir_path, inventory_path)  # Ensure these variables are defined
             interfaces = check_system_details(result)
+            print(f'Interfaces {interfaces}')
 
-            return Response({"status": "success", "interfaces": interfaces})
+            existing_ports = device.ports.all()  # Get all ports currently associated with the device
+            existing_port_names = [port.name for port in existing_ports]
+
+            new_ports = []
+            for interface_name in interfaces:
+                if interface_name not in existing_port_names:
+                    # Interface not in DB, create and add it
+                    new_port = Port(device=device, name=interface_name)
+                    new_port.save()
+                    new_ports.append(new_port.name)
+            if new_ports:
+                print(f'New ports added: {new_ports}')
+            return Response({"status": "success", "interfaces": interfaces}, status=status.HTTP_200_OK)
         except ValidationError:
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -50,6 +65,49 @@ class GetDevicePorts(APIView):
             print('ERROR HERE')
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+class GetUnassignedDevicePorts(APIView):
+    def get(self, request, lan_ip_address):
+        try:
+            validate_ipv4_address(lan_ip_address)
+            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+
+            # Assuming run_playbook and check_system_details are implemented and return interface names
+            result = run_playbook(get_ports, playbook_dir_path, inventory_path)  # Ensure these variables are defined
+            interfaces = check_system_details(result)
+            print(f'Interfaces {interfaces}')
+
+            existing_ports = device.ports.all()  # Get all ports currently associated with the device
+            existing_port_names = [port.name for port in existing_ports]
+
+            new_ports = []
+            for interface_name in interfaces:
+                if interface_name not in existing_port_names:
+                    # Interface not in DB, create and add it
+                    new_port = Port(device=device, name=interface_name)
+                    new_port.save()
+                    new_ports.append(new_port.name)
+            if new_ports:
+                print(f'New ports added: {new_ports}')
+
+            # get unassociated ports and return them:
+            bridges = device.bridges.all()
+            bridge_names = [bridge.name for bridge in bridges]
+            ports = device.ports.all()
+            # Filter ports that are not assigned to any bridge and whose names do not match any bridge names
+            unassigned_ports = [port for port in ports if port.bridge is None and port.name not in bridge_names and port.name != 'ovs-system']
+            # Extracting interface names for the response
+            unassigned_interface_names = [port.name for port in unassigned_ports]
+            print(f'Unassigned ports: {unassigned_ports}')
+            return Response({"status": "success", "interfaces": unassigned_interface_names}, status=status.HTTP_200_OK)
+
+        except ValidationError:
+            return Response({"status": "error", "message": "Invalid IP address format."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            print('ERROR HERE')
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AssignPorts(APIView):
     def post(self, request):
@@ -163,23 +221,28 @@ class DeleteBridge(APIView):
             device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
             bridge_name = data.get('name')
 
-            bridge = Bridge.objects.filter(device=device, name=bridge_name).first()
-            if bridge:
-                save_bridge_name_to_config(bridge_name, config_path)
-                write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
-                save_ip_to_config(lan_ip_address, config_path)
-                delete_bridge = run_playbook('ovs-delete-bridge', playbook_dir_path, inventory_path)
-                if delete_bridge.get('status') == 'success':
-                    # Delete the bridge from the database
-                    bridge.delete()
 
-                    return Response({'status': 'success', 'message': f'Bridge {bridge_name} deleted successfully.'},
-                                    status=status.HTTP_202_ACCEPTED)
+            with transaction.atomic():
+                bridge = Bridge.objects.filter(device=device, name=bridge_name).first()
+                if bridge:
+                    save_bridge_name_to_config(bridge_name, config_path)
+                    write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
+                    save_ip_to_config(lan_ip_address, config_path)
+                    delete_bridge = run_playbook('ovs-delete-bridge', playbook_dir_path, inventory_path)
+                    if delete_bridge.get('status') == 'success':
+                        # Delete the bridge from the database
+                        if Port.objects.filter(name=bridge.name).exists():
+                            port_to_del = Port.objects.get(name=bridge.name)
+                            port_to_del.delete()
+                        bridge.delete()
+
+                        return Response({'status': 'success', 'message': f'Bridge {bridge_name} deleted successfully.'},
+                                        status=status.HTTP_202_ACCEPTED)
+                    else:
+                        return Response({'status': 'failed', 'message': 'Unable to delete bridge due to external system failure.'},
+                                        status=status.HTTP_400_BAD_REQUEST)
                 else:
-                    return Response({'status': 'failed', 'message': 'Unable to delete bridge due to external system failure.'},
-                                    status=status.HTTP_400_BAD_REQUEST)
-            else:
-                return Response({'status': 'error', 'message': 'Bridge not found.'},
+                    return Response({'status': 'error', 'message': 'Bridge not found.'},
                                 status=status.HTTP_404_NOT_FOUND)
         except ValidationError:
             return Response({'status': 'error', 'message': 'Invalid IP address format.'},

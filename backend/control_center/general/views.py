@@ -171,6 +171,29 @@ class DeleteDeviceView(APIView):
             lan_ip_address = data.get('lan_ip_address')
             device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
             bridges = Bridge.objects.filter(device=device)
+
+            # remove links to bridges if this device is a controller
+            if Controller.objects.filter(device=device).exists():
+                print(f'{Device.name} is a controller.')
+                controller = get_object_or_404(Controller, device=device)
+                associated_bridges = controller.bridges.all()
+                for bridge in associated_bridges:
+                    print(f"Bridge Name: {bridge.name}, Device: {bridge.device.name}")
+                    bridge_name = bridge.name
+                    bridge_host_device = bridge.device
+                    bridge_host_lan_ip_address = bridge_host_device.lan_ip_address
+                    save_bridge_name_to_config(bridge_name, config_path)
+                    write_to_inventory(bridge_host_lan_ip_address, bridge_host_device.username, bridge_host_device.password, inventory_path)
+                    save_ip_to_config(bridge_host_lan_ip_address, config_path)
+                    delete_controller = run_playbook('remove-controller', playbook_dir_path, inventory_path)
+                    if delete_controller.get('status') == 'success':
+                        bridge.controller = None
+                        bridge.save()
+                    else:
+                        return Response({'status': 'failed', 'message': 'Unable to remove controller from assosciated bridges'
+                                                                        ' due to external system failure.'},
+                                        status=status.HTTP_400_BAD_REQUEST)
+            # delete bridges on the device
             if bridges:
                 for b in bridges:
                     save_bridge_name_to_config(b.name, config_path)
@@ -178,8 +201,7 @@ class DeleteDeviceView(APIView):
                     save_ip_to_config(lan_ip_address, config_path)
                     delete_bridge = run_playbook('ovs-delete-bridge', playbook_dir_path, inventory_path)
                     if delete_bridge.get('status') == 'success':
-                        # Delete the bridge from the database
-                        b.delete()
+                        print(f'Bridge {b.name} successfully deleted on {device.name}')
                     else:
                         return Response({'status': 'error', 'message': f'unable to delete bridge {b.name}'},
                                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -252,6 +274,20 @@ class DevicePortsView(APIView):
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# class UnassignedDevicePortsView(APIView):
+#     def get(self, request, lan_ip_address):
+#         try:
+#             ports_data = [{'name': port.name} for port in ports]
+#             device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+#             ports = Port.objects.filter(bridge__device=device)
+#             if ports.exists():
+#                 for port in ports:
+#                 ports_data = [{'name': port.name} for port in ports]
+#                 return Response({'status': 'success', 'ports': ports_data})
+#             else:
+#                 return Response({'status': 'info', 'message': 'No ports assigned to this device.'})
+#         except Exception as e:
+#             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # *---------- Controller get and post methods ----------*
 class AddControllerView(APIView):

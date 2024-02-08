@@ -49,7 +49,7 @@ class Port(models.Model):
     def __str__(self):
         return f"Port {self.name} on {self.device.name}"
 
-
+# TODO make this work for multiple controllers on the same host
 class Controller(models.Model):
     TYPES = (
         ('onos', 'Onos'),

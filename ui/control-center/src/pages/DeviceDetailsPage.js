@@ -99,6 +99,10 @@ const DeviceDetailsPage = () => {
             .catch(error => console.error('Error fetching bridges:', error));
     };
 
+    const updateBridges = ( ) => {
+        fetchBridges()
+    }
+
     const handleConfirmDelete = () => {
         if (bridgeToDelete) {
             setIsDeleteLoading(true); // Enable loading indicator
@@ -382,6 +386,8 @@ const DeviceDetailsPage = () => {
                                     open={editBridgeDialogOpen}
                                     bridge={bridgeToEdit}
                                     handleClose={handleCloseEditBridgeDialog}
+                                    deviceIp={deviceIp}
+                                    onBridgeUpdate={updateBridges}
 
                                 />
                             )}

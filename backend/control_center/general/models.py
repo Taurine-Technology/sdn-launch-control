@@ -36,7 +36,9 @@ class Bridge(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='bridges')
     name = models.CharField(max_length=100)
     dpid = models.CharField(max_length=30)
-    controller = models.ForeignKey('Controller', on_delete=models.SET_NULL, null=True, blank=True, related_name='bridges')
+    controller = models.ForeignKey('Controller', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='bridges')
+
     def __str__(self):
         return f"Bridge {self.name} on device {self.device.name}"
 
@@ -49,6 +51,7 @@ class Port(models.Model):
     def __str__(self):
         return f"Port {self.name} on {self.device.name}"
 
+
 # TODO make this work for multiple controllers on the same host
 class Controller(models.Model):
     TYPES = (
@@ -60,4 +63,4 @@ class Controller(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='sdn_controller')
     lan_ip_address = models.GenericIPAddressField(unique=True)
     switches = models.ManyToManyField(Device, related_name='switch_controllers')
-
+    port_num = models.IntegerField(default=6653)

@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from django.http import JsonResponse
 from rest_framework.response import Response
-
+from django.db import transaction
 from ovs_install.utilities.services.ovs_port_setup import setup_ovs_port
 from ovs_install.utilities.ansible_tasks import run_playbook
 from ovs_install.utilities.utils import check_system_details
@@ -159,6 +159,142 @@ class GetDeviceBridges(APIView):
             logger.error(f'Error in GetDeviceBridges: {str(e)}', exc_info=True)
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class EditBridge(APIView):
+    def put(self, request):
+        """
+
+        :param request:
+        :return:
+        """
+        try:
+            data = request.data
+            # print(request.data)
+            lan_ip_address = data.get('lan_ip_address')
+            validate_ipv4_address(lan_ip_address)
+            # device that the bridge is on
+            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+            bridge_name = data.get('name')
+            bridge = Bridge.objects.filter(device=device, name=bridge_name).first()
+            original_bridge = Bridge.objects.get(name=bridge_name, device=device)
+
+            save_bridge_name_to_config(bridge_name, config_path)
+            write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
+            save_ip_to_config(lan_ip_address, config_path)
+
+
+            with transaction.atomic():
+                new_ports = data.get('ports', [])
+                print("New ports:", new_ports)
+                original_port_names = [port.name for port in original_bridge.ports.all()]
+
+                # Convert both lists to sets for efficient comparison
+                new_ports_set = set(new_ports)
+                original_ports_set = set(original_port_names)
+
+                # Ports in new_ports but not in original_ports
+                ports_to_add = list(new_ports_set - original_ports_set)
+
+                # Ports in original_ports but not in new_ports
+                ports_to_remove = list(original_ports_set - new_ports_set)
+
+                print("Ports to add:", ports_to_add)
+                if len(ports_to_add) > 0:
+                    save_interfaces_to_config(ports_to_add, config_path)
+                    add_interfaces = run_playbook('ovs-port-setup', playbook_dir_path, inventory_path)
+                    if add_interfaces['status'] == 'failed':
+                        return Response({'status': 'error', 'message': f'error adding interfaces to  bridge {bridge_name}'},
+                                        status=status.HTTP_400_BAD_REQUEST)
+                    for i in ports_to_add:
+                        port, created = Port.objects.get_or_create(
+                            name=i,
+                        )
+                        port.bridge = bridge
+                        port.device = device
+                        port.save(update_fields=['bridge', 'device'])
+
+                print("Ports to remove:", ports_to_remove)
+                if len(ports_to_remove) > 0:
+                    save_interfaces_to_config(ports_to_remove, config_path)
+                    add_interfaces = run_playbook('ovs-delete-ports', playbook_dir_path, inventory_path)
+                    if add_interfaces['status'] == 'failed':
+                        return Response({'status': 'error', 'message': f'error deleting interfaces to  bridge {bridge_name}'},
+                                        status=status.HTTP_400_BAD_REQUEST)
+                    for i in ports_to_remove:
+                        port = Port.objects.get(
+                            name=i,
+                        )
+                        port_to_del = Port.objects.get(name=port.name)
+                        port_to_del.bridge = None
+                # return Response({'status': 'success', 'message': 'done'}, status=status.HTTP_200_OK)
+                if data.get('controller'):
+                    controller_data = data.get('controller')
+                    if controller_data:
+                        print(f'Controller data: {controller_data}')
+                        controller = Controller.objects.get(lan_ip_address=controller_data.get('lan_ip_address'))
+                        original_controller = original_bridge.controller
+                        if controller != original_controller:
+                            print('New controller assigned')
+                            # completely new controller
+                            if original_controller is not None:
+                                if controller.lan_ip_address != original_controller.lan_ip_address:
+                                    # remove old controller
+                                    save_bridge_name_to_config(bridge_name, config_path)
+                                    write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
+                                    save_ip_to_config(lan_ip_address, config_path)
+                                    delete_controller = run_playbook('remove-controller', playbook_dir_path, inventory_path)
+
+                                    # add new controller to the bridge
+                                    save_controller_port_to_config(controller.port_num, config_path)
+                                    save_controller_ip_to_config(controller.lan_ip_address, config_path)
+                                    assign_controller = run_playbook('connect-to-controller', playbook_dir_path, inventory_path)
+                                    if delete_controller.get('status') == 'success' and assign_controller.get('status') == 'success':
+                                        original_bridge.controller = controller
+                                        original_bridge.save()
+                                    else:
+                                        return Response({'status': 'failed', 'message': 'Unable to change controller due to external system failure.'},
+                                                        status=status.HTTP_400_BAD_REQUEST)
+                                else:
+                                    # ERROR
+                                    print('ERROR PORT HAS CHANGED')
+
+                            else:
+                                # no controller was assigned before
+                                write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
+                                save_controller_port_to_config(controller.port_num, config_path)
+                                save_controller_ip_to_config(controller.lan_ip_address, config_path)
+                                assign_controller = run_playbook('connect-to-controller', playbook_dir_path, inventory_path)
+                                if assign_controller.get('status') == 'success':
+                                    original_bridge.controller = controller
+                                    original_bridge.save()
+                                    # return Response({'status': 'success', 'message': 'done'}, status=status.HTTP_200_OK)
+                                else:
+                                    return Response({'status': 'failed', 'message': 'Unable to change controller due to external system failure.'},
+                                                    status=status.HTTP_400_BAD_REQUEST)
+
+                elif original_bridge.controller is not None:
+                    # we need to remove old controller and set controller to none
+                    # remove old controller
+                    save_bridge_name_to_config(bridge_name, config_path)
+                    write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
+                    save_ip_to_config(lan_ip_address, config_path)
+                    delete_controller = run_playbook('remove-controller', playbook_dir_path, inventory_path)
+                    print('Setting controller to none')
+                    if delete_controller.get('status') == 'success':
+                        original_bridge.controller = None
+                        original_bridge.save()
+                    else:
+                        return Response({'status': 'failed', 'message': 'Unable to change controller due to external system failure.'},
+                                        status=status.HTTP_400_BAD_REQUEST)
+
+
+            return Response({'status': 'success', 'message': 'done'}, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            logger.error(f'Validation error: {str(e)}', exc_info=True)
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.error(f'Error in CreateBridge: {str(e)}', exc_info=True)
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class CreateBridge(APIView):
     def post(self, request):
@@ -287,7 +423,7 @@ class AssignPortsView(APIView):
             return Response({'status': 'error', 'message': str(e)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-from django.db import transaction
+
 
 class DeleteControllerView(APIView):
     def delete(self, request):

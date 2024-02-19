@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 
-function EditBridgeDialogue({ open, handleClose, bridge, onBridgeUpdate }) {
+function EditBridgeDialogue({ open, handleClose, bridge, onBridgeUpdate, deviceIp }) {
     const [isLoading, setIsLoading] = useState(false);
     const [alert, setAlert] = useState({ show: false, type: '', message: '' });
     const [controllers, setControllers] = useState([]);
@@ -25,42 +25,61 @@ function EditBridgeDialogue({ open, handleClose, bridge, onBridgeUpdate }) {
     const [controllerPort, setControllerPort] = useState('');
     const [selectedPorts, setSelectedPorts] = useState([]);
     const [portOptions, setPortOptions] = useState([]);
-
     useEffect(() => {
         if (open) {
-            fetchControllers();
-            fetchPorts();
-            if (bridge) {
+            fetchData();
+
+            if (bridge && portOptions) {
                 setSelectedController(bridge.controller ? bridge.controller.lan_ip_address : '');
                 setControllerPort(bridge.controllerPort || '6653');
                 setSelectedPorts(bridge.ports.map(port => port.name));
             }
-        }
-    }, [open, bridge]);
 
-    const fetchControllers = async () => {
+        }
+    }, [open, bridge, deviceIp]);
+    const fetchData = async () => {
         setIsLoading(true);
+        await fetchControllers();
+        await fetchPorts();
+        setIsLoading(false);
+    }
+    const fetchControllers = async () => {
         try {
+
             const response = await axios.get(`http://localhost:8000/controllers/`);
+
             setControllers(response.data || []);
+
         } catch (error) {
             console.error('Error fetching controllers:', error);
             setAlert({ show: true, type: 'error', message: 'Failed to fetch controllers' });
-        } finally {
-            setIsLoading(false);
         }
     };
 
     const fetchPorts = async () => {
-        // Implement fetchPorts similar to fetchControllers
-        // Assume the ports are fetched based on the device IP or some other relevant criteria
+        try {
+            console.log(deviceIp)
+            const response = await axios.get(`http://localhost:8000/get-device-ports/${deviceIp}/`);
+            if (response.data.status === 'success') {
+                if (response.data.interfaces == null) {
+                    setPortOptions(['none']);
+                    console.log('here')
+                    setIsLoading(false)
+                } else {
+                    setPortOptions(response.data.interfaces);
+                }
+                console.log(response.data.interfaces)
+            }
+        } catch (error) {
+            console.error('Error fetching ports:', error);
+
+        }
     };
 
     const handleControllerChange = (event) => {
         setSelectedController(event.target.value);
-        // Optionally, set a default controller port if a controller is selected
         if (event.target.value) {
-            setControllerPort('6653'); // Default port, adjust as necessary
+            setControllerPort('6653');
         } else {
             setControllerPort('');
         }
@@ -71,27 +90,36 @@ function EditBridgeDialogue({ open, handleClose, bridge, onBridgeUpdate }) {
     };
 
     const handleSubmit = async () => {
+        setAlert('')
+        setAlert({ show: false, type: '', message: '' });
         setIsLoading(true);
-        // Prepare the payload with the bridge ID, selected controller, controller port, and selected ports
-        // Adjust this according to how your backend expects to receive the updated bridge data
-
+        const payload = {
+            lan_ip_address: deviceIp,
+            name: bridge.name,
+            controller: selectedController ? controllers.find(c => c.lan_ip_address === selectedController) : null,
+            port: controllerPort,
+            ports: selectedPorts,
+        }
         try {
-            const response = await axios.put(`http://localhost:8000/update-bridge/${bridge.id}/`, {
-                // Payload data here
-            });
-            setAlert({ show: true, type: 'success', message: 'Bridge updated successfully' });
-            onBridgeUpdate(); // Callback to refresh bridge list or data
+            const response = await axios.put(`http://localhost:8000/update-bridge/`, payload);
+            if (response.data.status === 'success') {
+                setAlert({ show: true, type: 'success', message: 'Bridge updated successfully' });
+                onBridgeUpdate();
+            }
+            else {
+                setAlert({ show: true, type: 'error', message: 'Failed to update bridge' });
+            }
         } catch (error) {
             console.error('Error updating bridge:', error);
             setAlert({ show: true, type: 'error', message: 'Failed to update bridge' });
         } finally {
             setIsLoading(false);
-            handleClose(); // Close the dialog
+
         }
     };
 
     return (
-        <Dialog open={open} onClose={handleClose} sx={{ '& .MuiDialog-paper': { minWidth: '500px' } }} >
+        <Dialog open={open} onClose={handleClose} sx={{ '& .MuiDialog-paper': { minWidth: '600px' } }} >
             <DialogTitle>Edit Bridge</DialogTitle>
             <DialogContent>
                 {alert.show && <Alert severity={alert.type} onClose={() => setAlert({ show: false })}>{alert.message}</Alert>}
@@ -122,6 +150,7 @@ function EditBridgeDialogue({ open, handleClose, bridge, onBridgeUpdate }) {
                                 variant="outlined"
                                 value={controllerPort}
                                 onChange={e => setControllerPort(e.target.value)}
+                                disabled={true}
                             />
                         )}
                         <FormControl fullWidth margin="dense">
@@ -150,8 +179,8 @@ function EditBridgeDialogue({ open, handleClose, bridge, onBridgeUpdate }) {
                 )}
             </DialogContent>
             <DialogActions>
-                <Button onClick={handleClose} color="secondary">Cancel</Button>
-                <Button onClick={handleSubmit} color="primary">Update</Button>
+                <Button onClick={handleClose} color="button_green">Cancel</Button>
+                <Button onClick={handleSubmit} color="button_red">Update</Button>
             </DialogActions>
         </Dialog>
     );

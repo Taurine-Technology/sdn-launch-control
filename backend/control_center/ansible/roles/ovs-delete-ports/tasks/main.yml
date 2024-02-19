@@ -1,0 +1,3 @@
+---
+- name: Remove ports from an OVS bridge
+  import_tasks: delete_ports.yml

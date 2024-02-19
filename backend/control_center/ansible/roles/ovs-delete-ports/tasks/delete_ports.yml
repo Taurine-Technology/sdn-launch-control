@@ -1,0 +1,7 @@
+---
+- name: Remove ports from the bridge
+  openvswitch.openvswitch.openvswitch_port:
+    bridge: "{{ bridge_name }}"
+    port: "{{ item }}"
+    state: absent
+  with_items: "{{ interfaces }}"

@@ -117,7 +117,8 @@ class GetUnassignedDevicePorts(APIView):
             bridge_names = [bridge.name for bridge in bridges]
             ports = device.ports.all()
             # Filter ports that are not assigned to any bridge and whose names do not match any bridge names
-            unassigned_ports = [port for port in ports if port.bridge is None and port.name not in bridge_names and port.name != 'ovs-system']
+            unassigned_ports = [port for port in ports if
+                                port.bridge is None and port.name not in bridge_names and port.name != 'ovs-system']
             # Extracting interface names for the response
             unassigned_interface_names = [port.name for port in unassigned_ports]
             print(f'Unassigned ports: {unassigned_ports}')
@@ -130,6 +131,7 @@ class GetUnassignedDevicePorts(APIView):
             logger.error(e, exc_info=True)
             print('ERROR HERE')
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class AssignPorts(APIView):
     def post(self, request):
@@ -159,6 +161,7 @@ class GetDeviceBridges(APIView):
             logger.error(f'Error in GetDeviceBridges: {str(e)}', exc_info=True)
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class EditBridge(APIView):
     def put(self, request):
         """
@@ -181,7 +184,6 @@ class EditBridge(APIView):
             write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
             save_ip_to_config(lan_ip_address, config_path)
 
-
             with transaction.atomic():
                 new_ports = data.get('ports', [])
                 print("New ports:", new_ports)
@@ -202,8 +204,9 @@ class EditBridge(APIView):
                     save_interfaces_to_config(ports_to_add, config_path)
                     add_interfaces = run_playbook('ovs-port-setup', playbook_dir_path, inventory_path)
                     if add_interfaces['status'] == 'failed':
-                        return Response({'status': 'error', 'message': f'error adding interfaces to  bridge {bridge_name}'},
-                                        status=status.HTTP_400_BAD_REQUEST)
+                        return Response(
+                            {'status': 'error', 'message': f'error adding interfaces to  bridge {bridge_name}'},
+                            status=status.HTTP_400_BAD_REQUEST)
                     for i in ports_to_add:
                         port, created = Port.objects.get_or_create(
                             name=i,
@@ -217,8 +220,9 @@ class EditBridge(APIView):
                     save_interfaces_to_config(ports_to_remove, config_path)
                     add_interfaces = run_playbook('ovs-delete-ports', playbook_dir_path, inventory_path)
                     if add_interfaces['status'] == 'failed':
-                        return Response({'status': 'error', 'message': f'error deleting interfaces to  bridge {bridge_name}'},
-                                        status=status.HTTP_400_BAD_REQUEST)
+                        return Response(
+                            {'status': 'error', 'message': f'error deleting interfaces to  bridge {bridge_name}'},
+                            status=status.HTTP_400_BAD_REQUEST)
                     for i in ports_to_remove:
                         port = Port.objects.get(
                             name=i,
@@ -241,17 +245,24 @@ class EditBridge(APIView):
                                     save_bridge_name_to_config(bridge_name, config_path)
                                     write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
                                     save_ip_to_config(lan_ip_address, config_path)
-                                    delete_controller = run_playbook('remove-controller', playbook_dir_path, inventory_path)
-
+                                    delete_controller = run_playbook('remove-controller', playbook_dir_path,
+                                                                     inventory_path)
                                     # add new controller to the bridge
                                     save_controller_port_to_config(controller.port_num, config_path)
                                     save_controller_ip_to_config(controller.lan_ip_address, config_path)
-                                    assign_controller = run_playbook('connect-to-controller', playbook_dir_path, inventory_path)
-                                    if delete_controller.get('status') == 'success' and assign_controller.get('status') == 'success':
+                                    assign_controller = run_playbook('connect-to-controller', playbook_dir_path,
+                                                                     inventory_path)
+                                    if delete_controller.get('status') == 'success' and assign_controller.get(
+                                            'status') == 'success':
+                                        original_controller = original_bridge.controller
+                                        switch_to_unassign = original_controller.switches.get(lan_ip_address=lan_ip_address)
+                                        original_controller.switches.remove(switch_to_unassign)
                                         original_bridge.controller = controller
+
                                         original_bridge.save()
                                     else:
-                                        return Response({'status': 'failed', 'message': 'Unable to change controller due to external system failure.'},
+                                        return Response({'status': 'failed',
+                                                         'message': 'Unable to change controller due to external system failure.'},
                                                         status=status.HTTP_400_BAD_REQUEST)
                                 else:
                                     # ERROR
@@ -262,13 +273,15 @@ class EditBridge(APIView):
                                 write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
                                 save_controller_port_to_config(controller.port_num, config_path)
                                 save_controller_ip_to_config(controller.lan_ip_address, config_path)
-                                assign_controller = run_playbook('connect-to-controller', playbook_dir_path, inventory_path)
+                                assign_controller = run_playbook('connect-to-controller', playbook_dir_path,
+                                                                 inventory_path)
                                 if assign_controller.get('status') == 'success':
                                     original_bridge.controller = controller
                                     original_bridge.save()
                                     # return Response({'status': 'success', 'message': 'done'}, status=status.HTTP_200_OK)
                                 else:
-                                    return Response({'status': 'failed', 'message': 'Unable to change controller due to external system failure.'},
+                                    return Response({'status': 'failed',
+                                                     'message': 'Unable to change controller due to external system failure.'},
                                                     status=status.HTTP_400_BAD_REQUEST)
 
                 elif original_bridge.controller is not None:
@@ -280,12 +293,15 @@ class EditBridge(APIView):
                     delete_controller = run_playbook('remove-controller', playbook_dir_path, inventory_path)
                     print('Setting controller to none')
                     if delete_controller.get('status') == 'success':
+                        original_controller = original_bridge.controller
+                        switch_to_unassign = original_controller.switches.get(lan_ip_address=lan_ip_address)
+                        original_controller.switches.remove(switch_to_unassign)
                         original_bridge.controller = None
                         original_bridge.save()
                     else:
-                        return Response({'status': 'failed', 'message': 'Unable to change controller due to external system failure.'},
+                        return Response({'status': 'failed',
+                                         'message': 'Unable to change controller due to external system failure.'},
                                         status=status.HTTP_400_BAD_REQUEST)
-
 
             return Response({'status': 'success', 'message': 'done'}, status=status.HTTP_200_OK)
         except ValidationError as e:
@@ -295,6 +311,7 @@ class EditBridge(APIView):
         except Exception as e:
             logger.error(f'Error in CreateBridge: {str(e)}', exc_info=True)
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class CreateBridge(APIView):
     def post(self, request):
@@ -379,7 +396,6 @@ class DeleteBridge(APIView):
             device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
             bridge_name = data.get('name')
 
-
             with transaction.atomic():
                 bridge = Bridge.objects.filter(device=device, name=bridge_name).first()
                 if bridge:
@@ -397,11 +413,12 @@ class DeleteBridge(APIView):
                         return Response({'status': 'success', 'message': f'Bridge {bridge_name} deleted successfully.'},
                                         status=status.HTTP_202_ACCEPTED)
                     else:
-                        return Response({'status': 'failed', 'message': 'Unable to delete bridge due to external system failure.'},
-                                        status=status.HTTP_400_BAD_REQUEST)
+                        return Response(
+                            {'status': 'failed', 'message': 'Unable to delete bridge due to external system failure.'},
+                            status=status.HTTP_400_BAD_REQUEST)
                 else:
                     return Response({'status': 'error', 'message': 'Bridge not found.'},
-                                status=status.HTTP_404_NOT_FOUND)
+                                    status=status.HTTP_404_NOT_FOUND)
         except ValidationError:
             return Response({'status': 'error', 'message': 'Invalid IP address format.'},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -418,11 +435,10 @@ class AssignPortsView(APIView):
             validate_ipv4_address(lan_ip_address)
         except ValidationError:
             return Response({'status': 'error', 'message': 'Invalid IP address format.'},
-                    status=status.HTTP_400_BAD_REQUEST)
+                            status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 class DeleteControllerView(APIView):
@@ -453,13 +469,15 @@ class DeleteControllerView(APIView):
                                 bridge.controller = None
                                 bridge.save()
                             else:
-                                return Response({'status': 'failed', 'message': 'Unable to delete controller due to external system failure.'},
+                                return Response({'status': 'failed',
+                                                 'message': 'Unable to delete controller due to external system failure.'},
                                                 status=status.HTTP_400_BAD_REQUEST)
                 controller.delete()
             return Response({'status': 'success', 'message': 'Controller and its references successfully deleted.'},
                             status=status.HTTP_202_ACCEPTED)
 
         except ValidationError:
-            return Response({'status': 'error', 'message': 'Invalid IP address format.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status': 'error', 'message': 'Invalid IP address format.'},
+                            status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

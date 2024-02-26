@@ -195,7 +195,7 @@ const DeviceListPage = () => {
             >
                 <NavBar />
                 <Backdrop open={loading} style={{ zIndex: theme.zIndex.drawer + 1 }}>
-                    <CircularProgress color="inherit" />
+                    <CircularProgress style={{'color': "#7456FD"}} />
                 </Backdrop>
 
                 <Box

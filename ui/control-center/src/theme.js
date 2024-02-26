@@ -56,6 +56,11 @@ const theme = createTheme({
             fontFamily: 'ComfortaaBold, Arial, sans-serif',
             fontSize: '2.5rem',
         },
+        h2: {
+            color: '#ffffff',
+            fontFamily: 'ComfortaaBold, Arial, sans-serif',
+            fontSize: '2rem',
+        },
         body: {
             color: '#ffffff',
             fontFamily: 'ComfortaaRegular, Arial, sans-serif',

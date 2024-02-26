@@ -169,7 +169,7 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
 
             <div>
 
-                <Button variant="contained" onClick={handleClickOpen} sx={{ width: '250px' }}>
+                <Button variant="contained" onClick={handleClickOpen} sx={{ width: '250px', bgcolor: '#02032F' }}>
                     {`Install ${installationType}`}
                 </Button>
                 <Dialog open={open} onClose={handleOnClose}>
@@ -287,6 +287,7 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
                             disabled={isLoading}
                             variant="contained"
                             onClick={handleClose}
+                            sx = {{ bgcolor: '#02032F'}}
                         >
                             Cancel
                         </Button>
@@ -294,6 +295,7 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
                             disabled={isLoading || !isFormValid}
                             variant="contained"
                             onClick={handleSubmit}
+                            sx = {{ bgcolor: '#02032F'}}
                         >
                             Install
                         </Button>

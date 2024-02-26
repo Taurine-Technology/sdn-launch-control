@@ -255,7 +255,8 @@ class EditBridge(APIView):
                                     if delete_controller.get('status') == 'success' and assign_controller.get(
                                             'status') == 'success':
                                         original_controller = original_bridge.controller
-                                        switch_to_unassign = original_controller.switches.get(lan_ip_address=lan_ip_address)
+                                        switch_to_unassign = original_controller.switches.get(
+                                            lan_ip_address=lan_ip_address)
                                         original_controller.switches.remove(switch_to_unassign)
                                         original_bridge.controller = controller
 
@@ -371,10 +372,10 @@ class CreateBridge(APIView):
             for i in ports:
                 port = Port.objects.get(
                     name=i,
+                    device=device
                 )
                 port.bridge = bridge
-                port.device = device
-                port.save(update_fields=['bridge', 'device'])
+                port.save(update_fields=['bridge'])
             return Response({'status': 'success', 'message': f'Bridge {bridge_name} created successfully.'},
                             status=status.HTTP_201_CREATED)
         # TODO on fail delete bridge if it has been created

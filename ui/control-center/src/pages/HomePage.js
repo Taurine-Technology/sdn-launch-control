@@ -1,7 +1,8 @@
 import React, {useState} from 'react';
 import NavBar from "../components/NavBar";
-import { Box, Stack } from '@mui/material';
+import {Box, Card, CardContent, Stack} from '@mui/material';
 import Footer from "../components/Footer";
+import NetworkDiagram from "../components/NetworkDiagram";
 import Button from '@mui/material/Button';
 import InstallFormDialogue from "../components/InstallFormDialogue";
 const HomePage = () => {
@@ -15,6 +16,7 @@ const HomePage = () => {
             }}
         >
             <NavBar />
+                    <NetworkDiagram />
             <Box
                 sx={{
                     flexGrow: 1,
@@ -27,19 +29,20 @@ const HomePage = () => {
                 }}
             >
                 <Stack
-                    direction="column"
-                    spacing={2} // Adjust spacing as needed
+                    direction="row"
+                    spacing={4}
                     sx={{
                         width: '100%', // Ensures Stack takes full width of its parent
-                        maxWidth: '600px', // Adjust maximum width as needed
+                        maxWidth: '600px',
                         alignItems: 'center', // Centers the children horizontally
+                        marginBottom: 2
                     }}
                 >
                     <InstallFormDialogue installationType="Open vSwitch" endpoint="install-ovs" />
                     <InstallFormDialogue installationType="ONOS" endpoint="install-onos" />
-                    {/* Add other buttons or content here, wrapped in Stack if needed */}
+
                 </Stack>
-                {/* Additional content can go here */}
+
             </Box>
             <Footer />
         </Box>

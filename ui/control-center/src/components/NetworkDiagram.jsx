@@ -1,9 +1,11 @@
 import React, {useEffect, useRef, useState} from 'react';
 import * as d3 from 'd3';
-import {Card, CardContent, Typography} from "@mui/material";
+import {Card, CardContent, Typography, Box} from "@mui/material";
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
 const NetworkDiagram = () => {
     const d3Container = useRef(null);
+    const [apiCallSuccess, setApiCallSuccess] = useState(true);
     const [selectedNode, setSelectedNode] = useState({
         id: '',
         role: '',
@@ -30,7 +32,12 @@ const NetworkDiagram = () => {
     }, []);
     useEffect(() => {
         fetch('http://localhost:8000/onos-network-map/')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
                 console.log(data);
                 if (d3Container.current) {
@@ -66,6 +73,11 @@ const NetworkDiagram = () => {
 
                     drawDiagram(d3Container.current, links, nodes);
                 }
+                setApiCallSuccess(true);
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                setApiCallSuccess(false);
             });
     }, [dimensions]);
 
@@ -145,7 +157,17 @@ const NetworkDiagram = () => {
             bgcolor: '#02032F',
             boxShadow: 3,
         }}>
-            <svg ref={d3Container}></svg>
+            {apiCallSuccess ? (
+                <svg ref={d3Container}></svg>
+                // Your existing diagram rendering logic
+            ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 4 }}>
+                    <ErrorOutlineIcon sx={{ fontSize: 60, color: '#7456FD', padding: "20px" }} />
+                    <Typography variant="body">
+                        Unable to load your network diagram. If there are no compatible devices connected then ignore or check your connection and try again.
+                    </Typography>
+                </Box>
+            )}
 
             {selectedNode && (
                 <Card sx={{ maxWidth: 345, margin: 2, bgcolor: '#7456FD'}}>

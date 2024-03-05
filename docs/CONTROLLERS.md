@@ -19,5 +19,6 @@ cd /opt/karaf-0.8.4/bin/
 sudo ./karaf
 ```
 5. Install the necessary apps from hte ODL command line: `feature:install odl-restconf-all odl-l2switch-switch odl-mdsal-all features-dlux features-dluxapps`
-6. Navigate to the UI at the URL of the VM/Device running ODL for example: http://10.10.10.10:8181/index.html#/node/index 
+6. Navigate to the UI at the URL of the VM/Device running ODL for example: 
+[http://10.10.10.44:8181/index.html#/node/index](http://10.10.10.44:8181/index.html#/node/index)
 where '10.10.10.10' is the IP address of the VM/device. The default username and password is 'admin'.

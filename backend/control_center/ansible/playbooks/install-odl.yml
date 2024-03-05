@@ -1,0 +1,8 @@
+---
+- name: Install ODL
+  hosts: localserver
+  gather_facts: yes
+  become: true
+
+  roles:
+    - ../roles/install-odl

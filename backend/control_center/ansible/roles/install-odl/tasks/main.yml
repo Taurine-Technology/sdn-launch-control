@@ -1,0 +1,28 @@
+---
+- name: Update and Upgrade Apt Packages
+  apt:
+    update_cache: yes
+    upgrade: dist
+
+- name: Install Java (OpenJDK 8)
+  apt:
+    name: openjdk-8-jdk
+    state: present
+
+- name: Set JAVA_HOME Environment Variable
+  lineinfile:
+    path: /etc/environment
+    line: JAVA_HOME="/usr/lib/jvm/java-8-openjdk-amd64"
+    create: yes
+
+- name: Download OpenDaylight
+  get_url:
+    url: "https://nexus.opendaylight.org/content/repositories/opendaylight.release/org/opendaylight/integration/karaf/0.8.4/karaf-0.8.4.tar.gz"
+    dest: "/tmp/karaf-0.8.4.tar.gz"
+    mode: '0644'
+
+- name: Extract OpenDaylight Archive
+  unarchive:
+    src: "/tmp/karaf-0.8.4.tar.gz"
+    dest: "/opt"
+    remote_src: yes

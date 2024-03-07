@@ -3,6 +3,17 @@ Install, manage and do everything Open vSwitch and SDN.
 
 Launch Control is a central management tool for software defined networking (SDN) built to enable easy and automated adoption/installation of the SDN paradigm into new or pre-existing networks.
 
+## Documentation
+
+### Feature Set
+Find details about the feature set [here](FEATURES.md).
+
+### Errors
+Find details about errors and debugging [here](docs/ERRORS.md).
+
+### Controllers
+Find documentation on the controllers [here](docs/CONTROLLERS.md).
+
 ## Running this code
 
 ### Dependencies

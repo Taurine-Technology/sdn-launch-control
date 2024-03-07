@@ -28,3 +28,5 @@
 - Get bridge DPID
 - Generalise network map and interface it with OVS
 - Show controllers on network map
+- Add more versions of OVS
+- Add more versions of ONOS

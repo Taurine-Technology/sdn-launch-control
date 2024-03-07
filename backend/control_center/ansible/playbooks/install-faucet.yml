@@ -1,0 +1,9 @@
+---
+- name: Install Docker and Faucet
+  hosts: localserver
+  gather_facts: yes
+  become: true
+
+  roles:
+    - ../roles/install-docker
+    - ../roles/install-faucet

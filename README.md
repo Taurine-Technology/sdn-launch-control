@@ -6,7 +6,7 @@ Launch Control is a central management tool for software defined networking (SDN
 ## Running this code
 
 ### Dependencies
-Ansible, community.general ansible galaxy collection, Python requirements in requirements.txt. Install it via:
+Ansible, ansible galaxy collections in requirements.yml, openssh, sshpass, Python requirements in requirements.txt. Install it via:
 ```./install.sh```
 
 Or manually:

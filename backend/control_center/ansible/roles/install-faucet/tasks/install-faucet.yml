@@ -1,0 +1,41 @@
+---
+- name: Clone the Faucet git repository
+  git:
+    repo: 'https://github.com/faucetsdn/faucet.git'
+    dest: '/tmp/faucet'
+    clone: yes
+    update: yes
+
+- name: Checkout the latest tag
+  shell: |
+    cd /tmp/faucet
+    latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1))
+    git checkout $latest_tag
+  args:
+    executable: /bin/bash
+
+- name: Build Docker image from Dockerfile
+  docker_image:
+    build:
+      path: /tmp/faucet
+      dockerfile: Dockerfile.faucet
+    name: faucet/faucet
+    source: build
+
+- name: Create directory for Faucet configs and logs
+  file:
+    path: /tmp/faucet/inst
+    state: directory
+
+- name: Run the Faucet Docker container
+  docker_container:
+    name: faucet
+    image: faucet/faucet
+    restart_policy: always
+    volumes:
+      - /tmp/faucet/inst:/etc/faucet/
+      - /tmp/faucet/inst:/var/log/faucet/
+    ports:
+      - "6653:6653"
+      - "9302:9302"
+

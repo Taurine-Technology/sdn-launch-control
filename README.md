@@ -6,14 +6,11 @@ Launch Control is a central management tool for software defined networking (SDN
 ## Running this code
 
 ### Dependencies
-Ansible, ansible galaxy collections in requirements.yml, openssh, sshpass, Python requirements in requirements.txt. Install it via:
-```./install.sh```
-
-Or manually:
-```
-ansible-galaxy collection install community.general
-pip install -r requirements.txt
-```
+1. To run the backend you need to install Ansible, ansible galaxy collections in requirements.yml, openssh, sshpass, Python 
+requirements in requirements.txt locally using the convenience script in the [backend folder](backend/control_center). To install it them: 
+run the script in this folder: `./install.sh`
+2. To run the frontend you need the NPM packages installed. Navigate to [ui/control-center](ui/control-center) and run 
+the convenience script: `./install.sh`
 
 ### Running from Source
 1. Install the dependencies.
@@ -29,4 +26,14 @@ python manage.py createsuperuser
 npm install
 npm start
 ```
-5. Navigate to the UI [here](http://localhost:3000) and the backend [here](http://127.0.0.1:8000/admin).
+4. Navigate to the UI [here](http://localhost:3000) and the backend [here](http://127.0.0.1:8000/admin).
+
+### Run from Convenience Script
+1. To start the backend navigate to the [backend/control_center](backend/control_center) and run the 
+[run.sh](backend/control_center/run.sh) script `./run.sh`. You will still need to run the migrations and create a user:
+```
+python manage.py makemigrations
+python manage.py migrate
+python manage.py createsuperuser
+```
+2. To start the UI navigate to [ui/control-center](ui/control-center) and run the [run.sh](ui/control-center/run.sh) script `./run.sh` 

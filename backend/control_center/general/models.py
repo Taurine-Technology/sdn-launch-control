@@ -6,7 +6,9 @@ class Device(models.Model):
     DEVICE_TYPES = (
         ('switch', 'Switch'),
         ('access_point', 'Access Point'),
-        ('server', 'Server')
+        ('server', 'Server'),
+        ('controller', 'Controller'),
+        ('vm', 'Virtual Machine')
     )
     OS_TYPES = (
         ('ubuntu_20_server', 'Ubuntu 20 Server'),
@@ -57,6 +59,7 @@ class Controller(models.Model):
     TYPES = (
         ('onos', 'Onos'),
         ('odl', 'Open Daylight'),
+        ('faucet', 'Faucet'),
         ('other', 'Other')
     )
     type = models.CharField(max_length=20, choices=TYPES)

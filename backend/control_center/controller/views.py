@@ -19,25 +19,36 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
 logger = logging.getLogger(__name__)
 install_ovs = "install-onos"
+install_faucet = "install-faucet"
+install_odl = "install-odl"
 playbook_dir_path = f"{parent_dir}/ansible/playbooks"
 inventory_path = f"{parent_dir}/ansible/inventory/inventory"
 config_path = f"{parent_dir}/ansible/group_vars/all.yml"
 get_ports = "get-ports"
 
 
-class InstallOnosView(APIView):
-    def post(self, request):
+class InstallControllerView(APIView):
+    def post(self, request, controller_type):
         try:
             data = request.data
             validate_ipv4_address(data.get('lan_ip_address'))
             lan_ip_address = data.get('lan_ip_address')
             write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
             save_ip_to_config(lan_ip_address, config_path)
-            result_install = run_playbook(install_ovs, playbook_dir_path, inventory_path)
+
+            if controller_type == 'onos':
+                result_install = run_playbook(install_ovs, playbook_dir_path, inventory_path)
+            elif controller_type == 'faucet':
+                result_install = run_playbook(install_faucet, playbook_dir_path, inventory_path)
+            elif controller_type == 'odl':
+                result_install = run_playbook(install_odl, playbook_dir_path, inventory_path)
+            else:
+                return Response({"status": "error", "message": "Invalid controller type"}, status=status.HTTP_400_BAD_REQUEST)
+
             if result_install['status'] == 'failed':
                 print(result_install)
                 return Response({"status": "error", "message": result_install['error']}, status=status.HTTP_400_BAD_REQUEST)
-
+            print(f'Installing {controller_type} on device')
             result = run_playbook(get_ports, playbook_dir_path, inventory_path)
             interfaces = check_system_details(result)
             print(f'Interfaces: {interfaces}')
@@ -64,16 +75,14 @@ class InstallOnosView(APIView):
                     for interface in interfaces:
                         port, created_ports = Port.objects.get_or_create(
                             name=interface,
-                            defaults={
-                                'device': device
-                            }
+                            device=device
                         )
             controller = Controller.objects.get_or_create(
-                type='onos',
+                type=controller_type,
                 device=device,
                 lan_ip_address=lan_ip_address
             )
-            message = "ONOS Installed." if created else "ONOS already installed."
+            message = "Controller Installed." if created else "Controller already installed."
             return Response({"status": "success", "message": message}, status=status.HTTP_200_OK)
         except ValidationError:
             return Response({"status": "error", "message": "Invalid IP address format."},

@@ -19,7 +19,7 @@ from django.urls import path
 
 from ovs_install.views import InstallOvsView
 from ovs_management.views import EditBridge, GetDevicePorts, CreateBridge, GetDeviceBridges, DeleteBridge, DeleteControllerView, GetUnassignedDevicePorts
-from controller.views import InstallOnosView
+from controller.views import InstallControllerView
 from general.views import (AddDeviceView, DeviceDetailsView, DeviceListView, DeviceBridgesView, DevicePortsView,
                            CheckDeviceConnectionView, DeleteDeviceView, UpdateDeviceView, AddControllerView, ControllerListView,
                            )
@@ -29,7 +29,7 @@ urlpatterns = [
     path('add-device/', AddDeviceView.as_view(), name='add-device'),
     path('device-details/<str:lan_ip_address>/', DeviceDetailsView.as_view(), name='device-details'),
     path('install-ovs/', InstallOvsView.as_view(), name='install-ovs'),
-    path('install-onos/', InstallOnosView.as_view(), name='install-onos'),
+    path('install-controller/<str:controller_type>/', InstallControllerView.as_view(), name='install-controller'),
     path('devices/', DeviceListView.as_view(), name='device-list'),
     path('controllers/', ControllerListView.as_view(), name='controller-list'),
     path('delete-controller/', DeleteControllerView.as_view(), name='delete-controller'),

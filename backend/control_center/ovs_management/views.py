@@ -10,7 +10,7 @@ from django.db import transaction
 from ovs_install.utilities.services.ovs_port_setup import setup_ovs_port
 from ovs_install.utilities.ansible_tasks import run_playbook
 from ovs_install.utilities.utils import check_system_details
-from ovs_install.utilities.ovs_results_format import format_ovs_show
+from ovs_install.utilities.ovs_results_format import format_ovs_show, format_ovs_show_bridge_command
 from general.models import Device, Bridge, Port
 from django.shortcuts import get_object_or_404
 from django.core.validators import validate_ipv4_address
@@ -148,6 +148,26 @@ class GetDeviceBridges(APIView):
     def get(self, request, lan_ip_address):
         try:
             validate_ipv4_address(lan_ip_address)
+            result = run_playbook(ovs_show, playbook_dir_path, inventory_path)
+            if result['status'] == 'failed':
+                return Response({'status': 'error', 'message': result['error']},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            bridges = format_ovs_show(result)
+            return Response({'status': 'success', 'bridges': bridges}, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            logger.error(f'Validation error: {str(e)}', exc_info=True)
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f'Error in GetDeviceBridges: {str(e)}', exc_info=True)
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class GetDeviceBridgeDpid(APIView):
+    def get(self, request):
+        try:
+            data = request.data
+            lan_ip_address = data.get('lan_ip_address')
+            validate_ipv4_address(lan_ip_address)
+
             result = run_playbook(ovs_show, playbook_dir_path, inventory_path)
             if result['status'] == 'failed':
                 return Response({'status': 'error', 'message': result['error']},
@@ -350,6 +370,9 @@ class CreateBridge(APIView):
             if create_bridge['status'] == 'failed':
                 return Response({'status': 'error', 'message': 'error creating bridge'},
                                 status=status.HTTP_400_BAD_REQUEST)
+            get_bridge_details = run_playbook('ovs-bridge-details', playbook_dir_path, inventory_path)
+            bridge_details = format_ovs_show_bridge_command(get_bridge_details['results'])
+            dpid = bridge_details['dpid']
             if data.get('controller_ip'):
                 port = data.get('controller_port')
                 controller_ip = data.get('controller_ip')
@@ -366,14 +389,14 @@ class CreateBridge(APIView):
                 bridge = Bridge.objects.create(
                     name=data.get('name'),
                     device=device,
-                    dpid='123',
+                    dpid=dpid,
                     controller=controller,
                 )
             else:
                 bridge = Bridge.objects.create(
                     name=data.get('name'),
                     device=device,
-                    dpid='123',
+                    dpid=dpid,
                 )
 
             add_interfaces = run_playbook('ovs-port-setup', playbook_dir_path, inventory_path)

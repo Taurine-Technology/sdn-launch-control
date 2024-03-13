@@ -72,13 +72,19 @@ def format_ovs_show_bridge_command(results):
     :param results:
     :return:
     """
-    key = 'Show bridge output'
-    target = 'ovs_bridge_output.stdout_lines'
+    key = 'Get Bridge DPID and details'
+    target = 'stdout'
     bridge_results = {}
+
     if results.get(key):
         results_dic = results[key]
+        # print(f'Dictionary with key {key}')
+        # print(results_dic)
         show_output = results_dic[target]
-        # show_output = show_output.split(',')
+        # print(f'Output with target {target}')
+        # print(show_output)
+        show_output = show_output.split('\n')
+        # print(show_output)
         ofpt_features = show_output[0]
         ofpt_features = ofpt_features.split(' ')
         of_version = ofpt_features[1]
@@ -92,6 +98,5 @@ def format_ovs_show_bridge_command(results):
         bridge_results['n_tables'] = n_tables
         bridge_results['n_buffers'] = n_buffers
         return bridge_results
-
     bridge_results = None
     return bridge_results

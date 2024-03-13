@@ -1,0 +1,7 @@
+---
+- name: Get Bridge DPID and details
+  command: "sudo ovs-ofctl -O OpenFlow13 show {{ bridge_name }}"
+  register: ovs_output
+- name: Show output
+  debug:
+    var: ovs_output.stdout_lines

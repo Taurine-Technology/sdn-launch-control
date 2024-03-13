@@ -21,4 +21,4 @@ class BridgePorts(admin.ModelAdmin):
 
 @admin.register(Controller)
 class ControllerAdmin(admin.ModelAdmin):
-    list_display = ('lan_ip_address', 'type', 'device')
+    list_display = ('type', 'device')

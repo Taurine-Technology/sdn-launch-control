@@ -64,6 +64,5 @@ class Controller(models.Model):
     )
     type = models.CharField(max_length=20, choices=TYPES)
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='sdn_controller')
-    lan_ip_address = models.GenericIPAddressField(unique=True)
     switches = models.ManyToManyField(Device, related_name='switch_controllers')
     port_num = models.IntegerField(default=6653)

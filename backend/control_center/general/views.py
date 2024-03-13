@@ -183,16 +183,18 @@ class DeleteDeviceView(APIView):
                     bridge_host_device = bridge.device
                     bridge_host_lan_ip_address = bridge_host_device.lan_ip_address
                     save_bridge_name_to_config(bridge_name, config_path)
-                    write_to_inventory(bridge_host_lan_ip_address, bridge_host_device.username, bridge_host_device.password, inventory_path)
+                    write_to_inventory(bridge_host_lan_ip_address, bridge_host_device.username,
+                                       bridge_host_device.password, inventory_path)
                     save_ip_to_config(bridge_host_lan_ip_address, config_path)
                     delete_controller = run_playbook('remove-controller', playbook_dir_path, inventory_path)
                     if delete_controller.get('status') == 'success':
                         bridge.controller = None
                         bridge.save()
                     else:
-                        return Response({'status': 'failed', 'message': 'Unable to remove controller from assosciated bridges'
-                                                                        ' due to external system failure.'},
-                                        status=status.HTTP_400_BAD_REQUEST)
+                        return Response(
+                            {'status': 'failed', 'message': 'Unable to remove controller from assosciated bridges'
+                                                            ' due to external system failure.'},
+                            status=status.HTTP_400_BAD_REQUEST)
             # delete bridges on the device
             if bridges:
                 for b in bridges:
@@ -274,6 +276,7 @@ class DevicePortsView(APIView):
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 # class UnassignedDevicePortsView(APIView):
 #     def get(self, request, lan_ip_address):
 #         try:
@@ -314,13 +317,11 @@ class ControllerListView(APIView):
             for controller in controllers:
                 print(controller.switches.all())  # Check the output
 
-
-
             data = [
-                            {
+                {
                     "type": controller.type,
                     "device": controller.device.name,
-                    "lan_ip_address": controller.lan_ip_address,
+                    "lan_ip_address": controller.device.lan_ip_address,
                     "switches": [
                         {
                             "name": switch.name,

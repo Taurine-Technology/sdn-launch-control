@@ -4,9 +4,16 @@ from .models import Controller
 
 
 class ControllerSerializer(serializers.ModelSerializer):
+    lan_ip_address = serializers.SerializerMethodField()
+
     class Meta:
         model = Controller
-        fields = '__all__'
+        fields = ['type', 'port_num', 'lan_ip_address']  # Include other fields as needed
+
+    def get_lan_ip_address(self, obj):
+        # Here, obj is a Controller instance
+        # Return the lan_ip_address of the associated Device
+        return obj.device.lan_ip_address if obj.device else None
 
 
 class PortSerializer(serializers.ModelSerializer):
@@ -25,8 +32,9 @@ class DeviceSerializer(serializers.ModelSerializer):
 class BridgeSerializer(serializers.ModelSerializer):
     device = DeviceSerializer(read_only=True)
     ports = PortSerializer(many=True, read_only=True)
-    controller = ControllerSerializer(read_only=True)
+    controller = ControllerSerializer(read_only=True)  # Make sure this is included
 
     class Meta:
         model = Bridge
         fields = ['name', 'dpid', 'device', 'ports', 'controller']
+

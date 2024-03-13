@@ -234,13 +234,18 @@ class EditBridge(APIView):
                     controller_data = data.get('controller')
                     if controller_data:
                         print(f'Controller data: {controller_data}')
-                        controller = Controller.objects.get(lan_ip_address=controller_data.get('lan_ip_address'))
+                        device = Device.objects.get(lan_ip_address=controller_data.get('lan_ip_address'))
+                        controller = Controller.objects.get(device=device)
                         original_controller = original_bridge.controller
+                        controller_ip = device.lan_ip_address
+
                         if controller != original_controller:
                             print('New controller assigned')
                             # completely new controller
                             if original_controller is not None:
-                                if controller.lan_ip_address != original_controller.lan_ip_address:
+                                original_device = original_controller.device
+                                original_controller_ip = original_device.lan_ip_address
+                                if controller_ip != original_controller_ip:
                                     # remove old controller
                                     save_bridge_name_to_config(bridge_name, config_path)
                                     write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
@@ -249,18 +254,23 @@ class EditBridge(APIView):
                                                                      inventory_path)
                                     # add new controller to the bridge
                                     save_controller_port_to_config(controller.port_num, config_path)
-                                    save_controller_ip_to_config(controller.lan_ip_address, config_path)
+                                    save_controller_ip_to_config(controller_ip, config_path)
                                     assign_controller = run_playbook('connect-to-controller', playbook_dir_path,
                                                                      inventory_path)
                                     if delete_controller.get('status') == 'success' and assign_controller.get(
                                             'status') == 'success':
                                         original_controller = original_bridge.controller
-                                        switch_to_unassign = original_controller.switches.get(
-                                            lan_ip_address=lan_ip_address)
-                                        original_controller.switches.remove(switch_to_unassign)
-                                        original_bridge.controller = controller
+                                        try:
+                                            switch_to_unassign = original_controller.switches.get(lan_ip_address=lan_ip_address)
+                                            # If we found the switch, remove it from the controller
+                                            original_controller.switches.remove(switch_to_unassign)
+                                        except Device.DoesNotExist:
+                                            # If the device does not exist, just pass and continue
+                                            pass
 
+                                        original_bridge.controller = controller
                                         original_bridge.save()
+
                                     else:
                                         return Response({'status': 'failed',
                                                          'message': 'Unable to change controller due to external system failure.'},
@@ -273,7 +283,7 @@ class EditBridge(APIView):
                                 # no controller was assigned before
                                 write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
                                 save_controller_port_to_config(controller.port_num, config_path)
-                                save_controller_ip_to_config(controller.lan_ip_address, config_path)
+                                save_controller_ip_to_config(controller_ip, config_path)
                                 assign_controller = run_playbook('connect-to-controller', playbook_dir_path,
                                                                  inventory_path)
                                 if assign_controller.get('status') == 'success':
@@ -343,7 +353,8 @@ class CreateBridge(APIView):
             if data.get('controller_ip'):
                 port = data.get('controller_port')
                 controller_ip = data.get('controller_ip')
-                controller = get_object_or_404(Controller, lan_ip_address=controller_ip)
+                controller_device = Device.objects.get(lan_ip_address=controller_ip)
+                controller = get_object_or_404(Controller, device=controller_device)
 
                 save_controller_port_to_config(port, config_path)
                 save_controller_ip_to_config(controller_ip, config_path)
@@ -406,9 +417,10 @@ class DeleteBridge(APIView):
                     delete_bridge = run_playbook('ovs-delete-bridge', playbook_dir_path, inventory_path)
                     if delete_bridge.get('status') == 'success':
                         # Delete the bridge from the database
-                        if Port.objects.filter(name=bridge.name).exists():
-                            port_to_del = Port.objects.get(name=bridge.name)
-                            port_to_del.delete()
+                        # this is not necessary as deleting the bridge will remove it from the port
+                        # if Port.objects.filter(name=bridge.name).exists():
+                        #     port_to_del = Port.objects.get(name=bridge.name)
+                        #     port_to_del.delete()
                         bridge.delete()
 
                         return Response({'status': 'success', 'message': f'Bridge {bridge_name} deleted successfully.'},

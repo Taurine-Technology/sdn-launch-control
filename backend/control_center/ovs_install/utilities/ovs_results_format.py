@@ -1,9 +1,9 @@
 """
-Author: Keegan White
+Author(s): Keegan White
 Maintainer: Keegan White
 Contact: keeganthomaswhite@gmail.com
 Created: Jan 11, 2024
-Last Modified: Jan 11, 2024
+Last Modified: Mar 13, 2024
 
 Description:
 This script contains utility functions designed for parsing and formatting the results obtained from Ansible playbooks

@@ -246,9 +246,12 @@ class EditBridge(APIView):
                     for i in ports_to_remove:
                         port = Port.objects.get(
                             name=i,
+                            device=device
+
                         )
-                        port_to_del = Port.objects.get(name=port.name)
+                        port_to_del = Port.objects.get(name=port.name, device=port.device)
                         port_to_del.bridge = None
+                        port_to_del.save(update_fields=['bridge', 'device'])
                 # return Response({'status': 'success', 'message': 'done'}, status=status.HTTP_200_OK)
                 if data.get('controller'):
                     controller_data = data.get('controller')

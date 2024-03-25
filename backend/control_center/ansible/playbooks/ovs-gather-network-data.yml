@@ -1,0 +1,9 @@
+---
+- name: Get OVS Network Details
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  vars_files:
+    - ../group_vars/all.yml
+  roles:
+    - ../roles/ovs-dump-flows

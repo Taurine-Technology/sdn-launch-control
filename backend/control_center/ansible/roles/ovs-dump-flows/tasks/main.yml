@@ -1,0 +1,3 @@
+---
+- name: Get Flow Details
+  import_tasks: dump_flows.yml

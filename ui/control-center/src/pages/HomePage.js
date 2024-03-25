@@ -2,9 +2,10 @@ import React, {useState} from 'react';
 import NavBar from "../components/NavBar";
 import {Box, Card, CardContent, Stack} from '@mui/material';
 import Footer from "../components/Footer";
-import NetworkDiagram from "../components/NetworkDiagram";
+import OnosNetworkDiagram from "../components/OnosNetworkDiagram";
 import Button from '@mui/material/Button';
 import InstallFormDialogue from "../components/InstallFormDialogue";
+import OvsNetworkDiagram from "../components/OvsNetworkDiagram";
 const HomePage = () => {
     return (
         <Box
@@ -16,7 +17,7 @@ const HomePage = () => {
             }}
         >
             <NavBar />
-                    <NetworkDiagram />
+                    <OvsNetworkDiagram />
             <Box
                 sx={{
                     flexGrow: 1,

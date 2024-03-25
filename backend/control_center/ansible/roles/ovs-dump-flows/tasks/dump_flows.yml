@@ -1,0 +1,7 @@
+---
+- name: Show OVS Dump Flow Details
+  command: "ovs-ofctl -OOpenFlow13 --names --no-stat dump-flows {{ bridge_name }}"
+  register: ovs_bridge_output
+- name: Show bridge output
+  debug:
+    var: ovs_bridge_output.stdout_lines

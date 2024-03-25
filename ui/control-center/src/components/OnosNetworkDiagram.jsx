@@ -3,7 +3,7 @@ import * as d3 from 'd3';
 import {Card, CardContent, Typography, Box} from "@mui/material";
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
-const NetworkDiagram = () => {
+const OnosNetworkDiagram = () => {
     const d3Container = useRef(null);
     const [apiCallSuccess, setApiCallSuccess] = useState(true);
     const [selectedNode, setSelectedNode] = useState({
@@ -159,7 +159,7 @@ const NetworkDiagram = () => {
         }}>
             {apiCallSuccess ? (
                 <svg ref={d3Container}></svg>
-                // Your existing diagram rendering logic
+
             ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 4 }}>
                     <ErrorOutlineIcon sx={{ fontSize: 60, color: '#7456FD', padding: "20px" }} />
@@ -190,4 +190,4 @@ const NetworkDiagram = () => {
     );
 };
 
-export default NetworkDiagram;
+export default OnosNetworkDiagram;

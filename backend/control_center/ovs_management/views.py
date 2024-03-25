@@ -230,6 +230,7 @@ class EditBridge(APIView):
                     for i in ports_to_add:
                         port, created = Port.objects.get_or_create(
                             name=i,
+                            device=device,
                         )
                         port.bridge = bridge
                         port.device = device

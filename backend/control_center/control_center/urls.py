@@ -23,7 +23,7 @@ from controller.views import InstallControllerView
 from general.views import (AddDeviceView, DeviceDetailsView, DeviceListView, DeviceBridgesView, DevicePortsView,
                            CheckDeviceConnectionView, DeleteDeviceView, UpdateDeviceView, AddControllerView, ControllerListView,
                            )
-from network_map.views import OnosNetworkMap
+from network_map.views import OnosNetworkMap, OvsNetworkMap
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('add-device/', AddDeviceView.as_view(), name='add-device'),
@@ -45,5 +45,6 @@ urlpatterns = [
     path('update-bridge/', EditBridge.as_view(), name='edit-bridge'),
     path('delete-bridge/', DeleteBridge.as_view(), name='delete-bridge'),
     path('onos-network-map/', OnosNetworkMap.as_view(), name='onos-network-map'),
+    path('ovs-network-map/', OvsNetworkMap.as_view(), name='ovs-network-map'),
 ]
 

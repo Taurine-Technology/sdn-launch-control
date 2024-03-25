@@ -3,7 +3,7 @@ Author(s): Keegan White
 Maintainer: Keegan White
 Contact: keeganthomaswhite@gmail.com
 Created: Jan 11, 2024
-Last Modified: Mar 13, 2024
+Last Modified: Mar 25, 2024
 
 Description:
 This script contains utility functions designed for parsing and formatting the results obtained from Ansible playbooks
@@ -100,3 +100,43 @@ def format_ovs_show_bridge_command(results):
         return bridge_results
     bridge_results = None
     return bridge_results
+
+
+def format_ovs_dump_flows(results):
+    """
+    Used to fomat 'ovs-ofctl -OOpenFlow13 --names --no-stat dump-flows {{ bridge_name }}
+    :param results:
+    :return:
+    """
+    key = 'Show OVS Dump Flow Details'
+    target = 'stdout'
+    bridge_results = {}
+
+    if results.get(key):
+        results_dic = results[key]
+        show_output = results_dic[target]
+        show_output = show_output.split('\n')
+        # print('***')
+        flows = []
+        for row in show_output:
+            row_arr = row.split(',')
+            flow = {}
+            for i in row_arr:
+                if 'in_port' in i:
+                    # print(i.split('=')[-1])
+                    flow['in_port'] = i.split('=')[-1]
+                elif 'dl_src' in i:
+                    # print(i.split('=')[-1])
+                    flow['dl_src'] = i.split('=')[-1]
+                elif 'dl_dst' in i:
+                    data = i.split(' ')
+                    # print(data[0].split('=')[-1])
+                    # print(data[1].split('output:')[-1])
+                    flow['dl_dst'] = data[0].split('=')[-1]
+                    flow['out_port'] = data[1].split('output:')[-1]
+            if flow:
+                # print(flow)
+                flows.append(flow)
+        # print('***')
+
+        return flows

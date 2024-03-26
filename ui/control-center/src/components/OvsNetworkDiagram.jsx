@@ -1,13 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { Card, CardContent, Typography, Box } from "@mui/material";
+import { Card, CardContent, Typography, Box, Alert, CircularProgress, } from "@mui/material";
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import switchIcon from '../images/hub.png';
 import serverIcon from '../images/server.png';
 const OvsNetworkDiagram = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [alert, setAlert] = useState({ show: false, type: '', message: '' });
     const d3Container = useRef(null);
     const [apiCallSuccess, setApiCallSuccess] = useState(true);
-    const [selectedNode, setSelectedNode] = useState(null);
+    const [selectedNode, setSelectedNode] = useState({
+        id: '',
+        type: '',
+    });
 
     const [dimensions, setDimensions] = useState({
         width: window.innerWidth * 0.8,
@@ -27,6 +32,7 @@ const OvsNetworkDiagram = () => {
     }, []);
 
     useEffect(() => {
+        setIsLoading(true)
         fetch('http://localhost:8000/ovs-network-map/')
             .then(response => {
                 if (!response.ok) {
@@ -35,13 +41,17 @@ const OvsNetworkDiagram = () => {
                 return response.json();
             })
             .then(data => {
+                setIsLoading(false);
+                setApiCallSuccess(true);
                 if (d3Container.current) {
+
                     const nodes = [];
                     const links = [];
 
                     // Process each switch and its flows to create nodes and links
                     Object.entries(data.data).forEach(([switchName, switchInfo]) => {
                         switchInfo.bridges.forEach(bridge => {
+
                             const switchNode = {
                                 id: bridge.name,
                                 type: 'switch',
@@ -88,17 +98,26 @@ const OvsNetworkDiagram = () => {
                     });
 
                     drawDiagram(d3Container.current, links, nodes);
+
                 }
-                setApiCallSuccess(true);
+
+
             })
             .catch(error => {
                 console.error('Fetch error:', error);
                 setApiCallSuccess(false);
+                setIsLoading(false);
             });
+
     }, []);
 
     const drawDiagram = (container, links, nodes) => {
+
         const svg = d3.select(container);
+        if (!svg) {
+            console.log('SVG not found');
+            return;
+        }
         svg.selectAll("*").remove(); // Clear SVG content before redrawing
 
         svg.attr('width', dimensions.width).attr('height', dimensions.height);
@@ -187,30 +206,60 @@ const OvsNetworkDiagram = () => {
 
     return (
         <Card sx={{ margin: 2, bgcolor: '#02032F', boxShadow: 3 }}>
-            {apiCallSuccess ? (
-                <svg ref={d3Container}></svg>
-            ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 4 }}>
-                    <ErrorOutlineIcon sx={{ fontSize: 60, color: '#7456FD', padding: "20px" }} />
-                    <Typography variant="body">
-                        Unable to load the network diagram. Check your connection and try again.
-                    </Typography>
-                </Box>
-            )}
-            {selectedNode && (
-                <Card sx={{ maxWidth: 345, margin: 2, bgcolor: '#7456FD'}}>
+            <CardContent>
+                {isLoading && (
+                    <Box sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingTop: '10px',
+                        height: '100%',
+                    }}>
+                        <CircularProgress size={100}/>
+                    </Box>
+                )}
+                <div>
+
+                    {apiCallSuccess ? (
+                                <svg ref={d3Container}></svg>
+                            ) : (
+
+                                <Box sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    height: '100%',
+                                    padding: 4
+                                }}>
+                                    <ErrorOutlineIcon sx={{fontSize: 60, color: '#7456FD', padding: "20px"}}/>
+                                    <Typography variant="body">
+                                        Unable to load the network diagram. Check your connection and try again.
+                                    </Typography>
+                                </Box>
+                            )
+                        }
+                    {selectedNode && (
+                        <Card sx={{maxWidth: 345, margin: 2, bgcolor: '#7456FD'}}>
                     <CardContent>
                         <Typography gutterBottom variant="h2">
                             Details
                         </Typography>
                         <Typography variant="body">
-                            ID: {selectedNode.id}<br />
-                            Type: {selectedNode.type}<br />
+                            ID: {selectedNode.id}<br/>
+                            Type: {selectedNode.type}<br/>
                         </Typography>
                     </CardContent>
-                </Card>
-            )}
         </Card>
+                        )}
+
+
+                    )
+                </div>
+            </CardContent>
+
+        </Card>
+
     );
 };
 

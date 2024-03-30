@@ -20,4 +20,4 @@
 - Install a controller
 
 ## Network Management
-- Visualise ONOS networks
+- Visualise OVS networks

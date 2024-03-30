@@ -48,3 +48,7 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 2. To start the UI navigate to [ui/control-center](ui/control-center) and run the [run.sh](ui/control-center/run.sh) script `./run.sh` 
+
+## Contribute
+Find out what we are doing and what needs to be done [here](https://trello.com/b/IVWKfVkB/launch-control). Email
+keeganwhite@taurinetech.com to contribute or open a draft pull request.

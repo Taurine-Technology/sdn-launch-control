@@ -205,59 +205,55 @@ const OvsNetworkDiagram = () => {
     };
 
     return (
-        <Card sx={{ margin: 2, bgcolor: '#02032F', boxShadow: 3 }}>
-            <CardContent>
-                {isLoading && (
-                    <Box sx={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        paddingTop: '10px',
-                        height: '100%',
-                    }}>
-                        <CircularProgress size={100}/>
-                    </Box>
-                )}
-                <div>
+            <Card sx={{ margin: 2, bgcolor: '#02032F', boxShadow: 3 }}>
+                <CardContent>
+                    {isLoading && (
+                        <Box sx={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            paddingTop: '10px',
+                            height: '100%',
+                        }}>
+                            <CircularProgress size={100}/>
+                        </Box>
+                    )}
+                    <div>
 
-                    {apiCallSuccess ? (
-                                <svg ref={d3Container}></svg>
-                            ) : (
-
-                                <Box sx={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    height: '100%',
-                                    padding: 4
-                                }}>
-                                    <ErrorOutlineIcon sx={{fontSize: 60, color: '#7456FD', padding: "20px"}}/>
-                                    <Typography variant="body">
-                                        Unable to load the network diagram. Check your connection and try again.
-                                    </Typography>
-                                </Box>
-                            )
-                        }
-                    {selectedNode && (
-                        <Card sx={{maxWidth: 345, margin: 2, bgcolor: '#7456FD'}}>
-                    <CardContent>
-                        <Typography gutterBottom variant="h2">
-                            Details
-                        </Typography>
-                        <Typography variant="body">
-                            ID: {selectedNode.id}<br/>
-                            Type: {selectedNode.type}<br/>
-                        </Typography>
-                    </CardContent>
-        </Card>
+                        {apiCallSuccess ? (
+                                    <svg ref={d3Container}></svg>
+                                ) : (
+                                    <Box sx={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        height: '100%',
+                                        padding: 4
+                                    }}>
+                                        <ErrorOutlineIcon sx={{fontSize: 60, color: '#7456FD', padding: "20px"}}/>
+                                        <Typography variant="body">
+                                            Unable to load the network diagram. Check your connection and try again.
+                                        </Typography>
+                                    </Box>
+                                )
+                            }
+                        {selectedNode && (
+                            <Card sx={{maxWidth: 345, margin: 2, bgcolor: '#7456FD'}}>
+                        <CardContent>
+                            <Typography gutterBottom variant="h2">
+                                Details
+                            </Typography>
+                            <Typography variant="body">
+                                ID: {selectedNode.id}<br/>
+                                Type: {selectedNode.type}<br/>
+                            </Typography>
+                        </CardContent>
+            </Card>
                         )}
-
-
                     )
                 </div>
             </CardContent>
-
         </Card>
 
     );

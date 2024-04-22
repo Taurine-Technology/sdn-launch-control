@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+  sniffer:
+    container_name: packet-sniffer
+    build: .
+    restart: unless-stopped
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    network_mode: "host"
+    volumes:
+      - ./logs:/app/logs
+    environment:
+      - SWITCH_ID=of:00001c61b4fefb88
+      - API_BASE_URL=http://10.8.8.2:5000
+      - INTERFACE=eth2
+      - PORT_TO_ROUTER=1
+      - PORT_TO_CLIENTS=2

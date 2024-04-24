@@ -1,0 +1,8 @@
+---
+- name: Install Docker on Raspberry Pi
+  hosts: localserver
+  gather_facts: yes
+  become: true
+
+  roles:
+    - ../roles/docker-install-pi

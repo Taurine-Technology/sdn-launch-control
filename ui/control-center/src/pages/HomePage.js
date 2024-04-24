@@ -1,11 +1,9 @@
-import React, {useState} from 'react';
 import NavBar from "../components/NavBar";
-import {Box, Card, CardContent, Stack} from '@mui/material';
+import {Box, Stack} from '@mui/material';
 import Footer from "../components/Footer";
-import OnosNetworkDiagram from "../components/OnosNetworkDiagram";
-import Button from '@mui/material/Button';
 import InstallFormDialogue from "../components/InstallFormDialogue";
 import OvsNetworkDiagram from "../components/OvsNetworkDiagram";
+
 const HomePage = () => {
     return (
         <Box

@@ -1,0 +1,3 @@
+---
+- name: Install Docker and Docker Compose on Pi
+  import_tasks: install-docker.yml

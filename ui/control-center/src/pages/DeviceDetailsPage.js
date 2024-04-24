@@ -22,6 +22,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import BridgeList from "../components/BridgeList";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialogue";
 import EditBridgeDialogue from "../components/EditBridgeDialogue";
+import DeviceStatsGraph from "../components/DeviceStatsGraph";
 
 const DeviceDetailsPage = () => {
     // general variables
@@ -426,6 +427,7 @@ const DeviceDetailsPage = () => {
                     </CardContent>
                 </Card>*/}
             </Box>
+            <DeviceStatsGraph targetIpAddress={deviceIp}/>
             <Footer />
 
         </Box>

@@ -23,6 +23,7 @@ import BridgeList from "../components/BridgeList";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialogue";
 import EditBridgeDialogue from "../components/EditBridgeDialogue";
 import DeviceStatsGraph from "../components/DeviceStatsGraph";
+import PortStatsGraph from "../components/PortStatsGraph";
 
 const DeviceDetailsPage = () => {
     // general variables
@@ -47,6 +48,8 @@ const DeviceDetailsPage = () => {
     const [oldIpAddress, setOldIpAddress] = useState('');
     const [editBridgeDialogOpen, setEditBridgeDialogOpen] = useState(false);
     const [bridgeToEdit, setBridgeToEdit] = useState(null);
+    const [selectedBridge, setSelectedBridge] = useState('');
+    const [bridgePorts, setBridgePorts] = useState([]);
 
     const handleEditBridge = (bridge) => {
         setBridgeToEdit(bridge);
@@ -98,6 +101,17 @@ const DeviceDetailsPage = () => {
                 setBridgesFetched(true);
             })
             .catch(error => console.error('Error fetching bridges:', error));
+    };
+
+    const handleBridgeChange = (event) => {
+        const bridgeName = event.target.value;
+        setSelectedBridge(bridgeName);
+        const bridge = bridges.find(b => b.name === bridgeName);
+        if (bridge) {
+            // Assuming bridge has a property 'ports' that is an array of port numbers
+            setBridgePorts(bridge.ports);
+
+        }
     };
 
     const updateBridges = ( ) => {
@@ -225,7 +239,7 @@ const DeviceDetailsPage = () => {
     const handleClose = () => {
         setAlert({ show: false, type: '', message: '' })
     }
-
+    console.log('Bridge Ports ', bridgePorts)
     return (
         <Box
             sx={{
@@ -426,8 +440,30 @@ const DeviceDetailsPage = () => {
                         )}
                     </CardContent>
                 </Card>*/}
+                <Card raised sx={{ marginTop: 4, marginBottom: 4 }}>
+                    <CardContent>
+                        <Typography variant="h5" sx={{ margin: 2 }}>Select a Bridge for QoS Stats:</Typography>
+                        <FormControl fullWidth>
+                            <InputLabel id="bridge-select-label">Bridge</InputLabel>
+                            <Select
+                                labelId="bridge-select-label"
+                                value={selectedBridge}
+                                label="Bridge"
+                                onChange={handleBridgeChange}
+                            >
+                                {bridges.map((bridge, index) => (
+                                    <MenuItem key={index} value={bridge.name}>{bridge.name}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </CardContent>
+                </Card>
+                {selectedBridge && (
+                    <PortStatsGraph targetIpAddress={deviceIp} targetPorts={bridgePorts} />
+                )}
             </Box>
             <DeviceStatsGraph targetIpAddress={deviceIp}/>
+
             <Footer />
 
         </Box>

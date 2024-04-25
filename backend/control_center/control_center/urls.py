@@ -20,7 +20,7 @@ from django.urls import path
 from ovs_install.views import InstallOvsView
 from ovs_management.views import EditBridge, GetDevicePorts, CreateBridge, GetDeviceBridges, DeleteBridge, DeleteControllerView, GetUnassignedDevicePorts
 from controller.views import InstallControllerView
-from device_monitoring.views import post_device_stats
+from device_monitoring.views import post_device_stats, post_openflow_metrics
 from general.views import (AddDeviceView, DeviceDetailsView, DeviceListView, DeviceBridgesView, DevicePortsView,
                            CheckDeviceConnectionView, DeleteDeviceView, UpdateDeviceView, AddControllerView, ControllerListView,
                            )
@@ -48,5 +48,6 @@ urlpatterns = [
     path('onos-network-map/', OnosNetworkMap.as_view(), name='onos-network-map'),
     path('ovs-network-map/', OvsNetworkMap.as_view(), name='ovs-network-map'),
     path('post_device_stats/', post_device_stats, name='post_device_stats'),
+    path('post_openflow_metrics/', post_openflow_metrics, name='post_openflow_metrics'),
 ]
 

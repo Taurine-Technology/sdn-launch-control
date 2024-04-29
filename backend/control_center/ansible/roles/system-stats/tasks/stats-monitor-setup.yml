@@ -1,0 +1,17 @@
+---
+
+- name: Create directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0777'
+  with_items:
+    - "/mnt/stats"
+
+- name: Copy files to Server
+  copy:
+    src: "{{ playbook_dir }}/resources/system-stats-logger/"
+    dest: "/mnt/stats"
+
+- name: Build Docker Container
+  command: "docker compose -f /mnt/stats/docker-compose.yml up -d"

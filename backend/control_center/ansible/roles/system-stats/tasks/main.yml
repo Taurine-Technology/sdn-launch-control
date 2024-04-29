@@ -1,0 +1,3 @@
+---
+- name: Build Stats monitor
+  import_tasks: stats-monitor-setup.yml

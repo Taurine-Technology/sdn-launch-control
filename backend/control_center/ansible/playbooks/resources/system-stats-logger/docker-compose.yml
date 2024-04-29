@@ -3,7 +3,7 @@ services:
   monitor:
     build: .
     environment:
-      DEVICE_IP: "10.10.10.3"
+      DEVICE_IP: "10.10.10.11"
       API_URL: "http://10.10.10.2:8000/post_device_stats/"
     volumes:
       - .:/app

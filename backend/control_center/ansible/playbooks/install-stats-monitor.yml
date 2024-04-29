@@ -1,0 +1,9 @@
+---
+- name: Install Stats monitor
+  hosts: localserver
+  gather_facts: yes
+  become: true
+
+  roles:
+    - ../roles/docker-install-pi
+    - ../roles/system-stats

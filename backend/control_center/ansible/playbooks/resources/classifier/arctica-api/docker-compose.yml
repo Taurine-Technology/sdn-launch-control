@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   web:
-    container_name: classifier-api
+    container_name: packet-classifier-api
     build: ./api
     ports:
       - "5000:5000"
@@ -29,3 +29,10 @@ services:
       - HTTP_METER_PRIORITY=60000
       - TLS_METER_PRIORITY=60000
       - DEFAULT_METER_PRIORITY=45000
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [ gpu ]
+              count: 1

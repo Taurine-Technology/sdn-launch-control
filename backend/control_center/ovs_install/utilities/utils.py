@@ -3,7 +3,7 @@ Author: Keegan White
 Maintainer: Keegan White
 Contact: keeganthomaswhite@gmail.com
 Created: Sep 4, 2023
-Last Modified: April 30, 2024
+Last Modified: May 1, 2024
 
 Description:
 This script provides various utility functions for interacting with and configuring an Open vSwitch (OVS) environment.
@@ -49,6 +49,10 @@ def save_ip_to_config(ip, config_path):
 
 def save_api_url_to_config(api_url, config_path):
     update_config({'api_url': api_url}, config_path)
+
+
+def save_openflow_version_to_config(openflow_version, config_path):
+    update_config({'openflow_version': openflow_version}, config_path)
 
 
 def save_interfaces_to_config(interfaces, config_path):

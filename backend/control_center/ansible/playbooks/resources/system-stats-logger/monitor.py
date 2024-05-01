@@ -20,7 +20,6 @@ def get_system_stats():
 
 
 def send_stats_to_server(stats):
-    # url = "http://localhost:8000/post_device_stats/"
     url = os.getenv("API_URL", "http://localhost:8000/post_device_stats/")
     headers = {'Content-Type': 'application/json'}
     response = requests.post(url, data=stats, headers=headers)
@@ -29,11 +28,9 @@ def send_stats_to_server(stats):
 
 
 if __name__ == "__main__":
-    # stats = get_system_stats()
-    # print(stats)
     while True:
         stats = get_system_stats()
         logging.info(f"Collected stats: {stats}")
         rsp = send_stats_to_server(stats)
         print(rsp)
-        time.sleep(1)  # Pause for 1 second before the next cycle
+        time.sleep(1)

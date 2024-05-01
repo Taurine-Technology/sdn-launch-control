@@ -1,5 +1,4 @@
 ---
-
 - name: Create directories
   file:
     path: "{{ item }}"
@@ -12,6 +11,15 @@
   copy:
     src: "{{ playbook_dir }}/resources/system-stats-logger/"
     dest: "/mnt/stats"
+
+- name: Create .env file with environment variables
+  lineinfile:
+    path: "/mnt/stats/.env"
+    line: "{{ item }}"
+    create: yes
+  loop:
+    - "DEVICE_IP={{ ip_address }}"
+    - "API_URL={{ api_url }}"
 
 - name: Build Docker Container
   command: "docker compose -f /mnt/stats/docker-compose.yml up -d"

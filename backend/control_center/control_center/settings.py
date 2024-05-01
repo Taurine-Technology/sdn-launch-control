@@ -43,8 +43,10 @@ INSTALLED_APPS = [
     'corsheaders',
     'controller',
     'channels',
+    'flows'
 
 ]
+
 
 CHANNEL_LAYERS = {
     'default': {

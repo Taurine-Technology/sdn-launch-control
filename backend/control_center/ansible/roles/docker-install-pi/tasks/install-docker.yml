@@ -41,24 +41,6 @@
           - containerd.io
           - docker-buildx-plugin
           - docker-compose-plugin
-    - name: Ensure docker group exists
-      group:
-        name: docker
-        state: present
-
-    - name: Add user to the docker group
-      user:
-        name: "{{ ansible_user_id }}"
-        groups: docker
-        append: yes
-
-    - name: Reboot the system
-      reboot:
-
-    - name: Wait for system to become reachable
-      wait_for_connection:
-        delay: 10
-        timeout: 300
 
     - name: Run Docker Hello World container
       docker_container:

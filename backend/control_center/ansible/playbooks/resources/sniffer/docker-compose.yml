@@ -17,3 +17,4 @@ services:
       - INTERFACE=eth2
       - PORT_TO_ROUTER=1
       - PORT_TO_CLIENTS=2
+      - WEBSOCKET_API_URL=http://0.0.0.0:8000/

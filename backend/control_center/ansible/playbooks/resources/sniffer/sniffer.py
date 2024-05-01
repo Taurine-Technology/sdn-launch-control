@@ -6,6 +6,7 @@ import json
 import os
 import logging
 
+
 class CustomLogger(logging.Logger):
     SUCCESS_LEVEL = 25
 
@@ -17,18 +18,19 @@ class CustomLogger(logging.Logger):
         if self.isEnabledFor(self.SUCCESS_LEVEL):
             self._log(self.SUCCESS_LEVEL, message, args, **kwargs)
 
+
 # Setup logging to use the custom logger
 logging.setLoggerClass(CustomLogger)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Lowest level for logger
 
 # File handler for success messages
-success_handler = logging.FileHandler("/app/logs/success.log")
+success_handler = logging.FileHandler("./success.log")
 success_handler.setLevel(CustomLogger.SUCCESS_LEVEL)
 success_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 
 # File handler for general logging
-general_handler = logging.FileHandler("/app/logs/debug.log")
+general_handler = logging.FileHandler("./debug.log")
 general_handler.setLevel(logging.DEBUG)  # Should handle DEBUG and above
 general_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 
@@ -42,14 +44,12 @@ logger.addHandler(success_handler)
 logger.addHandler(general_handler)
 logger.addHandler(console_handler)
 
-
-
 # Read the environment variables, and set a default value if it doesn't exist
 SWITCH_ID = os.environ.get('SWITCH_ID', 'of:00001c61b4fefb88')
 API_BASE_URL = os.environ.get('API_BASE_URL', 'http://10.8.8.2:5000')
 INTERFACE = os.environ.get('INTERFACE', 'eth2')
-PORT_TO_CLIENTS = os.environ.get('PORT_TO_CLIENTS', '1')
-PORT_TO_ROUTER = os.environ.get('PORT_TO_ROUTER', '2')
+PORT_TO_CLIENTS = os.environ.get('PORT_TO_CLIENTS', '2')
+PORT_TO_ROUTER = os.environ.get('PORT_TO_ROUTER', '1')
 
 total_flow_len = {}
 flow_dict = {}
@@ -62,8 +62,6 @@ white_list_ips = []
 
 
 def main():
-
-
     global access_granted
     access_granted = get_token()
     try:

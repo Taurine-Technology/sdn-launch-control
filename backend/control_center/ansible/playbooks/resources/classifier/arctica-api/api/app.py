@@ -1,7 +1,6 @@
 from datetime import timedelta
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import getmac
 import requests
 from flask import Flask, request, abort
 from flask_jwt_extended import create_access_token
@@ -15,6 +14,8 @@ import classification_model
 import os
 
 # Read environment variables and set defaults if unable to find the values
+controller_ip = os.environ.get('CONTROLLER_IP', '127.0.0.1:8181')
+websocket_api_url = os.environ.get('WEBSOCKET_API_URL', 'http://10.10.10.2:8000/post_flow_classification/')
 google_meter_id = int(os.environ.get('GOOGLE_METER_ID', 2))
 social_media_meter_id = int(os.environ.get('SOCIAL_MEDIA_METER_ID', 2))
 amazonaws_meter_id = int(os.environ.get('AMAZONAWS_METER_ID', 2))
@@ -88,10 +89,12 @@ def classify():
     data = request.get_json()
     classification = create_classification_from_json(data)
     result = classifier.predict_flow(classification.payload)
-    make_flow_adjustment(result[0], classification.src_mac, classification.src, classification.client_port,
-                         classification.tcp, classification.switch_id, classification.inbound_port,
-                         classification.outbound_port)
-    # print(result)
+    print(result[0])
+    rsp = requests.post(url=websocket_api_url, json=result[0])
+    # make_flow_adjustment(result[0], classification.src_mac, classification.src, classification.client_port,
+    #                      classification.tcp, classification.switch_id, classification.inbound_port,
+    #                      classification.outbound_port)
+
     return str(result)
 
 

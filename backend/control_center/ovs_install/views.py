@@ -70,6 +70,7 @@ class InstallOvsView(APIView):
                     for interface in interfaces:
                         port, created_ports = Port.objects.get_or_create(
                             name=interface,
+                            device=device,
                             defaults={
                                 'device': device
                             }

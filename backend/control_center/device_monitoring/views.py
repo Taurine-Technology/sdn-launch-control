@@ -4,23 +4,67 @@ from django.views.decorators.http import require_http_methods
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import json
+import os
+from rest_framework.decorators import api_view
+from django.http import JsonResponse
+from ovs_install.utilities.ansible_tasks import run_playbook
+from django.shortcuts import get_object_or_404
+from django.core.validators import validate_ipv4_address
+from django.core.exceptions import ValidationError
+import logging
+from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, \
+    save_interfaces_to_config, save_controller_port_to_config, save_controller_ip_to_config, save_api_url_to_config
+from rest_framework.response import Response
+from general.models import Controller
+from rest_framework import status
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(script_dir)
+logger = logging.getLogger(__name__)
+install_system_monitor = "install-stats-monitor"
+playbook_dir_path = f"{parent_dir}/ansible/playbooks"
+inventory_path = f"{parent_dir}/ansible/inventory/inventory"
+config_path = f"{parent_dir}/ansible/group_vars/all.yml"
+
+# TODO test this
+@require_http_methods(['POST'])
+def install_system_stats_monitor(request):
+    try:
+        data = request.data
+        validate_ipv4_address(data.get('lan_ip_address'))
+        lan_ip_address = data.get('lan_ip_address')
+        write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
+        save_ip_to_config(lan_ip_address, config_path)
+        save_api_url_to_config(data.get('api_url'), config_path)
+        result_install = run_playbook(install_system_monitor, playbook_dir_path, inventory_path)
+    except ValidationError:
+        return Response({"status": "error", "message": "Invalid IP address format."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        print(e)
+        return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @csrf_exempt
-@require_http_methods(["POST"])
+@api_view(['POST'])
 def post_device_stats(request):
-    # Parse the JSON data from the request
-    data = json.loads(request.body)
-    # Get the channel layer and send the data to the 'device_stats' group
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        'device_stats',
-        {
-            'type': 'device.message',
-            'device': data
-        }
-    )
-    return JsonResponse({'status': 'received'}, status=200)
+    try:
+
+        # Parse the JSON data from the request
+        data = json.loads(request.body)
+        # Get the channel layer and send the data to the 'device_stats' group
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            'device_stats',
+            {
+                'type': 'device.message',
+                'device': data
+            }
+        )
+        return Response({"status": "success"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(e)
+        return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @csrf_exempt
@@ -51,4 +95,4 @@ def post_openflow_metrics(request):
             "message": throughput_data
         }
     )
-    return JsonResponse({"status": "success"}, status=200)
+    return Response({"status": "success"}, status=status.HTTP_200_OK)

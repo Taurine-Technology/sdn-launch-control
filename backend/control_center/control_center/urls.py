@@ -25,6 +25,7 @@ from general.views import (AddDeviceView, DeviceDetailsView, DeviceListView, Dev
                            CheckDeviceConnectionView, DeleteDeviceView, UpdateDeviceView, AddControllerView, ControllerListView,
                            )
 from network_map.views import OnosNetworkMap, OvsNetworkMap
+from flows.views import post_flow_classification
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('add-device/', AddDeviceView.as_view(), name='add-device'),
@@ -49,5 +50,6 @@ urlpatterns = [
     path('ovs-network-map/', OvsNetworkMap.as_view(), name='ovs-network-map'),
     path('post_device_stats/', post_device_stats, name='post_device_stats'),
     path('post_openflow_metrics/', post_openflow_metrics, name='post_openflow_metrics'),
+    path('post_flow_classification/', post_flow_classification, name='post_flow_classification'),
 ]
 

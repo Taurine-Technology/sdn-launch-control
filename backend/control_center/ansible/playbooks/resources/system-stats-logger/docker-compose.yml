@@ -1,9 +1,12 @@
 version: '3.8'
 services:
   monitor:
+    container_name: taurine-system-monitor
     build: .
+    env_file:
+      - .env
     environment:
-      DEVICE_IP: "10.10.10.11"
-      API_URL: "http://10.10.10.2:8000/post_device_stats/"
+      DEVICE_IP: ${DEVICE_IP}
+      API_URL: ${API_URL}
     volumes:
       - .:/app

@@ -19,6 +19,7 @@ if [ ! -d "$VENV_DIR" ]; then
 else
     # The virtual environment exists, activate it
     source "$VENV_DIR/bin/activate" || exit 1
+    pip3 install -r requirements.txt || exit 1
 fi
 
 # Print a message indicating that the virtual environment is activated

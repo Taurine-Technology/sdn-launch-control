@@ -30,6 +30,9 @@ echo "Making migrations"
 python3 manage.py makemigrations || exit 1
 python3 manage.py migrate || exit 1
 
+echo "Running Redis with docker"
+docker compose up -d || exit 1
+
 echo "Running server"
 
-python3 manage.py runserver || exit 1
+python3 manage.py runserver 0.0.0.0:8000 || exit 1

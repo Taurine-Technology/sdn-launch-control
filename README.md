@@ -44,8 +44,6 @@ npm start
 1. To start the backend navigate to the [backend/control_center](backend/control_center) and run the 
 [run.sh](backend/control_center/run.sh) script `./run.sh`. You will still need to run the migrations and create a user:
 ```
-python manage.py makemigrations
-python manage.py migrate
 python manage.py createsuperuser
 ```
 2. To start the UI navigate to [ui/control-center](ui/control-center) and run the [run.sh](ui/control-center/run.sh) script `./run.sh` 

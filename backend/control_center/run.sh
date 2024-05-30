@@ -25,4 +25,11 @@ fi
 # Print a message indicating that the virtual environment is activated
 echo "Virtual environment activated."
 
-python3 manage.py runserver
+echo "Making migrations"
+
+python3 manage.py makemigrations || exit 1
+python3 manage.py migrate || exit 1
+
+echo "Running server"
+
+python3 manage.py runserver || exit 1

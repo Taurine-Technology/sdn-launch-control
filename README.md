@@ -42,7 +42,7 @@ npm start
 
 ### Run from Convenience Script
 1. To start the backend navigate to the [backend/control_center](backend/control_center) and run the 
-[run.sh](backend/control_center/run.sh) script `./run.sh`. You will still need to run the migrations and create a user:
+[run.sh](backend/control_center/run.sh) script `./run.sh`. You will still need to create a user:
 ```
 python manage.py createsuperuser
 ```

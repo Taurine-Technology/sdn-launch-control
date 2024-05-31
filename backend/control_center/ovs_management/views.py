@@ -103,14 +103,15 @@ class GetUnassignedDevicePorts(APIView):
             existing_port_names = [port.name for port in existing_ports]
 
             new_ports = []
-            for interface_name in interfaces:
-                if interface_name not in existing_port_names:
-                    # Interface not in DB, create and add it
-                    new_port = Port(device=device, name=interface_name)
-                    new_port.save()
-                    new_ports.append(new_port.name)
-            if new_ports:
-                print(f'New ports added: {new_ports}')
+            if interfaces:
+                for interface_name in interfaces:
+                    if interface_name not in existing_port_names:
+                        # Interface not in DB, create and add it
+                        new_port = Port(device=device, name=interface_name)
+                        new_port.save()
+                        new_ports.append(new_port.name)
+                if new_ports:
+                    print(f'New ports added: {new_ports}')
 
             # get unassociated ports and return them:
             bridges = device.bridges.all()
@@ -444,10 +445,10 @@ class DeleteBridge(APIView):
                     delete_bridge = run_playbook('ovs-delete-bridge', playbook_dir_path, inventory_path)
                     if delete_bridge.get('status') == 'success':
                         # Delete the bridge from the database
-                        # this is not necessary as deleting the bridge will remove it from the port
-                        # if Port.objects.filter(name=bridge.name).exists():
-                        #     port_to_del = Port.objects.get(name=bridge.name)
-                        #     port_to_del.delete()
+                        # this is not necessary as deleting the bridge will remove it from the port but not delete the port
+                        if Port.objects.filter(name=bridge.name).exists():
+                             port_to_del = Port.objects.get(name=bridge.name)
+                             port_to_del.delete()
                         bridge.delete()
 
                         return Response({'status': 'success', 'message': f'Bridge {bridge_name} deleted successfully.'},

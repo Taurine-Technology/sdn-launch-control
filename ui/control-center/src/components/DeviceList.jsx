@@ -2,13 +2,13 @@ import React from 'react';
 import DeviceItem from './DeviceItem';
 import {Grid, List} from '@mui/material';
 
-function DeviceList({ devices, onDelete,  onEdit, onViewDetails}) {
+function DeviceList({ devices, onDelete,  onEdit, onNuke, onViewDetails}) {
     return (
         <List>
             <Grid container>
                 <Grid item>
                     {devices.map(device => (
-                        <DeviceItem key={device.lan_ip_address} device={device} onDelete={onDelete} onEdit={onEdit} onViewDetails={onViewDetails} />
+                        <DeviceItem key={device.lan_ip_address} device={device} onNuke={onNuke} onDelete={onDelete} onEdit={onEdit} onViewDetails={onViewDetails} />
                     ))}
                 </Grid>
 

@@ -2,6 +2,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from general.models import Device, Bridge, Port
+from django.shortcuts import get_object_or_404
 import json
 import os
 from rest_framework.decorators import api_view
@@ -50,16 +52,23 @@ def install_system_stats_monitor(request):
 def install_ovs_qos_monitor(request):
     try:
         data = request.data
+        print('***')
+        print(data)
+        print('***')
         validate_ipv4_address(data.get('lan_ip_address'))
         lan_ip_address = data.get('lan_ip_address')
-        bridge_name = data.get('bridge_name')
+        bridge_name = data.get('name')
         openflow_version = data.get('openflow_version')
+
         save_openflow_version_to_config(openflow_version, config_path)
         save_bridge_name_to_config(bridge_name, config_path)
-        write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
+        device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+        write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
         save_ip_to_config(lan_ip_address, config_path)
         save_api_url_to_config(data.get('api_url'), config_path)
         result_install = run_playbook(install_qos_monitor, playbook_dir_path, inventory_path)
+        print(result_install)
+        return Response({"status": "success", "message": 'QoS monitor installed'}, status=status.HTTP_200_OK)
     except ValidationError:
         return Response({"status": "error", "message": "Invalid IP address format."},
                         status=status.HTTP_400_BAD_REQUEST)

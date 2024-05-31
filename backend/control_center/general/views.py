@@ -158,6 +158,43 @@ class DeviceDetailsView(APIView):
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class ForceDeleteDeviceView(APIView):
+    def delete(self, request):
+        data = request.data
+        try:
+            validate_ipv4_address(data.get('lan_ip_address'))
+        except ValidationError:
+            return Response({"status": "error", "message": "Invalid IP address format."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            lan_ip_address = data.get('lan_ip_address')
+            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+            bridges = Bridge.objects.filter(device=device)
+
+            # remove links to bridges if this device is a controller
+            if Controller.objects.filter(device=device).exists():
+                print(f'{Device.name} is a controller.')
+                controller = get_object_or_404(Controller, device=device)
+                associated_bridges = controller.bridges.all()
+                if associated_bridges:
+                    for bridge in associated_bridges:
+                        print(f"Bridge Name: {bridge.name}, Device: {bridge.device.name}")
+                        bridge_name = bridge.name
+                        bridge_host_device = bridge.device
+                        bridge_host_lan_ip_address = bridge_host_device.lan_ip_address
+                        bridge.controller = None
+                        bridge.save()
+                device.delete()
+            else:
+                device.delete()
+
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 class DeleteDeviceView(APIView):
     def delete(self, request):
         data = request.data

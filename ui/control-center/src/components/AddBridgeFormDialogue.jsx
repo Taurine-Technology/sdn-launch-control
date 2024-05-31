@@ -26,6 +26,7 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
     const [controllers, setControllers] = useState([]);
     const [selectedController, setSelectedController] = useState('');
     const [controllerPort, setControllerPort] = useState('6653');
+    const [apiUrl, setApiUrl] = useState('')
 
 
 
@@ -108,6 +109,7 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
             name: bridgeName,
             openFlowVersion: openFlowVersion,
             ports: selectedPorts,
+            api_url: apiUrl,
         };
 
         if (selectedController) {
@@ -119,7 +121,10 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
         }
 
         try {
+            console.log(payload)
             const response = await axios.post('http://localhost:8000/add-bridge/', payload);
+
+            const qosMonitorResponse = await axios.post('http://localhost:8000/install-ovs-qos-monitor/', payload);
             setAlert({ show: true, type: 'success', message: 'Bridge added successfully' });
             if (onDialogueClose) {
                 onDialogueClose(); // Call the callback function to refresh bridges
@@ -167,6 +172,16 @@ const AddBridgeFormDialogue = ({ deviceIp, onDialogueClose }) => {
                                 variant="outlined"
                                 value={bridgeName}
                                 onChange={e => setBridgeName(e.target.value)}
+                                required
+                            />
+                            <TextField
+                                autoFocus
+                                margin="dense"
+                                label="API URL"
+                                fullWidth
+                                variant="outlined"
+                                value={apiUrl}
+                                onChange={e => setApiUrl(e.target.value)}
                                 required
                             />
                             <FormControl fullWidth margin="dense">

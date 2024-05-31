@@ -6,7 +6,8 @@
     mode: '0777'
   with_items:
     - "/mnt/qos"
-    - "/mnt/qos/venv"
+    - "/mnt/qos/{{ bridge_name }}"
+    - "/mnt/qos/{{ bridge_name }}/venv"
 
 - name: Install Python and pip
   ansible.builtin.package:
@@ -23,17 +24,17 @@
 
 - name: Create a virtual environment
   ansible.builtin.command:
-    cmd: python3 -m venv /mnt/qos/venv
-    creates: "/mnt/qos/venv/bin/activate"
+    cmd: python3 -m venv /mnt/qos/{{ bridge_name }}/venv
+    creates: "/mnt/qos/{{ bridge_name }}/venv/bin/activate"
 
 - name: Copy files to Server
   copy:
     src: "{{ playbook_dir }}/resources/ovs-switch-monitor/"
-    dest: "/mnt/qos"
+    dest: "/mnt/qos/{{ bridge_name }}"
 
 - name: Create .env file with environment variables
   copy:
-    dest: "/mnt/qos/.env"
+    dest: "/mnt/qos/{{ bridge_name }}/.env"
     content: |
       DEVICE_IP={{ ip_address }}
       OPENFLOW_VERSION={{ openflow_version }}
@@ -43,23 +44,23 @@
 
 - name: Install Python libraries
   ansible.builtin.pip:
-    requirements: "/mnt/qos/requirements.txt"
-    virtualenv: "/mnt/qos/venv"
+    requirements: "/mnt/qos/{{ bridge_name }}/requirements.txt"
+    virtualenv: "/mnt/qos/{{ bridge_name }}/venv"
 
 - name: Create systemd service file for OVS Monitor
   copy:
-    dest: "/etc/systemd/system/ovs-monitor.service"
+    dest: "/etc/systemd/system/ovs-monitor-{{ bridge_name }}.service"
     content: |
         [Unit]
-        Description=OVS QoS Monitoring Service
+        Description=OVS QoS Monitoring Service for {{ bridge_name }}
         After=network.target
         
         [Service]
         User=root
         Group=root
-        WorkingDirectory=/mnt/qos
-        EnvironmentFile=/mnt/qos/.env
-        ExecStart=/mnt/qos/venv/bin/python /mnt/qos/qos.py
+        WorkingDirectory=/mnt/qos/{{ bridge_name }}
+        EnvironmentFile=/mnt/qos/{{ bridge_name }}/.env
+        ExecStart=/mnt/qos/{{ bridge_name }}/venv/bin/python /mnt/qos/{{ bridge_name }}/qos.py
         Restart=always
         RestartSec=5
         
@@ -73,6 +74,6 @@
 
 - name: Enable and start OVS Monitor service
   ansible.builtin.systemd:
-    name: ovs-monitor
+    name: "ovs-monitor-{{ bridge_name }}"
     enabled: yes
     state: started

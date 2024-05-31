@@ -5,15 +5,14 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import apIcon from '../images/wifi.png';
 import switchIcon from '../images/hub.png';
 import serverIcon from '../images/server.png';
-import SettingsInputHdmiIcon from '@mui/icons-material/SettingsInputHdmi';
-import LanIcon from '@mui/icons-material/Lan';
 import SettingsIcon from '@mui/icons-material/Settings';
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-function DeviceItem({ device, onDelete, onEdit, onViewDetails}) {
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+
+function DeviceItem({ device, onDelete, onEdit, onViewDetails, onNuke}) {
     const deviceIcons = {
         'access_point': apIcon,
         'switch': switchIcon,
-        'server': serverIcon, // Add more device types and their icons as needed
+        'server': serverIcon,
     };
     const deviceIcon = deviceIcons[device.device_type]
 
@@ -58,6 +57,7 @@ function DeviceItem({ device, onDelete, onEdit, onViewDetails}) {
                     {/*</IconButton>*/}
                     {/*</Tooltip>*/}
 
+
                     <Tooltip title='Delete this device'>
                     <IconButton edge="end" aria-label="delete"  onClick={() => onDelete(device)} sx={{
                         color: '#bf0000',
@@ -66,6 +66,16 @@ function DeviceItem({ device, onDelete, onEdit, onViewDetails}) {
                         <DeleteIcon />
                     </IconButton>
                     </Tooltip>
+
+                    <Tooltip title='Nuke this device'>
+                        <IconButton edge="end" aria-label="nuke"  onClick={() => onNuke(device)} sx={{
+                            color: '#bf0000',
+                            padding: 1,
+                        }} >
+                            <LocalFireDepartmentIcon />
+                        </IconButton>
+                    </Tooltip>
+
                 </ListItem>
             </CardContent>
         </Card>

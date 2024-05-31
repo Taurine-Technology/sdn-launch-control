@@ -20,9 +20,9 @@ from django.urls import path
 from ovs_install.views import InstallOvsView
 from ovs_management.views import EditBridge, GetDevicePorts, CreateBridge, GetDeviceBridges, DeleteBridge, DeleteControllerView, GetUnassignedDevicePorts
 from controller.views import InstallControllerView
-from device_monitoring.views import post_device_stats, post_openflow_metrics, install_system_stats_monitor
+from device_monitoring.views import post_device_stats, post_openflow_metrics, install_system_stats_monitor, install_ovs_qos_monitor
 from general.views import (AddDeviceView, DeviceDetailsView, DeviceListView, DeviceBridgesView, DevicePortsView,
-                           CheckDeviceConnectionView, DeleteDeviceView, UpdateDeviceView, AddControllerView, ControllerListView,
+                           CheckDeviceConnectionView, DeleteDeviceView, ForceDeleteDeviceView, UpdateDeviceView, AddControllerView, ControllerListView,
                            )
 from network_map.views import OnosNetworkMap, OvsNetworkMap
 from flows.views import post_flow_classification
@@ -43,6 +43,7 @@ urlpatterns = [
     path('get-bridges/<str:lan_ip_address>/', GetDeviceBridges.as_view(), name='get-bridges'),
     path('check-connection/<str:lan_ip_address>/', CheckDeviceConnectionView.as_view(), name='check-connection'),
     path('delete-device/', DeleteDeviceView.as_view(), name='delete-device'),
+    path('force-delete-device/', ForceDeleteDeviceView.as_view(), name='force-delete-device'),
     path('update-device/<str:lan_ip_address>/', UpdateDeviceView.as_view(), name='update_device'),
     path('update-bridge/', EditBridge.as_view(), name='edit-bridge'),
     path('delete-bridge/', DeleteBridge.as_view(), name='delete-bridge'),
@@ -52,5 +53,6 @@ urlpatterns = [
     path('post_openflow_metrics/', post_openflow_metrics, name='post_openflow_metrics'),
     path('post_flow_classification/', post_flow_classification, name='post_flow_classification'),
     path('install_system_stats_monitor/', install_system_stats_monitor, name='install_system_stats_monitor'),
+    path('install-ovs-qos-monitor/', install_ovs_qos_monitor, name='install_ovs_qos_monitor'),
 ]
 

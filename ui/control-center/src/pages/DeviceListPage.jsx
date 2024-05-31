@@ -8,17 +8,15 @@ import axios from "axios";
 import DeviceList from "../components/DeviceList";
 import Theme from "../theme";
 import EditDeviceDialog from "../components/EditDeviceDialogue";
-import {ThemeProvider} from "@mui/material/styles";
 import theme from "../theme";
-import InternalServerErrorDialogue from "../components/InternalServerErrorDialogue";
-import PortManagementDialogue from "../components/PortManagementDialogue";
 import { useNavigate } from 'react-router-dom';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import {Backdrop, CircularProgress} from "@mui/material";
 import AddDeviceDialogue from "../components/AddDeviceDialogue";
+import NukeDeviceDialogue from "../components/NukeDeviceDialogue";
 
 const DeviceListPage = () => {
     const [openDeleteDialogue, setOpenDeleteDialogue] = useState(false);
+    const [openNukeDialogue, setOpenNukeDialogue] = useState(false);
     const [deviceToDelete, setDeviceToDelete] = useState(null);
     const [devices, setDevices] = useState([]);
     const [alert, setAlert] = useState({ show: false, message: '' });
@@ -32,6 +30,7 @@ const DeviceListPage = () => {
     const [openPortDialogue, setOpenPortDialogue] = useState(false)
     const [loading, setLoading] = useState(false);
     const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+    const [isNukeLoading, setIsNukeLoading] = useState(false);
     const navigate = useNavigate();
 
 
@@ -61,9 +60,17 @@ const DeviceListPage = () => {
         setDeviceToDelete(device);
         setOpenDeleteDialogue(true);
     };
+    const handleNukeClick = (device) => {
+        setDeviceToDelete(device);
+        setOpenNukeDialogue(true);
+    };
+
 
     const handleCloseDeleteDialog = () => {
         setOpenDeleteDialogue(false);
+    };
+    const handleCloseNukeDialog = () => {
+        setOpenNukeDialogue(false);
     };
     const handleCloseAddDevice = () => {
         fetchDevices();
@@ -85,7 +92,7 @@ const DeviceListPage = () => {
                     setResponseType('success');
                     fetchDevices()
                 }).catch(error => {
-                        setResponseMessage(`Failed to delete device: ${error.message}`);
+                        setResponseMessage(`Failed to delete device. Please check your connection to the device`);
                         setResponseType('error');
                 }).finally(() =>{
                         setIsDeleteLoading(false);
@@ -94,6 +101,38 @@ const DeviceListPage = () => {
                     });
 
                 // setDevices(devices.filter(device => device.lan_ip_address !== deviceToDelete.lan_ip_address));
+
+            } catch (error) {
+                // console.error('Error deleting device:', error);
+                setResponseMessage(`Failed to delete device: ${error.message}`);
+                setResponseType('error');
+            }
+        }
+
+    };
+
+    const handleConfirmNuke = async () => {
+        if (deviceToDelete) {
+            try {
+                setIsNukeLoading(true);
+                const payload = {
+                    lan_ip_address: deviceToDelete.lan_ip_address,
+                };
+
+                const response = await axios.delete('http://localhost:8000/force-delete-device/', { data: payload })
+                    .then(response =>
+                    {
+                        setResponseMessage('Successfully deleted device.');
+                        setResponseType('success');
+                        fetchDevices()
+                    }).catch(error => {
+                        setResponseMessage(`Failed to delete device: ${error}`);
+                        setResponseType('error');
+                    }).finally(() =>{
+                        setIsNukeLoading(false);
+                        setOpenNukeDialogue(false);
+                        setDeviceToDelete(null);
+                    });
 
             } catch (error) {
                 // console.error('Error deleting device:', error);
@@ -231,6 +270,7 @@ const DeviceListPage = () => {
                         <DeviceList devices={devices}
                                     onDelete={handleDeleteClick}
                                     onEdit={handleEditClick}
+                                    onNuke={handleNukeClick}
                                     // onEditPorts={handleEditPortClick}
                                     onViewDetails={handleDetailsClick}
                         />
@@ -240,6 +280,12 @@ const DeviceListPage = () => {
                             handleConfirm={handleConfirmDelete}
                             itemName='device'
                             isLoading={isDeleteLoading}
+                        />
+                        <NukeDeviceDialogue
+                            open={openNukeDialogue}
+                            handleClose={handleCloseNukeDialog}
+                            handleConfirm={handleConfirmNuke}
+                            isLoading={isNukeLoading}
                         />
                         <EditDeviceDialog
                             open={openEditDialogue}

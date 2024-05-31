@@ -4,6 +4,7 @@ import Footer from "../components/Footer";
 import InstallFormDialogue from "../components/InstallFormDialogue";
 import OvsNetworkDiagram from "../components/OvsNetworkDiagram";
 
+
 const HomePage = () => {
     return (
         <Box
@@ -16,6 +17,7 @@ const HomePage = () => {
         >
             <NavBar />
                     <OvsNetworkDiagram />
+
             <Box
                 sx={{
                     flexGrow: 1,

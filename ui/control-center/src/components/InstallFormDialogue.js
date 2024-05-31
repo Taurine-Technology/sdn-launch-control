@@ -31,6 +31,7 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
     const [responseType, setResponseType] = useState(''); // 'success' or 'error'
     const [isLoading, setIsLoading] = useState(false);
     const [isFormValid, setIsFormValid] = useState(false);
+    const [apiUrl, setApiUrl] = useState('')
 
     useEffect(() => {
         fetchDevices();
@@ -50,7 +51,7 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
 
     useEffect(() => {
         updateFormValidity();
-    }, [name, host, username, password]);
+    }, [name, host, username, password, apiUrl]);
     useEffect(() => {
         if (window && window.process && window.process.type) {
             const { ipcRenderer } = window.require('electron');
@@ -63,7 +64,7 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
         console.log('isLoading state updated:', isLoading);
     }, [isLoading]);
     const updateFormValidity = () => {
-        const isValid = (name && host && username && password);
+        const isValid = (name && host && username && password && apiUrl);
         setIsFormValid(isValid);
     };
 
@@ -123,6 +124,10 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
         setDeviceType(e.target.value)
         updateFormValidity();
     };
+    const handleApiUrlChange = (e) => {
+        setApiUrl(e.target.value)
+        updateFormValidity();
+    };
     const handleSubmit = async () => {
         console.log('Before setLoading:', isLoading);
         setIsLoading(true);
@@ -135,6 +140,7 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
         formData.append('username', username);
         formData.append('password', password);
         formData.append('os_type', operating_system);
+        formData.append('api_url', apiUrl)
         const addDevicePayload = {
             name: name,
             device_type: deviceType,
@@ -147,10 +153,24 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
             });
             // const addDeviceResponse = await axios.post('http://localhost:8000/add-device/', addDevicePayload);
             console.log('Deploy Response:', deployResponse.data.message);
+
             // console.log('Add Device Response:', addDeviceResponse.data.message);
             // || addDeviceResponse.data.message
             setResponseMessage(deployResponse.data.message);
             setResponseType('success');
+            if (endpoint === 'install-ovs') {
+                const monitorPayload = {
+                    lan_ip_address: formData.get('lan_ip_address'),
+                    username: formData.get('username'),
+                    password: formData.get('password'),
+                    api_url: formData.get('api_url')
+                };
+
+                const installSystemResponse = await axios.post('http://localhost:8000/install_system_stats_monitor/', monitorPayload, {
+                    headers: {'Content-Type': 'application/json'}
+                });
+                console.log('installSystemResponse Response:', installSystemResponse.data.message);
+            }
         } catch (error) {
             console.error('Error:', error || 'Deployment failed');
             setResponseMessage(error.response?.data?.message || error.message || 'Deployment failed');
@@ -166,7 +186,6 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
 
     return (
         <div>
-
             <div>
 
                 <Button variant="contained" onClick={handleClickOpen} sx={{ width: '250px', bgcolor: '#02032F' }}>
@@ -281,6 +300,16 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
                                 <MenuItem value="server">Server</MenuItem>
                             </Select>
                         </FormControl>
+                        <TextField
+                            margin="dense"
+                            label="API URL"
+                            fullWidth
+                            variant="outlined"
+                            value={apiUrl}
+                            onChange={handleApiUrlChange}
+                            required
+                            disabled={isLoading}
+                        />
                     </DialogContent>
                     <DialogActions>
                         <Button
@@ -302,7 +331,6 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
                     </DialogActions>
                 </Dialog>
             </div>
-
         </div>
     );
 };

@@ -36,6 +36,7 @@ def install_system_stats_monitor(request):
         save_ip_to_config(lan_ip_address, config_path)
         save_api_url_to_config(data.get('api_url'), config_path)
         result_install = run_playbook(install_system_monitor, playbook_dir_path, inventory_path)
+        return Response({"status": "success", "message": 'system monitor installed'}, status=status.HTTP_200_OK)
     except ValidationError:
         return Response({"status": "error", "message": "Invalid IP address format."},
                         status=status.HTTP_400_BAD_REQUEST)

@@ -49,8 +49,10 @@ class Port(models.Model):
     bridge = models.ForeignKey(Bridge, on_delete=models.SET_NULL, related_name='ports', null=True, blank=True)
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='ports')
     name = models.CharField(max_length=100)
+
     class Meta:
         unique_together = ('device', 'name')
+
     def __str__(self):
         return f"Port {self.name} on {self.device.name}"
 
@@ -67,3 +69,14 @@ class Controller(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='sdn_controller')
     switches = models.ManyToManyField(Device, related_name='switch_controllers')
     port_num = models.IntegerField(default=6653)
+
+
+class ClassifierModel(models.Model):
+    name = models.CharField(max_length=20)
+    number_of_bytes = models.IntegerField()
+    number_of_packets = models.IntegerField()
+    categories = models.CharField(max_length=200)
+
+    def __str__(self):
+        return self.name
+

@@ -1,0 +1,3 @@
+---
+- name: Install Sniffer on Switch
+  import_tasks: install.yml

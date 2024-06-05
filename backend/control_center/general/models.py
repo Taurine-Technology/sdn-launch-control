@@ -75,7 +75,7 @@ class ClassifierModel(models.Model):
     name = models.CharField(max_length=20)
     number_of_bytes = models.IntegerField()
     number_of_packets = models.IntegerField()
-    categories = models.CharField(max_length=200)
+    categories = models.CharField(max_length=1000)
 
     def __str__(self):
         return self.name

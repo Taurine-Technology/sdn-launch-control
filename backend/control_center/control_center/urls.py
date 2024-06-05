@@ -20,12 +20,13 @@ from django.urls import path
 from ovs_install.views import InstallOvsView
 from ovs_management.views import EditBridge, GetDevicePorts, CreateBridge, GetDeviceBridges, DeleteBridge, DeleteControllerView, GetUnassignedDevicePorts
 from controller.views import InstallControllerView
+from classifier.views import classify
 from device_monitoring.views import post_device_stats, post_openflow_metrics, install_system_stats_monitor, install_ovs_qos_monitor
 from general.views import (AddDeviceView, DeviceDetailsView, DeviceListView, DeviceBridgesView, DevicePortsView,
                            CheckDeviceConnectionView, DeleteDeviceView, ForceDeleteDeviceView, UpdateDeviceView, AddControllerView, ControllerListView,
                            )
 from network_map.views import OnosNetworkMap, OvsNetworkMap
-from flows.views import post_flow_classification
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('add-device/', AddDeviceView.as_view(), name='add-device'),
@@ -51,8 +52,9 @@ urlpatterns = [
     path('ovs-network-map/', OvsNetworkMap.as_view(), name='ovs-network-map'),
     path('post_device_stats/', post_device_stats, name='post_device_stats'),
     path('post_openflow_metrics/', post_openflow_metrics, name='post_openflow_metrics'),
-    path('post_flow_classification/', post_flow_classification, name='post_flow_classification'),
+    path('classify/', classify, name='classify'),
     path('install_system_stats_monitor/', install_system_stats_monitor, name='install_system_stats_monitor'),
     path('install-ovs-qos-monitor/', install_ovs_qos_monitor, name='install_ovs_qos_monitor'),
+
 ]
 

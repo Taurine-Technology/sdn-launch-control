@@ -259,7 +259,8 @@ const DeviceListPage = () => {
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'start',
-                            padding: Theme.spacing(2), // Add some padding around the list
+                            paddingTop: '100px',
+                            paddingBottom: '50px',
                             margin: Theme.spacing(2),
 
 

@@ -252,7 +252,9 @@ const DeviceDetailsPage = () => {
             <NavBar />
             <Box sx={{
                 flexGrow: 1,
-                margin: 4
+                margin: 4,
+                paddingTop: '100px',
+                paddingBottom: '50px',
             }}>
                 <Button
                     startIcon={<ArrowBackIcon />}
@@ -461,8 +463,9 @@ const DeviceDetailsPage = () => {
                 {selectedBridge && (
                     <PortStatsGraph targetIpAddress={deviceIp} targetPorts={bridgePorts} />
                 )}
+                <DeviceStatsGraph targetIpAddress={deviceIp}/>
             </Box>
-            <DeviceStatsGraph targetIpAddress={deviceIp}/>
+
 
             <Footer />
 

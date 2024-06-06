@@ -4,7 +4,7 @@ import { Box, Link, Typography, Grid } from '@mui/material';
 
 const Footer = () => {
     return (
-        <Box position="static" sx={{ backgroundColor: '#02032F', padding: 2 }}>
+        <Box position="fixed" sx={{ backgroundColor: '#02032F', padding: 2, bottom: 0, left: 0, right: 0, zIndex: (theme) => theme.zIndex.drawer + 1 }}>
             <Grid container justifyContent="space-between" alignItems="center">
                 <Grid item>
                     <Link href="mailto:info@taurinetech.com" color="inherit">

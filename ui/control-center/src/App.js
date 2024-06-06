@@ -7,6 +7,8 @@ import {BrowserRouter, Routes, Route, HashRouter} from "react-router-dom";
 import DeviceListPage from "./pages/DeviceListPage";
 import DeviceDetailsPage from "./pages/DeviceDetailsPage";
 import ControllerListPage from "./pages/ControllerListPage";
+import PluginPage from "./pages/PluginPage";
+import InstallationPage from "./pages/InstallationPage";
 function MainComponent() {
     return <div>
         <h1>Welcome to the Home Page</h1>
@@ -19,10 +21,12 @@ const App = () => {
             <ThemeProvider theme={theme}>
                 <HashRouter>
                     <Routes>
-                            <Route path="/" element={<HomePage/>}/>
-                            <Route path="/devices" element={<DeviceListPage/>}/>
+                        <Route path="/" element={<HomePage/>}/>
+                        <Route path="/devices" element={<DeviceListPage/>}/>
                         <Route path="/controllers" element={<ControllerListPage/>}/>
                         <Route path="/devices/:deviceIp" element={<DeviceDetailsPage/>}/>
+                        <Route path="/plugins" element={<PluginPage/>}/>
+                        <Route path="/install" element={<InstallationPage/>}/>
                     </Routes>
                 </HashRouter>
             </ThemeProvider>

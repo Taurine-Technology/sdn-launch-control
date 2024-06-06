@@ -19,7 +19,7 @@ import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
 import AddBridgeFormDialogue from "../components/AddBridgeFormDialogue";
 import CloseIcon from '@mui/icons-material/Close';
-import BridgeList from "../components/BridgeList";
+import BridgeList from "../components/lists/BridgeList";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialogue";
 import EditBridgeDialogue from "../components/EditBridgeDialogue";
 import DeviceStatsGraph from "../components/DeviceStatsGraph";

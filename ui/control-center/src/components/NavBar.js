@@ -56,7 +56,7 @@ const NavBar = () => {
                                     <Collapse in={openLobby} timeout="auto" unmountOnExit>
                                         <List component="div" disablePadding>
                                             <ListItemButton sx={{ pl: 4 }} component={Link} to="/">
-                                                <ListItemText primary="Home" />
+                                                <ListItemText primary="Dashboard" />
                                             </ListItemButton>
                                         </List>
                                     </Collapse>
@@ -84,8 +84,11 @@ const NavBar = () => {
                                     </ListItemButton>
                                     <Collapse in={openSystem} timeout="auto" unmountOnExit>
                                         <List component="div" disablePadding>
-                                            <ListItemButton sx={{ pl: 4 }} component={Link} to="/">
+                                            <ListItemButton sx={{ pl: 4 }} component={Link} to="/plugins">
                                                 <ListItemText primary="Plugins" />
+                                            </ListItemButton>
+                                            <ListItemButton sx={{ pl: 4 }} component={Link} to="/install">
+                                                <ListItemText primary="Install Software" />
                                             </ListItemButton>
                                         </List>
                                     </Collapse>

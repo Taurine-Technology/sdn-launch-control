@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, ListItem, ListItemText, ListItemIcon, IconButton, Tooltip } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import bridgeIcon from '../images/bridge.png';
+import bridgeIcon from '../../images/bridge.png';
 
 const BridgeItem = ({ bridge, onEdit, onDelete }) => {
     console.log(bridge);

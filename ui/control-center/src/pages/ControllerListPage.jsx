@@ -5,10 +5,10 @@ import Box from "@mui/material/Box";
 import Footer from "../components/Footer";
 import Alert from '@mui/material/Alert';
 import axios from "axios";
-import ControllerList from "../components/ControllerList";
+import ControllerList from "../components/lists/ControllerList";
 import { ThemeProvider } from "@mui/material/styles";
 import theme from "../theme";
-import { CircularProgress, Backdrop } from "@mui/material";
+import {CircularProgress, Backdrop, Typography} from "@mui/material";
 import Theme from "../theme";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialogue";
 const ControllerListPage = () => {
@@ -97,6 +97,8 @@ const ControllerListPage = () => {
                         {error}
                     </Alert>
                 )}
+                <Box sx={{ flexGrow: 1, paddingTop: '100px', overflow: 'auto' }}>
+                <Typography variant="h1" sx={{ mb: 2, p: 3, color: "#FFF"}}>Hardware: Controllers</Typography>
                 <Box
                     sx={{
                         flexGrow: 1,
@@ -105,11 +107,12 @@ const ControllerListPage = () => {
                         alignItems: 'start',
 
                         margin: Theme.spacing(2),
-                        paddingTop: '100px',
+
                         paddingBottom: '50px',
 
                     }}
                 >
+
                     <ControllerList controllers={controllers} onDelete={handleDeleteClick} />
                     <ConfirmDeleteDialog
                         open={openDeleteDialogue}
@@ -118,6 +121,7 @@ const ControllerListPage = () => {
                         itemName='controller'
                         isLoading={isDeleteLoading}
                     />
+                </Box>
                 </Box>
                 <Footer />
             </Box>

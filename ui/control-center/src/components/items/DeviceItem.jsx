@@ -2,9 +2,9 @@ import React from 'react';
 import {ListItem, ListItemText, ListItemIcon, IconButton, CardContent, Card, Tooltip} from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import apIcon from '../images/wifi.png';
-import switchIcon from '../images/hub.png';
-import serverIcon from '../images/server.png';
+import apIcon from '../../images/wifi.png';
+import switchIcon from '../../images/hub.png';
+import serverIcon from '../../images/server.png';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 

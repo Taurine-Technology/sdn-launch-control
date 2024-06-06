@@ -9,9 +9,10 @@ import {
     DialogTitle,
     Select,
     MenuItem,
-    InputLabel, FormControl, Alert
+    InputLabel, FormControl, Alert, IconButton
 } from '@mui/material';
 import axios from 'axios';
+import DownloadIcon from "@mui/icons-material/Download";
 // Set the base URL for axios
 // axios.defaults.baseURL = 'http://localhost';
 const InstallFormDialogue = ({ installationType, endpoint }) => {
@@ -188,9 +189,9 @@ const InstallFormDialogue = ({ installationType, endpoint }) => {
         <div>
             <div>
 
-                <Button variant="contained" onClick={handleClickOpen} sx={{ width: '250px', bgcolor: '#02032F' }}>
-                    {`Install ${installationType}`}
-                </Button>
+                <IconButton color="primary" onClick={handleClickOpen}>
+                    <DownloadIcon />
+                </IconButton>
                 <Dialog open={open} onClose={handleOnClose}>
                     <DialogTitle>{`Install ${installationType}`}</DialogTitle>
                     { (isLoading || fetchingDevices) && (

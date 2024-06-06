@@ -103,9 +103,10 @@ const ControllerListPage = () => {
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'start',
-                        padding: Theme.spacing(2), // Add some padding around the list
-                        margin: Theme.spacing(2),
 
+                        margin: Theme.spacing(2),
+                        paddingTop: '100px',
+                        paddingBottom: '50px',
 
                     }}
                 >

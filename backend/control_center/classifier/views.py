@@ -34,17 +34,15 @@ def post_flow_classification(request):
 def classify(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        print(data)
         model_name = data.get('model_name')
         classification = create_classification_from_json(data)
         result = classifier.predict_flow(classification.payload)
-        print(f'The classification is {result}')
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             'flow_updates',
             {
                 'type': 'flow_message',
-                'flow': result
+                'flow': result[0]
             }
         )
         return JsonResponse({'message': 'received'}, status=status.HTTP_200_OK)

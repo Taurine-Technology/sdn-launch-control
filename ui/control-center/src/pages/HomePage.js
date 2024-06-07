@@ -3,6 +3,7 @@ import {Box, Typography} from '@mui/material';
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
 import OvsNetworkDiagram from "../components/OvsNetworkDiagram";
+import ClassificationGraph from "../components/ClassificationGraph";
 
 const HomePage = () => {
 
@@ -22,6 +23,7 @@ const HomePage = () => {
             <Box sx={{ overflowY: 'auto', flexGrow: 1, p: 3}}>
                 <Typography variant="h1" sx={{ mb: 2, color: "#FFF" }}>Lobby: Dashboard</Typography>
                 <OvsNetworkDiagram />
+                <ClassificationGraph />
             </Box>
             <Footer />
         </Box>

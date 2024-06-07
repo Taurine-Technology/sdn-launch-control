@@ -21,7 +21,7 @@ from ovs_install.views import InstallOvsView
 from ovs_management.views import EditBridge, GetDevicePorts, CreateBridge, GetDeviceBridges, DeleteBridge, DeleteControllerView, GetUnassignedDevicePorts
 from controller.views import InstallControllerView
 from classifier.views import classify
-from device_monitoring.views import post_device_stats, post_openflow_metrics, install_system_stats_monitor, install_ovs_qos_monitor
+from device_monitoring.views import post_device_stats, post_openflow_metrics, install_system_stats_monitor, install_ovs_qos_monitor, install_sniffer
 from general.views import (AddDeviceView, DeviceDetailsView, DeviceListView, DeviceBridgesView, DevicePortsView,
                            CheckDeviceConnectionView, DeleteDeviceView, ForceDeleteDeviceView, UpdateDeviceView, AddControllerView, ControllerListView,
                            )
@@ -55,6 +55,7 @@ urlpatterns = [
     path('classify/', classify, name='classify'),
     path('install_system_stats_monitor/', install_system_stats_monitor, name='install_system_stats_monitor'),
     path('install-ovs-qos-monitor/', install_ovs_qos_monitor, name='install_ovs_qos_monitor'),
+    path('install-sniffer/', install_sniffer, name='install_sniffer'),
 
 ]
 

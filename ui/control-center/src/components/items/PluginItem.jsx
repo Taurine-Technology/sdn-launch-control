@@ -14,6 +14,7 @@ import {
 import InfoIcon from '@mui/icons-material/Info';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
+import InstallSnifferForm from "../installation-plugins/InstallSnifferForm";
 
 const PluginItem = ({ plugin, onDelete, onInstall }) => {
     const [openInfo, setOpenInfo] = useState(false);
@@ -25,6 +26,21 @@ const PluginItem = ({ plugin, onDelete, onInstall }) => {
     const handleCloseInfo = () => {
         setOpenInfo(false);
     };
+
+    const renderInstallButton = () => {
+        if (plugin.name === "tau-traffic-classification-sniffer") {
+            return <InstallSnifferForm onInstall={() => onInstall(plugin)} />;
+        } else {
+            return (
+                <Tooltip title="Install Plugin">
+                    <IconButton sx={{color: '#b1b1e1'}} onClick={() => onInstall(plugin)}>
+                        <DownloadIcon />
+                    </IconButton>
+                </Tooltip>
+            );
+        }
+    };
+
     return (
         <ListItem sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Paper elevation={3} sx={{ width: '100%', p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: "#02032F", color: "#fff" }}>
@@ -46,13 +62,7 @@ const PluginItem = ({ plugin, onDelete, onInstall }) => {
                                 <DeleteIcon />
                             </IconButton>
                         </Tooltip>
-                    ) : (
-                        <Tooltip title="Install Plugin">
-                            <IconButton sx={{color: '#b1b1e1',}} onClick={() => onInstall(plugin)}>
-                                <DownloadIcon />
-                            </IconButton>
-                        </Tooltip>
-                    )}
+                    ) : renderInstallButton()}
                 </Box>
             </Paper>
             {/* Info Dialog */}

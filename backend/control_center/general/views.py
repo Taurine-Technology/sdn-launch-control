@@ -15,7 +15,7 @@ from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
 from .serializers import BridgeSerializer
-from .models import Controller
+from .models import Controller, Plugins
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
@@ -105,6 +105,45 @@ class AddDeviceView(APIView):
                             status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PluginListView(APIView):
+    def get(self, request):
+        try:
+            plugins = Plugins.objects.all()
+            data = [
+                {
+                    "alias": plugin.alias,
+                    "name": plugin.name,
+                    "version": plugin.version,
+                    "short_description": plugin.short_description,
+                    "long_description": plugin.long_description,
+                    "author": plugin.author,
+                    "installed": plugin.installed,
+                } for plugin in plugins
+            ]
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class InstallPluginView(APIView):
+    def post(self, request):
+        try:
+            data = request.data
+            name = data.get('name')
+            installed = data.get('installed')
+            plugin = Plugins.objects.get(name=name)
+            if installed:
+                plugin.installed = True
+            else:
+                plugin.installed = False
+
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DeviceListView(APIView):

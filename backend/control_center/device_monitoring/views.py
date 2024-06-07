@@ -165,7 +165,7 @@ def install_sniffer(request):
         save_model_name('testing_sniffer', config_path)
 
         result = run_playbook('install-sniffer', playbook_dir_path, inventory_path)
-        return Response({"status": "success"}, status=status.HTTP_200_OK)
+        return Response({"status": "success", "message": 'successfully installed sniffer'}, status=status.HTTP_200_OK)
     except Exception as e:
         print(e)
         return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)

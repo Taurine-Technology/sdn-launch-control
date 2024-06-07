@@ -140,6 +140,25 @@ const InstallSnifferForm = () => {
             // || addDeviceResponse.data.message
             setResponseMessage(deployResponse.data.message);
             setResponseType('success');
+            if (deployResponse.data.status === 'success') {
+                const payload = {
+                    name: 'tau-traffic-classification-sniffer',
+                    installed: true
+                };
+                try {
+                    const response = await axios.post('http://localhost:8000/install-plugin/', payload);
+                    console.log('Response:', response.data);
+                    setResponseMessage('Plugin installation status updated successfully!');
+                    setResponseType('success');
+                } catch (error) {
+                    console.error('Installation error:', error);
+                    setResponseMessage(error.response?.data?.message || 'Installed Sniffer but failed to update plugin status');
+                    setResponseType('error');
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+
 
         } catch (error) {
             console.error('Error:', error || 'Deployment failed');
@@ -259,5 +278,5 @@ export default InstallSnifferForm;
 
 //http://10.10.10.2:8000
 //eth2
-//1
 //2
+//1

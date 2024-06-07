@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 # Register your models here.
-from .models import Device, Bridge, Port, Controller, ClassifierModel
+from .models import Device, Bridge, Port, Controller, ClassifierModel, Plugins
 
 
 @admin.register(Device)
@@ -27,3 +27,7 @@ class ControllerAdmin(admin.ModelAdmin):
 @admin.register(ClassifierModel)
 class ClassifierModelAdmin(admin.ModelAdmin):
     list_display = ('name', 'number_of_bytes', 'number_of_packets')
+
+@admin.register(Plugins)
+class PluginsAdmin(admin.ModelAdmin):
+    list_display = ('alias', 'installed')

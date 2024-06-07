@@ -3,11 +3,20 @@ import { Box, Typography } from '@mui/material';
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
 import PluginList from "../components/lists/PluginList";
+import axios from "axios";
 
 const PluginsPage = () => {
     const [plugins, setPlugins] = useState([]);
-
+    const [error, setError] = useState(null);
     const fetchPlugins = async () => {
+        try {
+            const response = await axios.get('http://localhost:8000/plugins/');
+            setPlugins(response.data); // Axios automatically handles JSON parsing
+            console.log(response.data)
+        } catch (error) {
+            console.error('Error fetching devices:', error);
+            setError(error.message);
+        }
         const hardcodedData = [
             {
                 alias: "Traffic Classification Sniffer",
@@ -29,7 +38,7 @@ const PluginsPage = () => {
             },
         ];
 
-        setPlugins(hardcodedData);
+        // setPlugins(hardcodedData);
     };
 
     useEffect(() => {

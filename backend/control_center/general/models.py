@@ -80,3 +80,12 @@ class ClassifierModel(models.Model):
     def __str__(self):
         return self.name
 
+
+class Plugins(models.Model):
+    alias = models.CharField(max_length=100)
+    name = models.CharField(max_length=100)
+    version = models.CharField(max_length=100)
+    short_description = models.CharField(max_length=200)
+    long_description = models.CharField(max_length=500)
+    author = models.CharField(max_length=100)
+    installed = models.BooleanField(default=False)

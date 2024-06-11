@@ -16,9 +16,9 @@ const Footer = () => {
                 </Grid>
                 <Grid item>
                     <Box sx={{ display: 'flex' }}>
-                        <Link href="https://twitter.com" target="_blank"><Box sx={{ padding: '3px' }}><img src="./images/x.png" alt="Twitter" style={{height: '22px' }}/></Box></Link>
-                        <Link href="https://instagram.com" target="_blank"><Box sx={{ padding: '3px' }}><img src="./images/instagram.png" alt="Instagram" style={{ height: '22px' }}/></Box></Link>
-                        <Link href="https://linkedin.com" target="_blank"><Box sx={{ padding: '3px' }}><img src="./images/linkedin.png" alt="LinkedIn" style={{height: '22px' }}/></Box></Link>
+                        <Link href="https://x.com/taurine_tech/" target="_blank"><Box sx={{ padding: '3px' }}><img src="./images/x.png" alt="Twitter" style={{height: '22px' }}/></Box></Link>
+                        <Link href="https://www.instagram.com/taurinetech/" target="_blank"><Box sx={{ padding: '3px' }}><img src="./images/instagram.png" alt="Instagram" style={{ height: '22px' }}/></Box></Link>
+                        <Link href="https://www.linkedin.com/company/taurine-technology/" target="_blank"><Box sx={{ padding: '3px' }}><img src="./images/linkedin.png" alt="LinkedIn" style={{height: '22px' }}/></Box></Link>
                     </Box>
                     <Typography variant="body_footer">
                         <Link href="#" target="_blank" color="#ffffff">terms & conditions</Link>

@@ -20,7 +20,6 @@ function ConfirmPluginInstallationDialogue({ open, handleClose, itemName = "item
     const installPlugin = async () => {
         setLoading(true);
 
-        // Check if the specific plugin requires a pre-condition and is not met
         if (pluginName === 'tau-onos-metre-traffic-classification' && !installed) {
             setResponseType('error');
             setResponseMessage('Please install the Traffic Classification Sniffer to enable this plugin.');
@@ -28,10 +27,10 @@ function ConfirmPluginInstallationDialogue({ open, handleClose, itemName = "item
             return;  // Early exit if the condition is not met
         }
 
-        // Proceed to install the plugin if conditions are met or not needed
         try {
             const response = await axios.post(`http://localhost:8000/plugins/install/${pluginName}/`);
-            // Handle successful installation response if needed
+            setResponseType('success')
+            setResponseMessage(`Successfully installed ${itemName}`)
         } catch (error) {
             console.error('Error installing plugin:', error);
             setResponseType('error');

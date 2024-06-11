@@ -141,6 +141,22 @@ class CheckPluginInstallation(APIView):
             return JsonResponse({'hasDevices': False}, safe=False)
 
 
+class InstallPluginDatabaseAlterView(APIView):
+    def post(self, request, plugin_name):
+        try:
+            plugin = Plugins.objects.get(name=plugin_name)
+            plugin.installed = True
+            plugin.save()
+            return Response({"status": "success", "message": "Plugin installed successfully"},
+                            status=status.HTTP_200_OK)
+        except Plugins.DoesNotExist as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": "Plugin not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class InstallPluginView(APIView):
     def post(self, request):
         try:

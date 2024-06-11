@@ -22,7 +22,7 @@ from ovs_management.views import EditBridge, GetDevicePorts, CreateBridge, GetDe
 from controller.views import InstallControllerView
 from classifier.views import classify
 from device_monitoring.views import post_device_stats, post_openflow_metrics, install_system_stats_monitor, install_ovs_qos_monitor, install_sniffer
-from general.views import (AddDeviceView, DeviceDetailsView, DeviceListView, DeviceBridgesView, DevicePortsView, PluginListView, CheckPluginInstallation, InstallPluginView,
+from general.views import (AddDeviceView, DeviceDetailsView, DeviceListView, DeviceBridgesView, DevicePortsView, PluginListView, InstallPluginDatabaseAlterView, CheckPluginInstallation, InstallPluginView,
                            CheckDeviceConnectionView, DeleteDeviceView, ForceDeleteDeviceView, UpdateDeviceView, AddControllerView, ControllerListView,
                            )
 from network_map.views import OnosNetworkMap, OvsNetworkMap
@@ -62,6 +62,8 @@ urlpatterns = [
     # ---- PLUGINS ----
     path('plugins/', PluginListView.as_view(), name='plugin-list'),
     path('plugins/check/<str:plugin_name>/', CheckPluginInstallation.as_view(), name='plugin-check'),
+    path('plugins/install/<str:plugin_name>/', InstallPluginDatabaseAlterView.as_view(), name='plugin-install'),
+#     InstallPluginDatabaseAlterView
 
 
 

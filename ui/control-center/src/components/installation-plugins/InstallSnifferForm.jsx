@@ -143,7 +143,8 @@ const InstallSnifferForm = () => {
             if (deployResponse.data.status === 'success') {
                 const payload = {
                     name: 'tau-traffic-classification-sniffer',
-                    installed: true
+                    installed: true,
+                    lan_ip_address: host
                 };
                 try {
                     const response = await axios.post('http://localhost:8000/install-plugin/', payload);

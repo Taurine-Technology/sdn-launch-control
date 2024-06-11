@@ -9,6 +9,7 @@ import DeviceDetailsPage from "./pages/DeviceDetailsPage";
 import ControllerListPage from "./pages/ControllerListPage";
 import PluginPage from "./pages/PluginPage";
 import InstallationPage from "./pages/InstallationPage";
+import MonitoringHub from "./pages/MonitoringHubPage";
 function MainComponent() {
     return <div>
         <h1>Welcome to the Home Page</h1>
@@ -27,6 +28,7 @@ const App = () => {
                         <Route path="/devices/:deviceIp" element={<DeviceDetailsPage/>}/>
                         <Route path="/plugins" element={<PluginPage/>}/>
                         <Route path="/install" element={<InstallationPage/>}/>
+                        <Route path="/monitoring-hub" element={<MonitoringHub/>} />
                     </Routes>
                 </HashRouter>
             </ThemeProvider>

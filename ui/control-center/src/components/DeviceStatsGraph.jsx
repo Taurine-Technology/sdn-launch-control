@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend} from 'recharts';
-import {Card, CardContent} from "@mui/material";
+import {Card, CardContent, Typography} from "@mui/material";
 import Box from "@mui/material/Box";
 
 const DeviceStatsGraph = ( {targetIpAddress} ) => {
@@ -34,9 +34,10 @@ const DeviceStatsGraph = ( {targetIpAddress} ) => {
     return (
         <Card raised sx={{ margin: 4, bgcolor: '#02032F', }}>
             <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 600, width: '100%' }}>
+                <Typography variant="h2" sx={{ mb: 2, color: "#FFF" }}>Device Stats for {targetIpAddress}</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300, width: '100%' }}>
                     {data.length > 0 ? (
-                        <LineChart width={1000} height={600} data={data}>
+                        <LineChart width={700} height={400} data={data}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="time" />
                             <YAxis domain={[0, 100]} />

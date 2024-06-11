@@ -89,3 +89,5 @@ class Plugins(models.Model):
     long_description = models.CharField(max_length=500)
     author = models.CharField(max_length=100)
     installed = models.BooleanField(default=False)
+    target_devices = models.ManyToManyField(Device, related_name='installed_devices')
+

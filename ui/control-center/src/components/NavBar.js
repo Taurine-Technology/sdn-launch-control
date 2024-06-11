@@ -12,6 +12,7 @@ const NavBar = () => {
     const [openLobby, setOpenLobby] = useState(false);
     const [openHardware, setOpenHardware] = useState(false);
     const [openSystem, setOpenSystem] = useState(false);
+    const [openMonitoring, setOpenMonitoring] = useState(false);
 
     const handleClickLobby = () => {
         setOpenLobby(!openLobby);
@@ -23,6 +24,10 @@ const NavBar = () => {
 
     const handleClickSystem = () => {
         setOpenSystem(!openSystem);
+    };
+
+    const handleClickMonitoring = () => {
+        setOpenMonitoring(!openMonitoring);
     };
 
     const toggleDrawer = (open) => (event) => {
@@ -89,6 +94,19 @@ const NavBar = () => {
                                             </ListItemButton>
                                             <ListItemButton sx={{ pl: 4 }} component={Link} to="/install">
                                                 <ListItemText primary="Install Software" />
+                                            </ListItemButton>
+                                        </List>
+                                    </Collapse>
+
+                                    {/* Monitoring Heading */}
+                                    <ListItemButton onClick={handleClickMonitoring}>
+                                        <ListItemText primary="Monitoring" />
+                                        {openMonitoring ? <ExpandLess /> : <ExpandMore />}
+                                    </ListItemButton>
+                                    <Collapse in={openMonitoring} timeout="auto" unmountOnExit>
+                                        <List component="div" disablePadding>
+                                            <ListItemButton sx={{ pl: 4 }} component={Link} to="/monitoring-hub">
+                                                <ListItemText primary="Hub" />
                                             </ListItemButton>
                                         </List>
                                     </Collapse>

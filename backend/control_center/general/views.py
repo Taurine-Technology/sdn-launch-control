@@ -128,19 +128,47 @@ class PluginListView(APIView):
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class CheckPluginInstallation(APIView):
+
+    def get(self, request, plugin_name):
+
+        try:
+            plugin = Plugins.objects.get(name=plugin_name)
+            # Check if there are any devices associated with the plugin
+            has_devices = plugin.target_devices.exists()
+            return JsonResponse({'hasDevices': has_devices}, safe=False)
+        except Plugins.DoesNotExist:
+            return JsonResponse({'hasDevices': False}, safe=False)
+
+
 class InstallPluginView(APIView):
     def post(self, request):
         try:
             data = request.data
             name = data.get('name')
             installed = data.get('installed')
+            device_ip_address = data.get('lan_ip_address')
+            validate_ipv4_address(device_ip_address)
+
             plugin = Plugins.objects.get(name=name)
             if installed:
                 plugin.installed = True
+                device = Device.objects.get(lan_ip_address=device_ip_address)
+                if not plugin.target_devices.filter(id=device.id).exists():
+                    print(f'adding {device.lan_ip_address}')
+                    plugin.target_devices.add(device)
             else:
                 plugin.installed = False
-
-            return Response(data, status=status.HTTP_200_OK)
+            plugin.save()
+            return Response({"status": "success", "message": "Plugin installed successfully"},
+                            status=status.HTTP_200_OK)
+        except ValidationError:
+            return Response({"status": "error", "message": "Invalid IP address format."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except Device.DoesNotExist:
+            return Response({"status": "error", "message": "Device not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Plugins.DoesNotExist:
+            return Response({"status": "error", "message": "Plugin not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error(e, exc_info=True)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -233,6 +261,7 @@ class ForceDeleteDeviceView(APIView):
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class DeleteDeviceView(APIView):
     def delete(self, request):

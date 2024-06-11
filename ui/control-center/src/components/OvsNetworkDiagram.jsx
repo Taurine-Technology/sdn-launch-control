@@ -213,7 +213,7 @@ const OvsNetworkDiagram = () => {
                             justifyContent: 'center',
                             alignItems: 'center',
                             paddingTop: '10px',
-                            height: '100%',
+                            height: '80%',
                         }}>
                             <CircularProgress size={100}/>
                         </Box>
@@ -228,7 +228,7 @@ const OvsNetworkDiagram = () => {
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        height: '100%',
+                                        height: '80%',
                                         padding: 4
                                     }}>
                                         <ErrorOutlineIcon sx={{fontSize: 60, color: '#7456FD', padding: "20px"}}/>

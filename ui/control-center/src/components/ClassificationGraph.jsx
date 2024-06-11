@@ -63,13 +63,14 @@ function ClassificationGraph() {
     };
 
     return (
-        <Card raised sx={{margin: 2, bgcolor: '#02032F', boxShadow: 3}}>
+        <Card raised sx={{ margin: 4, bgcolor: '#02032F', boxShadow: 3}}>
             <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 600, width: '100%' }}>
+                <Typography variant="h2" sx={{ mb: 2, color: "#FFF" }}>Flow Traffic Classifications</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400, width: '100%' }}>
                     <BarChart
                         data={classificationData}
                         margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                        width={1000} height={600}
+                        width={1000} height={400}
 
                     >
                         <CartesianGrid strokeDasharray="3 3" />

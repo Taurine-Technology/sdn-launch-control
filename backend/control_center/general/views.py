@@ -1,5 +1,5 @@
 from django.shortcuts import render
-
+from django.shortcuts import get_list_or_404
 from ovs_install.utilities.ansible_tasks import run_playbook
 from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, \
     save_interfaces_to_config
@@ -459,6 +459,18 @@ class ControllerListView(APIView):
             ]
 
             return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ONOSControllerListView(APIView):
+    def get(self, request):
+        try:
+            onos_controllers = Controller.objects.filter(type='onos')
+
+            lan_ips = [controller.device.lan_ip_address for controller in onos_controllers]
+            return Response(lan_ips, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(e, exc_info=True)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

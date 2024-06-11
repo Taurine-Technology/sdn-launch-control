@@ -29,19 +29,27 @@ from network_map.views import OnosNetworkMap, OvsNetworkMap
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('add-device/', AddDeviceView.as_view(), name='add-device'),
-    path('device-details/<str:lan_ip_address>/', DeviceDetailsView.as_view(), name='device-details'),
+
+    # ---- INSTALL ----
     path('install-ovs/', InstallOvsView.as_view(), name='install-ovs'),
     path('install-controller/<str:controller_type>/', InstallControllerView.as_view(), name='install-controller'),
+    # ---- DEVICES ----
     path('devices/', DeviceListView.as_view(), name='device-list'),
-
-    path('install-plugin/', InstallPluginView.as_view(), name='plugin-install'),
-    path('controllers/', ControllerListView.as_view(), name='controller-list'),
-    path('delete-controller/', DeleteControllerView.as_view(), name='delete-controller'),
+    path('add-device/', AddDeviceView.as_view(), name='add-device'),
+    path('device-details/<str:lan_ip_address>/', DeviceDetailsView.as_view(), name='device-details'),
     path('device-bridges/<str:lan_ip_address>/', DeviceBridgesView.as_view(), name='device-bridges'),
     path('device-ports/<str:lan_ip_address>/', DevicePortsView.as_view(), name='device-ports'),
     path('unassigned-device-ports/<str:lan_ip_address>/', GetUnassignedDevicePorts.as_view(), name='unassigned-device-ports'),
     path('get-device-ports/<str:lan_ip_address>/', GetDevicePorts.as_view(), name='get-device-ports'),
+    # ---- CONTROLLERS ----
+    path('controllers/', ControllerListView.as_view(), name='controller-list'),
+    path('delete-controller/', DeleteControllerView.as_view(), name='delete-controller'),
+    # ---- PLUGINS ----
+    path('plugins/', PluginListView.as_view(), name='plugin-list'),
+    path('plugins/check/<str:plugin_name>/', CheckPluginInstallation.as_view(), name='plugin-check'),
+    path('plugins/install/<str:plugin_name>/', InstallPluginDatabaseAlterView.as_view(), name='plugin-install'),
+    ####
+    path('install-plugin/', InstallPluginView.as_view(), name='plugin-install'),
     path('add-bridge/', CreateBridge.as_view(), name='add-bridge'),
     path('get-bridges/<str:lan_ip_address>/', GetDeviceBridges.as_view(), name='get-bridges'),
     path('check-connection/<str:lan_ip_address>/', CheckDeviceConnectionView.as_view(), name='check-connection'),
@@ -59,10 +67,7 @@ urlpatterns = [
     path('install-ovs-qos-monitor/', install_ovs_qos_monitor, name='install_ovs_qos_monitor'),
     path('install-sniffer/', install_sniffer, name='install_sniffer'),
 
-    # ---- PLUGINS ----
-    path('plugins/', PluginListView.as_view(), name='plugin-list'),
-    path('plugins/check/<str:plugin_name>/', CheckPluginInstallation.as_view(), name='plugin-check'),
-    path('plugins/install/<str:plugin_name>/', InstallPluginDatabaseAlterView.as_view(), name='plugin-install'),
+
 
 
 

@@ -21,20 +21,21 @@ import axios from "axios";
 const PluginItem = ({ plugin, onDelete, onInstall }) => {
     const [openInfo, setOpenInfo] = useState(false);
     const [openConfirmDialogue, setOpenConfirmDialogue] = useState(false);
-    const [installed, setInstalled] = useState(false);
     const [responseMessage, setResponseMessage] = useState('');
     const [responseType, setResponseType] = useState('');
+    const [canInstall, setCanInstall] = useState(false);
 
     useEffect(() => {
         const checkPluginInstallation = async () => {
             try {
-                // Adjust the URL and payload as needed to match your API endpoint for checking the plugin status
-                const response = await axios.get('http://localhost:8000/plugins/check/tau-traffic-classification-sniffer/');
-                setInstalled(response.data.hasDevices);
+                const pluginStatus = await axios.get(`http://localhost:8000/plugins/check/${plugin.name}/`);
+                const controllerResponse = await axios.get('http://localhost:8000/controllers/');
+                const hasONOSController = controllerResponse.data.some(controller => controller.type === 'onos');
+                setCanInstall(pluginStatus.data && hasONOSController);
             } catch (error) {
-                console.error('Error checking plugin installation:', error);
-            } finally {
-
+                console.error('Error checking plugin and controller status:', error);
+                setResponseType('error');
+                setResponseMessage('Failed to fetch plugin or controller data.');
             }
         };
 
@@ -113,7 +114,7 @@ const PluginItem = ({ plugin, onDelete, onInstall }) => {
                     itemName={plugin.alias}
                     pluginName={plugin.name}
                     isLoading={false}
-                    installed={installed}
+                    installed={canInstall}
                 />
 
             </Paper>

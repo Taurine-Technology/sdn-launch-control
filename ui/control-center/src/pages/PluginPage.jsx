@@ -12,7 +12,6 @@ const PluginsPage = () => {
         try {
             const response = await axios.get('http://localhost:8000/plugins/');
             setPlugins(response.data); // Axios automatically handles JSON parsing
-            console.log(response.data)
         } catch (error) {
             console.error('Error fetching devices:', error);
             setError(error.message);

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import { Link } from 'react-router-dom';
 import { AppBar, Toolbar, IconButton, Button, Grid, Drawer, List, ListItem, ListItemButton, ListItemText, Collapse } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import { Box } from '@mui/system';
+import axios from "axios";
 
 
 const NavBar = () => {
@@ -13,9 +14,29 @@ const NavBar = () => {
     const [openHardware, setOpenHardware] = useState(false);
     const [openSystem, setOpenSystem] = useState(false);
     const [openMonitoring, setOpenMonitoring] = useState(false);
+    const [openAi, setOpenAi] = useState(false);
+    const [isPluginInstalled, setIsPluginInstalled] = useState(false);
+
+    useEffect(() => {
+        const checkPluginInstallation = async () => {
+            try {
+                const response = await axios.get(`http://localhost:8000/plugins/check/tau-onos-metre-traffic-classification/`);
+                console.log(response)
+                setIsPluginInstalled(response.data.message); // Assuming response includes installation status
+            } catch (error) {
+                console.error('Error checking plugin installation:', error);
+            }
+        };
+
+        checkPluginInstallation();
+    }, []);
 
     const handleClickLobby = () => {
         setOpenLobby(!openLobby);
+    };
+
+    const handleClickAi = () => {
+        setOpenAi(!openAi);
     };
 
     const handleClickHardware = () => {
@@ -65,6 +86,24 @@ const NavBar = () => {
                                             </ListItemButton>
                                         </List>
                                     </Collapse>
+
+                                    {/*AI section*/}
+                                    {isPluginInstalled && (
+                                        <>
+                                            <ListItemButton onClick={handleClickAi}>
+                                            <ListItemText primary="AI Services" />
+                                            {openAi ? <ExpandLess /> : <ExpandMore />}
+                                            </ListItemButton>
+                                            <Collapse in={openAi} timeout="auto" unmountOnExit>
+                                                    <List component="div" disablePadding>
+                                                        <ListItemButton sx={{ pl: 4 }} component={Link} to="/monitoring-hub">
+                                                            <ListItemText primary="ONOS Traffic Classification" />
+                                                        </ListItemButton>
+                                                    </List>
+                                            </Collapse>
+                                        </>
+                                    )}
+
 
                                     {/* Hardware Heading */}
                                     <ListItemButton onClick={handleClickHardware}>

@@ -63,7 +63,7 @@ urlpatterns = [
     path('plugins/', PluginListView.as_view(), name='plugin-list'),
     path('plugins/check/<str:plugin_name>/', CheckPluginInstallation.as_view(), name='plugin-check'),
     path('plugins/install/<str:plugin_name>/', InstallPluginDatabaseAlterView.as_view(), name='plugin-install'),
-#     InstallPluginDatabaseAlterView
+
 
 
 

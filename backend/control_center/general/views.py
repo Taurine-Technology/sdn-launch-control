@@ -134,9 +134,14 @@ class CheckPluginInstallation(APIView):
 
         try:
             plugin = Plugins.objects.get(name=plugin_name)
-            # Check if there are any devices associated with the plugin
-            has_devices = plugin.target_devices.exists()
-            return JsonResponse({'hasDevices': has_devices}, safe=False)
+            if plugin_name == 'tau-traffic-classification-sniffer':
+                # Check if there are any devices associated with the plugin
+                has_devices = plugin.target_devices.exists()
+                return JsonResponse({'hasDevices': has_devices}, safe=False)
+            else:
+                installed = plugin.installed
+                return Response({"message": installed},
+                                status=status.HTTP_200_OK)
         except Plugins.DoesNotExist:
             return JsonResponse({'hasDevices': False}, safe=False)
 

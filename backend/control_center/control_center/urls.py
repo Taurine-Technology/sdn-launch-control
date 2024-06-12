@@ -21,10 +21,11 @@ from ovs_install.views import InstallOvsView
 from ovs_management.views import EditBridge, GetDevicePorts, CreateBridge, GetDeviceBridges, DeleteBridge, DeleteControllerView, GetUnassignedDevicePorts
 from controller.views import InstallControllerView
 from classifier.views import classify
+from onos.views import MeterListView, CreateMeterView
 from device_monitoring.views import post_device_stats, post_openflow_metrics, install_system_stats_monitor, install_ovs_qos_monitor, install_sniffer
 from general.views import (AddDeviceView, DeviceDetailsView, DeviceListView, DeviceBridgesView, DevicePortsView, PluginListView, InstallPluginDatabaseAlterView, CheckPluginInstallation, InstallPluginView,
                            CheckDeviceConnectionView, DeleteDeviceView, ForceDeleteDeviceView, UpdateDeviceView, AddControllerView, ControllerListView, ONOSControllerListView,
-                           )
+                           ControllerSwitchList)
 from network_map.views import OnosNetworkMap, OvsNetworkMap
 
 urlpatterns = [
@@ -33,6 +34,7 @@ urlpatterns = [
     # ---- INSTALL ----
     path('install-ovs/', InstallOvsView.as_view(), name='install-ovs'),
     path('install-controller/<str:controller_type>/', InstallControllerView.as_view(), name='install-controller'),
+
     # ---- DEVICES ----
     path('devices/', DeviceListView.as_view(), name='device-list'),
     path('add-device/', AddDeviceView.as_view(), name='add-device'),
@@ -41,10 +43,17 @@ urlpatterns = [
     path('device-ports/<str:lan_ip_address>/', DevicePortsView.as_view(), name='device-ports'),
     path('unassigned-device-ports/<str:lan_ip_address>/', GetUnassignedDevicePorts.as_view(), name='unassigned-device-ports'),
     path('get-device-ports/<str:lan_ip_address>/', GetDevicePorts.as_view(), name='get-device-ports'),
+
     # ---- CONTROLLERS ----
     path('controllers/', ControllerListView.as_view(), name='controller-list'),
     path('delete-controller/', DeleteControllerView.as_view(), name='delete-controller'),
     path('controllers/onos/', ONOSControllerListView.as_view(), name='onos-controller-list'),
+    path('controllers/<str:controller_ip>/switches/', ControllerSwitchList.as_view(), name='onos-controller-list-switches'),
+
+    # ---- ONOS ----
+    path('onos/meters/<str:lan_ip_address>/', MeterListView.as_view(), name='onos-meter-list'),
+    path('onos/create-meter/', CreateMeterView.as_view(), name='onos-create-metere'),
+
     # ---- PLUGINS ----
     path('plugins/', PluginListView.as_view(), name='plugin-list'),
     path('plugins/check/<str:plugin_name>/', CheckPluginInstallation.as_view(), name='plugin-check'),

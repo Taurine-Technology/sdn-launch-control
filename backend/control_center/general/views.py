@@ -16,7 +16,7 @@ from django.core.exceptions import ValidationError
 import logging
 from .serializers import BridgeSerializer
 from .models import Controller, Plugins
-
+from .serializers import DeviceSerializer
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
 logger = logging.getLogger(__name__)
@@ -463,6 +463,19 @@ class ControllerListView(APIView):
             logger.error(e, exc_info=True)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+class ControllerSwitchList(APIView):
+    def get(self, request, controller_ip):
+        try:
+            controller = Controller.objects.get(device__lan_ip_address=controller_ip)
+            switches = controller.switches.all()
+            serializer = DeviceSerializer(switches, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Controller.DoesNotExist:
+            return Response({'error': 'Controller not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ONOSControllerListView(APIView):
     def get(self, request):

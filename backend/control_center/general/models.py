@@ -67,7 +67,7 @@ class Controller(models.Model):
     )
     type = models.CharField(max_length=20, choices=TYPES)
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='sdn_controller')
-    switches = models.ManyToManyField(Device, related_name='switch_controllers')
+    switches = models.ManyToManyField(Device, related_name='switch_controllers', blank=True)
     port_num = models.IntegerField(default=6653)
 
 

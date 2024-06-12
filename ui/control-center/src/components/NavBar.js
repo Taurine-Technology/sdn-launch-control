@@ -21,7 +21,6 @@ const NavBar = () => {
         const checkPluginInstallation = async () => {
             try {
                 const response = await axios.get(`http://localhost:8000/plugins/check/tau-onos-metre-traffic-classification/`);
-                console.log(response)
                 setIsPluginInstalled(response.data.message); // Assuming response includes installation status
             } catch (error) {
                 console.error('Error checking plugin installation:', error);
@@ -96,7 +95,7 @@ const NavBar = () => {
                                             </ListItemButton>
                                             <Collapse in={openAi} timeout="auto" unmountOnExit>
                                                     <List component="div" disablePadding>
-                                                        <ListItemButton sx={{ pl: 4 }} component={Link} to="/monitoring-hub">
+                                                        <ListItemButton sx={{ pl: 4 }} component={Link} to="/onos-classifier">
                                                             <ListItemText primary="ONOS Traffic Classification" />
                                                         </ListItemButton>
                                                     </List>

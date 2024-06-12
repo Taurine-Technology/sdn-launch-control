@@ -10,6 +10,7 @@ import ControllerListPage from "./pages/ControllerListPage";
 import PluginPage from "./pages/PluginPage";
 import InstallationPage from "./pages/InstallationPage";
 import MonitoringHub from "./pages/MonitoringHubPage";
+import OnosClassifierPage from "./pages/OnosClassifierPage";
 function MainComponent() {
     return <div>
         <h1>Welcome to the Home Page</h1>
@@ -29,6 +30,7 @@ const App = () => {
                         <Route path="/plugins" element={<PluginPage/>}/>
                         <Route path="/install" element={<InstallationPage/>}/>
                         <Route path="/monitoring-hub" element={<MonitoringHub/>} />
+                        <Route path="/onos-classifier" element={<OnosClassifierPage/>} />
                     </Routes>
                 </HashRouter>
             </ThemeProvider>

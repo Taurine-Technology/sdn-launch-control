@@ -22,16 +22,28 @@ class MeterListView(APIView):
                 url=url,
                 auth=HTTPBasicAuth('onos', 'rocks')
             )
+            url_devices = f"http://{lan_ip_address}:8181/onos/v1/devices"
+            response_devices = requests.get(
+                url=url_devices,
+                auth=HTTPBasicAuth('onos', 'rocks')
+            )
+            device_response_json = response_devices.json()
+            devices = device_response_json.get('devices')
             meters = []
             for meter in response.json().get('meters'):
-                print(meter)
-                print(meter.get('bands')[0])
                 band_details = meter.get('bands')[0]
                 band_type = band_details.get('type')
-                print(band_type)
+                switch_ip = '0.0.0.0'
+                for device in devices:
+                    annotations = device.get('annotations')
+                    device_id = device.get('id')
+                    if device_id == meter.get('deviceId'):
+                        switch_ip = annotations.get('managementAddress')
+
                 if band_type == 'DROP':
                     rate = band_details.get('rate')
                     device_id = meter.get('deviceId')
+
                     m_id = meter.get('id')
                     state = meter.get('state')
                     unit = meter.get('unit')
@@ -40,6 +52,7 @@ class MeterListView(APIView):
                     m = {
                         'id': m_id,
                         'type': 'drop',
+                        'ip': switch_ip,
                         'rate': f'{rate}',
                         'unit': f'{unit}',
                         'device_id': f'{device_id}',

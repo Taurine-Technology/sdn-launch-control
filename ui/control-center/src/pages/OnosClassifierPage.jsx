@@ -68,7 +68,7 @@ const OnosClassifierPage = () => {
             <NavBar />
 
             <Box sx={{ overflowY: 'auto', flexGrow: 1, p: 3, color: "#FFF" }}>
-                <Typography variant="h4" sx={{ mb: 2 }}>ONOS Controller Management</Typography>
+                <Typography variant="h4" sx={{ mb: 2 }}>AI Services: ONOS Classifier Plugin</Typography>
 
                 {controllers.length > 0 ? (
                     <FormControl fullWidth sx={{ mb: 4 }}>
@@ -95,7 +95,7 @@ const OnosClassifierPage = () => {
                                 <ul>
                                     {deviceMeters.map((meter, idx) => (
                                         <li key={idx}>
-                                            ID: {meter.id} Type: {meter.type}, Rate: {meter.rate} {meter.unit}, State: {meter.state}
+                                            Switch IP: {meter.ip}, Meter ID: {meter.id}, Meter Type: {meter.type}, Rate: {meter.rate} {meter.unit}, Meter State: {meter.state}
                                         </li>
                                     ))}
                                 </ul>

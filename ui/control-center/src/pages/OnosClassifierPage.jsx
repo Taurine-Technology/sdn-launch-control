@@ -23,7 +23,7 @@ const OnosClassifierPage = () => {
     const [meters, setMeters] = useState([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [currentDeviceId, setCurrentDeviceId] = useState('');
-
+    const [categories, setCategories] = useState('');
     const handleOpenDialog = (deviceId) => {
         setCurrentDeviceId(deviceId);
         setIsDialogOpen(true);
@@ -47,6 +47,7 @@ const OnosClassifierPage = () => {
                 setControllers([]);
             }
         };
+        fetchCategories();
         fetchControllers();
     }, []);
 
@@ -66,6 +67,13 @@ const OnosClassifierPage = () => {
             setDevices([]);
         }
     };
+    const fetchCategories = async () => {
+        axios.get('http://localhost:8000/categories/')
+            .then(response => {
+                setCategories(response.data.categories);
+            })
+            .catch(error => console.error('Error fetching categories:', error));
+    }
 
     const fetchMeters = async (deviceId,controllerIP) => {
         try {
@@ -117,11 +125,11 @@ const OnosClassifierPage = () => {
                 {devices.map((device, index) => (
                     <Card key={index} sx={{ mb: 2, backgroundColor: "#02032F", color: "#fff" }}>
                         <CardContent>
-                            <Typography variant="h6">Meter Entries for Device {device.id}</Typography>
+                            <Typography variant="h6">Meter Entries for Device {device.id} at {device.annotations.managementAddress}</Typography>
                             <ul>
                                 {meters[device.id] && meters[device.id].map((meter, idx) => (
                                     <li key={idx}>
-                                        Switch IP: {meter.ip}, Meter ID: {meter.id}, Meter Type: {meter.type}, Rate: {meter.rate} {meter.unit}, Meter State: {meter.state}
+                                        Meter ID: {meter.id}, Meter Type: {meter.type}, Rate: {meter.rate} {meter.unit}, Meter State: {meter.state}
                                     </li>
                                 ))}
                             </ul>
@@ -136,6 +144,7 @@ const OnosClassifierPage = () => {
                     handleClose={handleCloseDialog}
                     controllerIP={selectedController}
                     deviceId={currentDeviceId}
+                    categories={categories.split(',')}
                 />
 
 

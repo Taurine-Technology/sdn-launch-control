@@ -17,6 +17,7 @@ import logging
 from .serializers import BridgeSerializer
 from .models import Controller, Plugins
 from .serializers import DeviceSerializer
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ test_connection = "test-connection"
 playbook_dir_path = f"{parent_dir}/ansible/playbooks"
 inventory_path = f"{parent_dir}/ansible/inventory/inventory"
 config_path = f"{parent_dir}/ansible/group_vars/all.yml"
+from .models import ClassifierModel
 
 
 # *---------- Network Connectivity Methods ----------*
@@ -477,6 +479,7 @@ class ControllerSwitchList(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class ONOSControllerListView(APIView):
     def get(self, request):
         try:
@@ -487,3 +490,15 @@ class ONOSControllerListView(APIView):
         except Exception as e:
             logger.error(e, exc_info=True)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CategoryListView(APIView):
+    def get(self, request):
+        try:
+            classifier = ClassifierModel.objects.first()
+            if classifier:
+                return JsonResponse({'categories': classifier.categories}, status=200)
+            else:
+                return JsonResponse({'error': 'Classifier not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)

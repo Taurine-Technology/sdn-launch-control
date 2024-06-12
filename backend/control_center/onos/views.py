@@ -9,6 +9,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
+from .models import Meter
+from general.models import Device
 
 
 class MeterListView(APIView):
@@ -58,6 +60,16 @@ class MeterListView(APIView):
                         'device_id': f'{device_id}',
                         'state': f'{state}'
                     }
+                    d = Device.objects.get(lan_ip_address=lan_ip_address)
+                    meter_model, created = Meter.objects.get_or_create(
+                        device=d,
+                        meter_id=m_id,
+                        meter_type='drop',
+                        rate=rate,
+                        switch_id=device_id
+
+                    )
+
                     if switch_ip in meters_per_device:
                         meters_per_device[switch_ip].append(m)
                     else:
@@ -72,6 +84,7 @@ class MeterListView(APIView):
             print('CAUGHT AN UNEXPECTED ERROR')
             print(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class MeterListByIdView(APIView):
     def get(self, request, lan_ip_address, id):
@@ -120,8 +133,20 @@ class MeterListByIdView(APIView):
                         'device_id': f'{device_id}',
                         'state': f'{state}'
                     }
-                    if device_id == id:
-                        meters.append(m)
+                    d = Device.objects.get(lan_ip_address=lan_ip_address)
+                    try:
+                        meter_model, created = Meter.objects.get_or_create(
+                            device=d,
+                            meter_id=m_id,
+                            meter_type='drop',
+                            rate=rate,
+                            switch_id=device_id
+
+                        )
+                        if device_id == id:
+                            meters.append(m)
+                    except Exception:
+                        continue
             return Response({"status": "success", "meters": meters}, status=status.HTTP_200_OK)
         except ValidationError:
             return Response({"status": "error", "message": "Invalid IP address format."},
@@ -132,7 +157,6 @@ class MeterListByIdView(APIView):
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
 class CreateMeterView(APIView):
     def post(self, request):
         try:
@@ -140,12 +164,13 @@ class CreateMeterView(APIView):
             controller_ip = data.get('controller_ip')
             switch_id = data.get('switch_id')
             rate = data.get('rate')
-            url = f"http://{controller_ip}:8181/onos/v1/devices"
-            response = requests.get(
-                url=url,
-                auth=HTTPBasicAuth('onos', 'rocks')
-            )
-
+            categories = data.get('categories', None)
+            try:
+                meter = Meter.objects.get(switch_id=switch_id, rate=rate, meter_type='drop')
+                print('*** THIS METER ALREADY EXISTS ***')
+                return JsonResponse({'error': 'An identical Meter exists. Assign applications to that.'}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                print(e)
             if switch_id:
                 device_id_encoded = urllib.parse.quote(switch_id, safe='')
                 url = f"http://{controller_ip}:8181/onos/v1/meters/{device_id_encoded}"
@@ -169,6 +194,36 @@ class CreateMeterView(APIView):
                     auth=HTTPBasicAuth('onos', 'rocks')
                 )
                 if response.status_code == 201:
+                    url_meters = f"http://{controller_ip}:8181/onos/v1/meters/{device_id_encoded}"
+                    response_meters = requests.get(
+                        url=url_meters,
+                        auth=HTTPBasicAuth('onos', 'rocks')
+                    )
+                    for meter_json in response_meters.json().get('meters'):
+                        device_id_meter_rsp = meter_json.get('deviceId')
+                        rate_rsp = meter_json.get('rate')
+                        bands = meter_json.get('bands')[0]
+                        type_rsp = bands.get('type')
+                        if device_id_meter_rsp == switch_id and rate_rsp == rate and type_rsp == 'DROP':
+                            d = Device.objects.get(lan_ip_address=controller_ip)
+                            if categories:
+                                meter_model, created = Meter.objects.get_or_create(
+                                    device=d,
+                                    meter_id=meter_json.get('id'),
+                                    meter_type='drop',
+                                    rate=rate,
+                                    switch_id=switch_id,
+                                    categories=categories
+
+                                )
+                            else:
+                                meter_model, created = Meter.objects.get_or_create(
+                                    device=d,
+                                    meter_id=meter_json.get('id'),
+                                    meter_type='drop',
+                                    rate=rate,
+                                    switch_id=switch_id,
+                                )
                     return JsonResponse({'message': 'Successfully created meter'}, status=201)
                 else:
                     return JsonResponse({'error': 'Failed to create meter on ONOS server'}, status=500)
@@ -177,6 +232,7 @@ class CreateMeterView(APIView):
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class SwitchList(APIView):
     def get(self, request, controller_ip):
@@ -192,6 +248,7 @@ class SwitchList(APIView):
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['POST'])
 def delete_meter(request):
@@ -217,9 +274,6 @@ def delete_meter(request):
     else:
         print(response)
         return JsonResponse({'error': 'Failed to delete meter on ONOS server'}, status=500)
-
-
-
 
 
 @api_view(['GET'])

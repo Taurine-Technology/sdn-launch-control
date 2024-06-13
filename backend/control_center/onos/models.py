@@ -1,17 +1,27 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from general.models import Device
-# Create your models here.
-class Meter(models.Model):
 
-    METER_TYPES = (
-        ('drop', 'drop'),
-    )
-    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='meter_controller')
+
+# Create your models here.
+
+class Category(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Meter(models.Model):
+    METER_TYPES = (('drop', 'drop'),)
+    controller_device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='meters')
     meter_id = models.IntegerField(unique=True)
     meter_type = models.CharField(max_length=30, choices=METER_TYPES)
     rate = models.IntegerField()
     switch_id = models.CharField(max_length=30)
-    categories = models.CharField(max_length=1000, blank=True, null=True)
+    categories = models.ManyToManyField(Category, blank=True)
 
-    class Meta:
-        unique_together = ('meter_type', 'rate', 'switch_id')
+
+class OnosOpenFlowDevice(models.Model):
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='openflow_device')
+    openflow_id = models.CharField(max_length=30)

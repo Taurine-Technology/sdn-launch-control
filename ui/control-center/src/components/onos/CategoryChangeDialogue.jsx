@@ -19,8 +19,9 @@ const ManageCategoriesDialog = ({ open, onClose, categories, meterCategories, me
     const [selectedCategories, setSelectedCategories] = useState([]);
 
     useEffect(() => {
+        console.log(meterCategories)
         // Split meterCategories only if it's a non-empty string
-        setSelectedCategories(meterCategories ? meterCategories.split(',') : []);
+        setSelectedCategories(meterCategories ? meterCategories : []);
     }, [meterCategories]);
 
     const submit = async () => {
@@ -33,12 +34,14 @@ const ManageCategoriesDialog = ({ open, onClose, categories, meterCategories, me
             setResponseMessage('Successfully updated meter');
             setResponseType('success')
         } catch (error) {
-            setResponseMessage(error.message);
-            setResponseType('error')
-            if (error.message === "Request failed with status code 400") {
-                setResponseMessage('This meter cannot be found.');
-                setResponseType('error')
+            if (error.response && error.response.data) {
+                // Check if the backend sent a specific error message and display it
+                setResponseMessage(error.response.data.error || 'An unexpected error occurred');
+            } else {
+                // Generic error message if the response doesn't contain detailed info
+                setResponseMessage('Failed to create meter due to a network or server error.');
             }
+            setResponseType('error');
         }
 
     };

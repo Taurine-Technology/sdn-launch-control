@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.shortcuts import render
 from rest_framework.views import APIView
 from django.http import JsonResponse
@@ -9,9 +10,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
-from .models import Meter
+from .models import Meter, Category
 from general.models import Device
-
+from .serializers import MeterSerializer
 
 class MeterListView(APIView):
     def get(self, request, lan_ip_address):
@@ -53,7 +54,7 @@ class MeterListView(APIView):
                         unit = 'kbs'
                     d = Device.objects.get(lan_ip_address=lan_ip_address)
                     meter_model, created = Meter.objects.get_or_create(
-                        device=d,
+                        controller_device=d,
                         meter_id=m_id,
                         meter_type='drop',
                         rate=rate,
@@ -151,17 +152,14 @@ class MeterListByIdView(APIView):
                     d = Device.objects.get(lan_ip_address=lan_ip_address)
                     try:
                         meter_model, created = Meter.objects.get_or_create(
-                            device=d,
+                            controller_device=d,
                             meter_id=m_id,
                             meter_type='drop',
                             rate=rate,
-                            switch_id=device_id
+                            switch_id=device_id,
 
                         )
-                        if not created:
-                            m['categories'] = meter_model.categories
-                        else:
-                            m['categories'] = ''
+                        m['categories'] = list(meter_model.categories.values_list('name', flat=True)) if meter_model.categories.exists() else ''
                         if device_id == id:
                             meters.append(m)
                     except Exception:
@@ -183,81 +181,80 @@ class CreateMeterView(APIView):
             controller_ip = data.get('controller_ip')
             switch_id = data.get('switch_id')
             rate = data.get('rate')
-            categories = data.get('categories', None)
-            if categories:
-                categories = ','.join(categories) if isinstance(categories, list) else categories
-            try:
-                meter = Meter.objects.get(switch_id=switch_id, rate=rate, meter_type='drop')
-                print('*** THIS METER ALREADY EXISTS ***')
-                return JsonResponse({'error': 'An identical Meter exists. Assign applications to that.'},
-                                    status=status.HTTP_400_BAD_REQUEST)
-            except Exception as e:
-                print(e)
-            if switch_id:
-                device_id_encoded = urllib.parse.quote(switch_id, safe='')
-                url = f"http://{controller_ip}:8181/onos/v1/meters/{device_id_encoded}"
-                payload = {
-                    "deviceId": switch_id,
-                    "unit": "KB_PER_SEC",
-                    "burst": False,
-                    "bands": [
-                        {
-                            "type": "DROP",
-                            "rate": rate,
-                            "burstSize": "0",
-                            "prec": "0"
-                        }
-                    ]
-                }
-                response = requests.post(
-                    url=url,
-                    json=payload,
-                    headers={'Content-Type': 'application/json', 'Accept': 'application/json'},
+            categories = data.get('categories', [])
+
+            if not switch_id:
+                return JsonResponse({'error': 'Switch ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check if meter already exists
+            existing_meter = Meter.objects.filter(switch_id=switch_id, rate=rate, meter_type='drop').exists()
+            if existing_meter:
+                return JsonResponse({'error': 'An identical Meter exists. Assign applications to that.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Assuming the meter does not exist, proceed to create it
+            device_id_encoded = urllib.parse.quote(switch_id, safe='')
+            url = f"http://{controller_ip}:8181/onos/v1/meters/{device_id_encoded}"
+            payload = {
+                "deviceId": switch_id,
+                "unit": "KB_PER_SEC",
+                "burst": False,
+                "bands": [
+                    {
+                        "type": "DROP",
+                        "rate": rate,
+                        "burstSize": "0",
+                        "prec": "0"
+                    }
+                ]
+            }
+            response = requests.post(
+                url=url,
+                json=payload,
+                headers={'Content-Type': 'application/json', 'Accept': 'application/json'},
+                auth=HTTPBasicAuth('onos', 'rocks')
+            )
+
+            if response.status_code == 201:
+                url_meters = f"http://{controller_ip}:8181/onos/v1/meters/{device_id_encoded}"
+                response_meters = requests.get(
+                    url=url_meters,
                     auth=HTTPBasicAuth('onos', 'rocks')
                 )
-                if response.status_code == 201:
-                    url_meters = f"http://{controller_ip}:8181/onos/v1/meters/{device_id_encoded}"
-                    response_meters = requests.get(
-                        url=url_meters,
-                        auth=HTTPBasicAuth('onos', 'rocks')
-                    )
-                    for meter_json in response_meters.json().get('meters'):
-                        device_id_meter_rsp = meter_json.get('deviceId')
-                        bands = meter_json.get('bands')[0]
-                        rate_rsp = bands.get('rate')
-                        type_rsp = bands.get('type')
-                        print(
-                            f'looking for {switch_id}, {rate} and DROP and have {device_id_meter_rsp}, {rate_rsp} and {type_rsp}')
-                        if device_id_meter_rsp == switch_id and int(rate_rsp) == int(rate) and type_rsp == 'DROP':
-                            d = Device.objects.get(lan_ip_address=controller_ip)
-                            if categories:
-                                print(f'Creating meter with categories {categories}')
-                                meter_model = Meter.objects.create(
-                                    device=d,
-                                    meter_id=meter_json.get('id'),
-                                    meter_type='drop',
-                                    rate=rate,
-                                    switch_id=switch_id,
-                                    categories=categories
-                                )
+                meter_id = 0
+                for meter_json in response_meters.json().get('meters'):
+                    device_id_meter_rsp = meter_json.get('deviceId')
+                    bands = meter_json.get('bands')[0]
+                    rate_rsp = bands.get('rate')
+                    type_rsp = bands.get('type')
 
-                            else:
-                                print(f'Creating meter without categories {categories}')
-                                meter_model = Meter.objects.create(
-                                    device=d,
-                                    meter_id=meter_json.get('id'),
-                                    meter_type='drop',
-                                    rate=rate,
-                                    switch_id=switch_id,
-                                )
-                    return JsonResponse({'message': 'Successfully created meter'}, status=201)
-                else:
-                    return JsonResponse({'error': 'Failed to create meter on ONOS server'}, status=500)
+                    if device_id_meter_rsp == switch_id and int(rate_rsp) == int(rate) and type_rsp == 'DROP':
+                        meter_id = meter_json.get('id')
+                d = Device.objects.get(lan_ip_address=controller_ip)
+                print(d.lan_ip_address)
+                meter = Meter(
+                    controller_device=d,
+                    meter_id=meter_id,
+                    meter_type='drop',
+                    rate=rate,
+                    switch_id=switch_id,
+                )
+                meter.save()
+                existing_categories = Category.objects.filter(meter__device=d, meter__switch_id=switch_id)
+                for category_name in categories:
+                    category, _ = Category.objects.get_or_create(name=category_name)
+                    if category in existing_categories:
+                        meter.delete()  # Clean up if there's an error
+                        return JsonResponse({'error': f"Category '{category.name}' is already assigned to another meter on this switch."}, status=status.HTTP_400_BAD_REQUEST)
+                    meter.categories.add(category)
+
+                return JsonResponse({'message': 'Successfully created meter'}, status=201)
             else:
-                return JsonResponse({'error': 'Failed to locate Device ID'}, status=500)
+                return JsonResponse({'error': 'Failed to create meter on ONOS server'}, status=response.status_code)
+        except Device.DoesNotExist:
+            return JsonResponse({'error': 'Device not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response({'status': 'error', 'message': str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class SwitchList(APIView):
@@ -281,19 +278,27 @@ def update_meter(request):
     try:
         meter_id = request.data.get('meter_id')
         categories = request.data.get('categories', '')
+        if categories:
+            categories = categories.split(',')
 
         if not meter_id:
             return JsonResponse({'error': 'Meter ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Retrieve and update the meter
         meter = Meter.objects.get(meter_id=meter_id)
-        meter.categories = categories
+        existing_categories = Category.objects.filter(meter__controller_device=meter.controller_device).exclude(meter=meter)
+        meter.categories.clear()
+        for cat_name in categories:
+            category, _ = Category.objects.get_or_create(name=cat_name)
+            if category in existing_categories:
+                raise ValidationError(f"Category '{category.name}' is already in use on this device.")
+            meter.categories.add(category)
         meter.save()
 
         return JsonResponse({'message': 'Meter updated successfully'}, status=status.HTTP_200_OK)
     except Meter.DoesNotExist:
         return JsonResponse({'error': 'Meter not found'}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
+        print(e)
         return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

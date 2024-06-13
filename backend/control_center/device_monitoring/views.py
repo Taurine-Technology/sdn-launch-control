@@ -1,3 +1,4 @@
+import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from channels.layers import get_channel_layer
@@ -6,11 +7,14 @@ from general.models import Device, Bridge, Port
 from django.shortcuts import get_object_or_404
 import json
 import os
+
+from requests.auth import HTTPBasicAuth
 from rest_framework.decorators import api_view
 from ovs_install.utilities.ansible_tasks import run_playbook
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
+from onos.models import OnosOpenFlowDevice
 from ovs_install.utilities.utils import (write_to_inventory, save_ip_to_config, save_bridge_name_to_config,
     save_interfaces_to_config, save_openflow_version_to_config, save_controller_port_to_config,
     save_controller_ip_to_config, save_api_url_to_config, save_api_url_to_config, save_port_to_clients, save_switch_id,
@@ -165,6 +169,7 @@ def install_sniffer(request):
         save_model_name('testing_sniffer', config_path)
 
         result = run_playbook('install-sniffer', playbook_dir_path, inventory_path)
+
         return Response({"status": "success", "message": 'successfully installed sniffer'}, status=status.HTTP_200_OK)
     except Exception as e:
         print(e)

@@ -54,6 +54,7 @@ PORT_TO_ROUTER = os.environ.get('PORT_TO_ROUTER')
 NUM_BYTES = int(os.environ.get('NUM_BYTES'))
 NUM_PACKETS = int(os.getenv('NUM_PACKETS'))
 MODEL_NAME = os.getenv('MODEL_NAME')
+LAN_IP_ADDRESS = os.getenv('LAN_IP_ADDRESS')
 
 total_flow_len = {}
 flow_dict = {}
@@ -176,17 +177,17 @@ def pkt_callback(pkt):
                     if src == 1:
                         # if source is client then inbound port is port to client
                         classify(ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 1,
-                                 switch_id=SWITCH_ID, inbound_port=PORT_TO_CLIENTS, outbound_port=PORT_TO_ROUTER)
+                                 lan_ip=LAN_IP_ADDRESS, inbound_port=PORT_TO_CLIENTS, outbound_port=PORT_TO_ROUTER)
                     else:
                         classify(ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 1,
-                                 switch_id=SWITCH_ID, inbound_port=PORT_TO_ROUTER, outbound_port=PORT_TO_CLIENTS)
+                                 lan_ip=LAN_IP_ADDRESS, inbound_port=PORT_TO_ROUTER, outbound_port=PORT_TO_CLIENTS)
                 else:
                     if src == 1:
                         classify(ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 0,
-                                 switch_id=SWITCH_ID, inbound_port=PORT_TO_CLIENTS, outbound_port=PORT_TO_ROUTER)
+                                 lan_ip=LAN_IP_ADDRESS, inbound_port=PORT_TO_CLIENTS, outbound_port=PORT_TO_ROUTER)
                     else:
                         classify(ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 0,
-                                 switch_id=SWITCH_ID, inbound_port=PORT_TO_ROUTER, outbound_port=PORT_TO_CLIENTS)
+                                 lan_ip=LAN_IP_ADDRESS, inbound_port=PORT_TO_ROUTER, outbound_port=PORT_TO_CLIENTS)
                 # print(pkts)
                 # make_flow_adjustment(prediction, src_mac, 'None')
                 # print('final total time is')
@@ -198,7 +199,7 @@ def pkt_callback(pkt):
         # pkt_arr.append(decimal_data)
 
 
-def classify(src_ip, dst_ip, src_port, dst_port, src_mac, packet_arr, src, tcp, switch_id, inbound_port,
+def classify(src_ip, dst_ip, src_port, dst_port, src_mac, packet_arr, src, tcp, lan_ip, inbound_port,
              outbound_port):
     headers = {
         'Content-Type': 'application/json'
@@ -216,7 +217,7 @@ def classify(src_ip, dst_ip, src_port, dst_port, src_mac, packet_arr, src, tcp, 
         "payload": json.dumps(packet_arr),
         "src": src,
         "tcp": tcp,
-        "switch_id": switch_id,
+        "lan_ip_address": lan_ip,
         "inbound_port": inbound_port,
         "outbound_port": outbound_port
     }

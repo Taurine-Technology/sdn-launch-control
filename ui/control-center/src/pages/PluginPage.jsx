@@ -11,7 +11,8 @@ const PluginsPage = () => {
     const fetchPlugins = async () => {
         try {
             const response = await axios.get('http://localhost:8000/plugins/');
-            setPlugins(response.data); // Axios automatically handles JSON parsing
+            setPlugins(response.data);
+
         } catch (error) {
             console.error('Error fetching devices:', error);
             setError(error.message);
@@ -64,7 +65,7 @@ const PluginsPage = () => {
             <NavBar />
             <Box sx={{ flexGrow: 1, p: 3, overflow: 'auto' }}>
                 <Typography variant="h4" sx={{ mb: 2, color: '#FFFFFF' }}>System: Plugins</Typography>
-                <PluginList plugins={plugins} onDelete={handleDelete} onInstall={handleInstall} />
+                <PluginList plugins={plugins} onDelete={handleDelete} onInstall={handleInstall} fetchPlugins={fetchPlugins}/>
             </Box>
             <Footer />
         </Box>

@@ -15,6 +15,7 @@ import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
 import axios from "axios";
 import CreateMeterDialog from "../components/onos/MeterCreationDialogue";
+import ManageCategoriesDialog from "../components/onos/CategoryChangeDialogue";
 
 const OnosClassifierPage = () => {
     const [controllers, setControllers] = useState([]);
@@ -24,6 +25,22 @@ const OnosClassifierPage = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [currentDeviceId, setCurrentDeviceId] = useState('');
     const [categories, setCategories] = useState('');
+    const [isCategoriesDialogOpen, setIsCategoriesDialogOpen] = useState(false);
+    const [currentMeter, setCurrentMeter] = useState({});
+
+    const handleOpenCategoriesDialog = (meter) => {
+        setCurrentMeter(meter);
+        setIsCategoriesDialogOpen(true);
+    };
+
+    const handleCloseCategoriesDialog = () => {
+        console.log(selectedController)
+        setIsCategoriesDialogOpen(false);
+        fetchMeters(currentMeter.device_id, selectedController);
+    };
+
+
+
     const handleOpenDialog = (deviceId) => {
         setCurrentDeviceId(deviceId);
         setIsDialogOpen(true);
@@ -128,10 +145,22 @@ const OnosClassifierPage = () => {
                             <Typography variant="h6">Meter Entries for Device {device.id} at {device.annotations.managementAddress}</Typography>
                             <ul>
                                 {meters[device.id] && meters[device.id].map((meter, idx) => (
-                                    <li key={idx}>
-                                        Meter ID: {meter.id}, Meter Type: {meter.type}, Rate: {meter.rate} {meter.unit}, Meter State: {meter.state}
+                                    <li key={idx} >
+                                        <Box display="flex" alignItems="center" justifyContent="flex-start">
+                                            <Typography variant="body1" sx={{ flex: 1 }}>
+                                                Meter ID: {meter.id}, Meter Type: {meter.type}, Rate: {meter.rate} {meter.unit}, Meter State: {meter.state}, Categories: {meter.categories}
+                                            </Typography>
+                                            <Button
+                                                variant="contained"
+                                                color="primary"
+                                                onClick={() => handleOpenCategoriesDialog(meter)}
+                                            sx={{marginBottom: '5px'}}>
+                                                Manage Categories
+                                            </Button>
+                                        </Box>
                                     </li>
                                 ))}
+
                             </ul>
                             <Button variant="contained" color="primary" onClick={() => handleOpenDialog(device.id)}>
                                 Add Meter
@@ -145,6 +174,14 @@ const OnosClassifierPage = () => {
                     controllerIP={selectedController}
                     deviceId={currentDeviceId}
                     categories={categories.split(',')}
+                />
+
+                <ManageCategoriesDialog
+                    open={isCategoriesDialogOpen}
+                    onClose={handleCloseCategoriesDialog}
+                    categories={categories.split(',')}
+                    meterCategories={currentMeter.categories || ''}
+                    meter={currentMeter}
                 />
 
 

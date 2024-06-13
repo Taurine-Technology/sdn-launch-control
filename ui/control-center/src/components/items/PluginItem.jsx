@@ -17,30 +17,35 @@ import DownloadIcon from '@mui/icons-material/Download';
 import InstallSnifferForm from "../installation-plugins/InstallSnifferForm";
 import ConfirmPluginInstallationDialogue from "../ConfirmPluginInstallationDialogue";
 import axios from "axios";
+import ConfirmPluginUninstallDialogue from "../ConfirmPluginUninstallDialogue";
 
-const PluginItem = ({ plugin, onDelete, onInstall }) => {
+const PluginItem = ({ plugin, onDelete, onInstall, fetchPlugins }) => {
     const [openInfo, setOpenInfo] = useState(false);
     const [openConfirmDialogue, setOpenConfirmDialogue] = useState(false);
+    const [openUninstallConfirmDialogue, setOpenUninstallConfirmDialogue] = useState(false);
+
     const [responseMessage, setResponseMessage] = useState('');
     const [responseType, setResponseType] = useState('');
     const [canInstall, setCanInstall] = useState(false);
 
     useEffect(() => {
-        const checkPluginInstallation = async () => {
-            try {
-                const pluginStatus = await axios.get(`http://localhost:8000/plugins/check/${plugin.name}/`);
-                const controllerResponse = await axios.get('http://localhost:8000/controllers/');
-                const hasONOSController = controllerResponse.data.some(controller => controller.type === 'onos');
-                setCanInstall(pluginStatus.data && hasONOSController);
-            } catch (error) {
-                console.error('Error checking plugin and controller status:', error);
-                setResponseType('error');
-                setResponseMessage('Failed to fetch plugin or controller data.');
-            }
-        };
+
 
         checkPluginInstallation();
     }, []);
+    const checkPluginInstallation = async () => {
+
+        try {
+            const pluginStatus = await axios.get(`http://localhost:8000/plugins/check/${plugin.name}/`);
+            const controllerResponse = await axios.get('http://localhost:8000/controllers/');
+            const hasONOSController = controllerResponse.data.some(controller => controller.type === 'onos');
+            setCanInstall(pluginStatus.data && hasONOSController);
+        } catch (error) {
+            console.error('Error checking plugin and controller status:', error);
+            setResponseType('error');
+            setResponseMessage('Failed to fetch plugin or controller data.');
+        }
+    };
 
 
     const handleOpenInfo = () => {
@@ -57,6 +62,12 @@ const PluginItem = ({ plugin, onDelete, onInstall }) => {
 
     const handleCloseConfirm = () => {
         setOpenConfirmDialogue(false);
+        fetchPlugins()
+    };
+
+    const handleCloseUninstallConfirm = () => {
+        setOpenUninstallConfirmDialogue(false);
+        fetchPlugins()
     };
 
     const handleInstallPlugin = () => {
@@ -100,9 +111,9 @@ const PluginItem = ({ plugin, onDelete, onInstall }) => {
                             <InfoIcon />
                         </IconButton>
                     </Tooltip>
-                    {plugin.installed === "yes" ? (
+                    {plugin.installed && plugin.name !== 'tau-traffic-classification-sniffer' ? (
                         <Tooltip title="Delete Plugin">
-                            <IconButton color="error" onClick={() => onDelete(plugin)}>
+                            <IconButton color="error" onClick={() => setOpenUninstallConfirmDialogue(true)}>
                                 <DeleteIcon />
                             </IconButton>
                         </Tooltip>
@@ -115,6 +126,13 @@ const PluginItem = ({ plugin, onDelete, onInstall }) => {
                     pluginName={plugin.name}
                     isLoading={false}
                     installed={canInstall}
+                />
+                <ConfirmPluginUninstallDialogue
+                    open={openUninstallConfirmDialogue}
+                    handleClose={handleCloseUninstallConfirm}
+                    itemName={plugin.alias}
+                    pluginName={plugin.name}
+                    isLoading={false}
                 />
 
             </Paper>

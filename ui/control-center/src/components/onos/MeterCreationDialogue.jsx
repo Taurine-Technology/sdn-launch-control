@@ -34,11 +34,12 @@ const CreateMeterDialog = ({ open, handleClose, controllerIP, deviceId, categori
     };
     const handleSubmit = async () => {
         try {
+            console.log(selectedCategories)
             const payload = {
                 controller_ip: controllerIP,
                 switch_id: deviceId,
                 rate: rate,
-                categories: categories
+                categories: selectedCategories
             };
             const response = await axios.post('http://localhost:8000/onos/create-meter/', payload);
             if (response.status === 201) {

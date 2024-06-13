@@ -51,15 +51,6 @@ class MeterListView(APIView):
                     unit = meter.get('unit')
                     if unit == 'KB_PER_SEC':
                         unit = 'kbs'
-                    m = {
-                        'id': m_id,
-                        'type': 'drop',
-                        'ip': switch_ip,
-                        'rate': f'{rate}',
-                        'unit': f'{unit}',
-                        'device_id': f'{device_id}',
-                        'state': f'{state}'
-                    }
                     d = Device.objects.get(lan_ip_address=lan_ip_address)
                     meter_model, created = Meter.objects.get_or_create(
                         device=d,
@@ -67,8 +58,32 @@ class MeterListView(APIView):
                         meter_type='drop',
                         rate=rate,
                         switch_id=device_id
-
                     )
+                    categories = None
+                    if not created:
+                        categories = meter_model.categories
+                    if categories:
+                        m = {
+                            'id': m_id,
+                            'type': 'drop',
+                            'ip': switch_ip,
+                            'rate': f'{rate}',
+                            'unit': f'{unit}',
+                            'device_id': f'{device_id}',
+                            'state': f'{state}',
+                            'categories': f'{categories}'
+                        }
+                    else:
+                        m = {
+                            'id': m_id,
+                            'type': 'drop',
+                            'ip': switch_ip,
+                            'rate': f'{rate}',
+                            'unit': f'{unit}',
+                            'device_id': f'{device_id}',
+                            'state': f'{state}',
+                            'categories': 'None'
+                        }
 
                     if switch_ip in meters_per_device:
                         meters_per_device[switch_ip].append(m)
@@ -143,6 +158,10 @@ class MeterListByIdView(APIView):
                             switch_id=device_id
 
                         )
+                        if not created:
+                            m['categories'] = meter_model.categories
+                        else:
+                            m['categories'] = ''
                         if device_id == id:
                             meters.append(m)
                     except Exception:
@@ -165,10 +184,13 @@ class CreateMeterView(APIView):
             switch_id = data.get('switch_id')
             rate = data.get('rate')
             categories = data.get('categories', None)
+            if categories:
+                categories = ','.join(categories) if isinstance(categories, list) else categories
             try:
                 meter = Meter.objects.get(switch_id=switch_id, rate=rate, meter_type='drop')
                 print('*** THIS METER ALREADY EXISTS ***')
-                return JsonResponse({'error': 'An identical Meter exists. Assign applications to that.'}, status=status.HTTP_400_BAD_REQUEST)
+                return JsonResponse({'error': 'An identical Meter exists. Assign applications to that.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 print(e)
             if switch_id:
@@ -201,23 +223,27 @@ class CreateMeterView(APIView):
                     )
                     for meter_json in response_meters.json().get('meters'):
                         device_id_meter_rsp = meter_json.get('deviceId')
-                        rate_rsp = meter_json.get('rate')
                         bands = meter_json.get('bands')[0]
+                        rate_rsp = bands.get('rate')
                         type_rsp = bands.get('type')
-                        if device_id_meter_rsp == switch_id and rate_rsp == rate and type_rsp == 'DROP':
+                        print(
+                            f'looking for {switch_id}, {rate} and DROP and have {device_id_meter_rsp}, {rate_rsp} and {type_rsp}')
+                        if device_id_meter_rsp == switch_id and int(rate_rsp) == int(rate) and type_rsp == 'DROP':
                             d = Device.objects.get(lan_ip_address=controller_ip)
                             if categories:
-                                meter_model, created = Meter.objects.get_or_create(
+                                print(f'Creating meter with categories {categories}')
+                                meter_model = Meter.objects.create(
                                     device=d,
                                     meter_id=meter_json.get('id'),
                                     meter_type='drop',
                                     rate=rate,
                                     switch_id=switch_id,
                                     categories=categories
-
                                 )
+
                             else:
-                                meter_model, created = Meter.objects.get_or_create(
+                                print(f'Creating meter without categories {categories}')
+                                meter_model = Meter.objects.create(
                                     device=d,
                                     meter_id=meter_json.get('id'),
                                     meter_type='drop',
@@ -248,6 +274,27 @@ class SwitchList(APIView):
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def update_meter(request):
+    try:
+        meter_id = request.data.get('meter_id')
+        categories = request.data.get('categories', '')
+
+        if not meter_id:
+            return JsonResponse({'error': 'Meter ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Retrieve and update the meter
+        meter = Meter.objects.get(meter_id=meter_id)
+        meter.categories = categories
+        meter.save()
+
+        return JsonResponse({'message': 'Meter updated successfully'}, status=status.HTTP_200_OK)
+    except Meter.DoesNotExist:
+        return JsonResponse({'error': 'Meter not found'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])

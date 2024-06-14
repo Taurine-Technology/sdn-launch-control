@@ -80,7 +80,6 @@ class InstallControllerView(APIView):
             controller = Controller.objects.get_or_create(
                 type=controller_type,
                 device=device,
-                lan_ip_address=lan_ip_address
             )
             message = "Controller Installed." if created else "Controller already installed."
             return Response({"status": "success", "message": message}, status=status.HTTP_200_OK)

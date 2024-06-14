@@ -67,7 +67,7 @@ class Controller(models.Model):
     )
     type = models.CharField(max_length=20, choices=TYPES)
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='sdn_controller')
-    switches = models.ManyToManyField(Device, related_name='switch_controllers')
+    switches = models.ManyToManyField(Device, related_name='switch_controllers', blank=True)
     port_num = models.IntegerField(default=6653)
 
 
@@ -75,8 +75,19 @@ class ClassifierModel(models.Model):
     name = models.CharField(max_length=20)
     number_of_bytes = models.IntegerField()
     number_of_packets = models.IntegerField()
-    categories = models.CharField(max_length=200)
+    categories = models.CharField(max_length=1000)
 
     def __str__(self):
         return self.name
+
+
+class Plugins(models.Model):
+    alias = models.CharField(max_length=100)
+    name = models.CharField(max_length=100)
+    version = models.CharField(max_length=100)
+    short_description = models.CharField(max_length=200)
+    long_description = models.CharField(max_length=500)
+    author = models.CharField(max_length=100)
+    installed = models.BooleanField(default=False)
+    target_devices = models.ManyToManyField(Device, related_name='installed_devices', blank=True)
 

@@ -43,8 +43,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'controller',
     'channels',
-    'flows'
-
+    'classifier',
+    'onos'
 ]
 
 

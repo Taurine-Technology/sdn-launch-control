@@ -1,7 +1,7 @@
 
 import React from 'react';
 import {Card, CardContent, ListItem, ListItemText, ListItemIcon, Tooltip, IconButton, Typography} from '@mui/material';
-import controllerIcon from '../images/controller.png';
+import controllerIcon from '../../images/controller.png';
 import SettingsIcon from "@mui/icons-material/Settings";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";

@@ -19,7 +19,7 @@ import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
 import AddBridgeFormDialogue from "../components/AddBridgeFormDialogue";
 import CloseIcon from '@mui/icons-material/Close';
-import BridgeList from "../components/BridgeList";
+import BridgeList from "../components/lists/BridgeList";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialogue";
 import EditBridgeDialogue from "../components/EditBridgeDialogue";
 import DeviceStatsGraph from "../components/DeviceStatsGraph";
@@ -252,7 +252,9 @@ const DeviceDetailsPage = () => {
             <NavBar />
             <Box sx={{
                 flexGrow: 1,
-                margin: 4
+                margin: 4,
+                paddingTop: '100px',
+                paddingBottom: '50px',
             }}>
                 <Button
                     startIcon={<ArrowBackIcon />}
@@ -461,8 +463,9 @@ const DeviceDetailsPage = () => {
                 {selectedBridge && (
                     <PortStatsGraph targetIpAddress={deviceIp} targetPorts={bridgePorts} />
                 )}
+                <DeviceStatsGraph targetIpAddress={deviceIp}/>
             </Box>
-            <DeviceStatsGraph targetIpAddress={deviceIp}/>
+
 
             <Footer />
 

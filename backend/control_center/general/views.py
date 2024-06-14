@@ -1,5 +1,5 @@
 from django.shortcuts import render
-
+from django.shortcuts import get_list_or_404
 from ovs_install.utilities.ansible_tasks import run_playbook
 from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, \
     save_interfaces_to_config
@@ -15,7 +15,8 @@ from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
 from .serializers import BridgeSerializer
-from .models import Controller
+from .models import Controller, Plugins
+from .serializers import DeviceSerializer
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
@@ -24,6 +25,7 @@ test_connection = "test-connection"
 playbook_dir_path = f"{parent_dir}/ansible/playbooks"
 inventory_path = f"{parent_dir}/ansible/inventory/inventory"
 config_path = f"{parent_dir}/ansible/group_vars/all.yml"
+from .models import ClassifierModel
 
 
 # *---------- Network Connectivity Methods ----------*
@@ -105,6 +107,110 @@ class AddDeviceView(APIView):
                             status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PluginListView(APIView):
+    def get(self, request):
+        try:
+            plugins = Plugins.objects.all()
+            data = [
+                {
+                    "alias": plugin.alias,
+                    "name": plugin.name,
+                    "version": plugin.version,
+                    "short_description": plugin.short_description,
+                    "long_description": plugin.long_description,
+                    "author": plugin.author,
+                    "installed": plugin.installed,
+                } for plugin in plugins
+            ]
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CheckPluginInstallation(APIView):
+
+    def get(self, request, plugin_name):
+
+        try:
+            plugin = Plugins.objects.get(name=plugin_name)
+            if plugin_name == 'tau-traffic-classification-sniffer':
+                # Check if there are any devices associated with the plugin
+                has_devices = plugin.target_devices.exists()
+                return JsonResponse({'hasDevices': has_devices}, safe=False)
+            else:
+                installed = plugin.installed
+                return Response({"message": installed},
+                                status=status.HTTP_200_OK)
+        except Plugins.DoesNotExist:
+            return JsonResponse({'hasDevices': False}, safe=False)
+
+
+class InstallPluginDatabaseAlterView(APIView):
+    def post(self, request, plugin_name):
+        try:
+            plugin = Plugins.objects.get(name=plugin_name)
+            plugin.installed = True
+            plugin.save()
+            return Response({"status": "success", "message": "Plugin installed successfully"},
+                            status=status.HTTP_200_OK)
+        except Plugins.DoesNotExist as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": "Plugin not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UninstallPluginDatabaseAlterView(APIView):
+    def post(self, request, plugin_name):
+        try:
+            plugin = Plugins.objects.get(name=plugin_name)
+            plugin.installed = False
+            plugin.save()
+            return Response({"status": "success", "message": "Plugin uninstalled successfully"},
+                            status=status.HTTP_200_OK)
+        except Plugins.DoesNotExist as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": "Plugin not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class InstallPluginView(APIView):
+    def post(self, request):
+        try:
+            data = request.data
+            name = data.get('name')
+            installed = data.get('installed')
+            device_ip_address = data.get('lan_ip_address')
+            validate_ipv4_address(device_ip_address)
+
+            plugin = Plugins.objects.get(name=name)
+            if installed:
+                plugin.installed = True
+                device = Device.objects.get(lan_ip_address=device_ip_address)
+                if not plugin.target_devices.filter(id=device.id).exists():
+                    print(f'adding {device.lan_ip_address}')
+                    plugin.target_devices.add(device)
+            else:
+                plugin.installed = False
+            plugin.save()
+            return Response({"status": "success", "message": "Plugin installed successfully"},
+                            status=status.HTTP_200_OK)
+        except ValidationError:
+            return Response({"status": "error", "message": "Invalid IP address format."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except Device.DoesNotExist:
+            return Response({"status": "error", "message": "Device not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Plugins.DoesNotExist:
+            return Response({"status": "error", "message": "Plugin not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DeviceListView(APIView):
@@ -194,6 +300,7 @@ class ForceDeleteDeviceView(APIView):
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class DeleteDeviceView(APIView):
     def delete(self, request):
@@ -373,3 +480,41 @@ class ControllerListView(APIView):
         except Exception as e:
             logger.error(e, exc_info=True)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ControllerSwitchList(APIView):
+    def get(self, request, controller_ip):
+        try:
+            controller = Controller.objects.get(device__lan_ip_address=controller_ip)
+            switches = controller.switches.all()
+            serializer = DeviceSerializer(switches, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Controller.DoesNotExist:
+            return Response({'error': 'Controller not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ONOSControllerListView(APIView):
+    def get(self, request):
+        try:
+            onos_controllers = Controller.objects.filter(type='onos')
+
+            lan_ips = [controller.device.lan_ip_address for controller in onos_controllers]
+            return Response(lan_ips, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CategoryListView(APIView):
+    def get(self, request):
+        try:
+            classifier = ClassifierModel.objects.first()
+            if classifier:
+                return JsonResponse({'categories': classifier.categories}, status=200)
+            else:
+                return JsonResponse({'error': 'Classifier not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)

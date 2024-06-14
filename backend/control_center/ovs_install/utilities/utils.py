@@ -3,7 +3,7 @@ Author: Keegan White
 Maintainer: Keegan White
 Contact: keeganthomaswhite@gmail.com
 Created: Sep 4, 2023
-Last Modified: May 1, 2024
+Last Modified: June 4, 2024
 
 Description:
 This script provides various utility functions for interacting with and configuring an Open vSwitch (OVS) environment.
@@ -41,6 +41,38 @@ def update_config(data, config_path):
     # Write the updated dictionary back to the YAML file
     with open(config_path, 'w') as file:
         yaml.safe_dump(existing_data, file)
+
+
+def save_switch_id(switch_id, config_path):
+    update_config({'switch_id': switch_id}, config_path)
+
+
+def save_api_base_url(api_base_url, config_path):
+    update_config({'api_base_url': api_base_url}, config_path)
+
+
+def save_monitor_interface(monitor_interface, config_path):
+    update_config({'monitor_interface': monitor_interface}, config_path)
+
+
+def save_port_to_clients(port_to_clients, config_path):
+    update_config({'port_to_clients': port_to_clients}, config_path)
+
+
+def save_port_to_router(port_to_router, config_path):
+    update_config({'port_to_router': port_to_router}, config_path)
+
+
+def save_num_bytes(num_bytes, config_path):
+    update_config({'num_bytes': num_bytes}, config_path)
+
+
+def save_num_packets(num_packets, config_path):
+    update_config({'num_packets': num_packets}, config_path)
+
+
+def save_model_name(model_name, config_path):
+    update_config({'model_name': model_name}, config_path)
 
 
 def save_ip_to_config(ip, config_path):

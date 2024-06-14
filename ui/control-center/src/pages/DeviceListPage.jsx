@@ -5,12 +5,12 @@ import Footer from "../components/Footer";
 import ConfirmDeleteDialog from "../components/ConfirmDeleteDialogue";
 import Alert from '@mui/material/Alert';
 import axios from "axios";
-import DeviceList from "../components/DeviceList";
+import DeviceList from "../components/lists/DeviceList";
 import Theme from "../theme";
 import EditDeviceDialog from "../components/EditDeviceDialogue";
 import theme from "../theme";
 import { useNavigate } from 'react-router-dom';
-import {Backdrop, CircularProgress} from "@mui/material";
+import {Backdrop, CircularProgress, Typography} from "@mui/material";
 import AddDeviceDialogue from "../components/AddDeviceDialogue";
 import NukeDeviceDialogue from "../components/NukeDeviceDialogue";
 
@@ -236,7 +236,8 @@ const DeviceListPage = () => {
                 <Backdrop open={loading} style={{ zIndex: theme.zIndex.drawer + 1 }}>
                     <CircularProgress style={{'color': "#7456FD"}} />
                 </Backdrop>
-
+                <Box sx={{ flexGrow: 1, paddingTop: '100px', overflow: 'auto' }}>
+                    <Typography variant="h1" sx={{ mb: 2, p: 3, color: "#FFF" }}>Hardware: Devices</Typography>
                 <Box
                     sx={{
                         flexGrow: 1,
@@ -253,19 +254,17 @@ const DeviceListPage = () => {
                             {responseMessage}
                         </Alert>
                     )}
+
                     <Box
                         sx={{
                             flexGrow: 1,
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'start',
-                            padding: Theme.spacing(2), // Add some padding around the list
+                            paddingBottom: '50px',
                             margin: Theme.spacing(2),
-
-
                         }}
                     >
-
 
                         <DeviceList devices={devices}
                                     onDelete={handleDeleteClick}
@@ -294,6 +293,7 @@ const DeviceListPage = () => {
                             handleUpdate={handleUpdateDevice}
                         />
 
+                    </Box>
                     </Box>
                 <AddDeviceDialogue fetchDevices={fetchDevices} />
                 </Box>

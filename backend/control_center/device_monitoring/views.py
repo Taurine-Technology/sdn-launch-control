@@ -1,3 +1,4 @@
+import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from channels.layers import get_channel_layer
@@ -6,14 +7,19 @@ from general.models import Device, Bridge, Port
 from django.shortcuts import get_object_or_404
 import json
 import os
+
+from requests.auth import HTTPBasicAuth
 from rest_framework.decorators import api_view
 from ovs_install.utilities.ansible_tasks import run_playbook
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
-from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, \
-    save_interfaces_to_config, save_openflow_version_to_config, save_controller_port_to_config, \
-    save_controller_ip_to_config, save_api_url_to_config
+from onos.models import OnosOpenFlowDevice
+from ovs_install.utilities.utils import (write_to_inventory, save_ip_to_config, save_bridge_name_to_config,
+    save_interfaces_to_config, save_openflow_version_to_config, save_controller_port_to_config,
+    save_controller_ip_to_config, save_api_url_to_config, save_api_url_to_config, save_port_to_clients, save_switch_id,
+                                         save_api_base_url, save_port_to_router, save_model_name, save_num_bytes,
+                                         save_num_packets, save_monitor_interface)
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -129,6 +135,42 @@ def post_openflow_metrics(request):
             }
         )
         return Response({"status": "success"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(e)
+        return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def install_sniffer(request):
+    try:
+        data = request.data
+        # device to install on
+        lan_ip_address = data.get('lan_ip_address')
+        validate_ipv4_address(lan_ip_address)
+        device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+
+
+        save_switch_id('0', config_path)
+        api_base_url = data['api_base_url']
+        monitor_interface = data['monitor_interface']
+        port_to_client = data['port_to_client']
+        port_to_router = data['port_to_router']
+        save_num_packets(5, config_path)
+        save_num_bytes(225, config_path)
+
+        # save config
+        write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
+        save_ip_to_config(lan_ip_address, config_path)
+
+        save_api_base_url(api_base_url, config_path)
+        save_monitor_interface(monitor_interface, config_path)
+        save_port_to_clients(port_to_client, config_path)
+        save_port_to_router(port_to_router, config_path)
+        save_model_name('testing_sniffer', config_path)
+
+        result = run_playbook('install-sniffer', playbook_dir_path, inventory_path)
+
+        return Response({"status": "success", "message": 'successfully installed sniffer'}, status=status.HTTP_200_OK)
     except Exception as e:
         print(e)
         return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)

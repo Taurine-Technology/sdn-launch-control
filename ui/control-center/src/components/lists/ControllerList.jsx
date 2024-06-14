@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { List, Grid } from '@mui/material';
-import ControllerItem from './ControllerItem';
+import ControllerItem from '../items/ControllerItem';
 
 function ControllerList({ controllers, onDelete }) {
     return (

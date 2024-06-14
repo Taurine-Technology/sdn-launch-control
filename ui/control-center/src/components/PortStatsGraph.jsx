@@ -48,12 +48,12 @@ const PortStatsGraph = ({ targetIpAddress, targetPorts}) => {
     }, [wsUrl, targetIpAddress, targetPorts]);
 
     return (
-        <Card raised sx={{bgcolor: '#02032F', }}>
+        <Card raised sx={{bgcolor: '#02032F',  margin: 4, }}>
             <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 600, width: '100%' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300, width: '100%' }}>
                     {data.length > 0 ? (
 
-                            <LineChart width={1000} height={600} data={data}>
+                            <LineChart width={700} height={400} data={data}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="time" />
                                 <YAxis domain={['auto', 'auto']} label={{ value: 'Throughput (Mbps)', angle: -90, position: 'insideLeft' }} />

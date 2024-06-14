@@ -1,6 +1,6 @@
 import React from 'react';
 import { Grid, List } from '@mui/material';
-import BridgeItem from './BridgeItem'; // Make sure the path is correct
+import BridgeItem from '../items/BridgeItem'; // Make sure the path is correct
 
 const BridgeList = ({ bridges, onEdit, onDelete }) => {
     return (

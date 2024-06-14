@@ -1,5 +1,5 @@
 import React from 'react';
-import DeviceItem from './DeviceItem';
+import DeviceItem from '../items/DeviceItem';
 import {Grid, List} from '@mui/material';
 
 function DeviceList({ devices, onDelete,  onEdit, onNuke, onViewDetails}) {

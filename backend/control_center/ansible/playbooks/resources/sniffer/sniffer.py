@@ -5,7 +5,7 @@ import requests
 import json
 import os
 import logging
-
+from dotenv import load_dotenv
 
 class CustomLogger(logging.Logger):
     SUCCESS_LEVEL = 25
@@ -44,12 +44,17 @@ logger.addHandler(success_handler)
 logger.addHandler(general_handler)
 logger.addHandler(console_handler)
 
-# Read the environment variables, and set a default value if it doesn't exist
-SWITCH_ID = os.environ.get('SWITCH_ID', 'of:00001c61b4fefb88')
-API_BASE_URL = os.environ.get('API_BASE_URL', 'http://10.8.8.2:5000')
-INTERFACE = os.environ.get('INTERFACE', 'eth2')
-PORT_TO_CLIENTS = os.environ.get('PORT_TO_CLIENTS', '2')
-PORT_TO_ROUTER = os.environ.get('PORT_TO_ROUTER', '1')
+# Read the environment variables
+load_dotenv()
+SWITCH_ID = os.environ.get('SWITCH_ID')
+API_BASE_URL = os.environ.get('API_BASE_URL')
+INTERFACE = os.environ.get('INTERFACE')
+PORT_TO_CLIENTS = os.environ.get('PORT_TO_CLIENTS')
+PORT_TO_ROUTER = os.environ.get('PORT_TO_ROUTER')
+NUM_BYTES = int(os.environ.get('NUM_BYTES'))
+NUM_PACKETS = int(os.getenv('NUM_PACKETS'))
+MODEL_NAME = os.getenv('MODEL_NAME')
+LAN_IP_ADDRESS = os.getenv('LAN_IP_ADDRESS')
 
 total_flow_len = {}
 flow_dict = {}
@@ -57,13 +62,11 @@ flow_predicted = {}
 pkt_arr = []
 predictions = 0
 count = 0
-access_granted = 0
 white_list_ips = []
 
 
 def main():
-    global access_granted
-    access_granted = get_token()
+
     try:
         sniff(iface=INTERFACE, prn=pkt_callback, store=0)
     except Exception as e:
@@ -74,13 +77,12 @@ def pkt_callback(pkt):
     global count
     global flow_dict
     global flow_predicted
-    global access_granted
     count += 1
     # print(count)
 
     # print("Processing packet")
     # pkt.show()  # debug statement
-    num_bytes = 225
+    num_bytes = NUM_BYTES
     decimal_data = []
     protocol = ""
     key = ""
@@ -167,26 +169,25 @@ def pkt_callback(pkt):
         if key in flow_dict:
             pkts = flow_dict[key]
             # print('previous time is', time_previous)
-            if len(pkts) < 5:
+            if len(pkts) < NUM_PACKETS:
                 flow_dict[key].append(decimal_data)
-            if len(pkts) == 5 and not flow_predicted[key]:
+            if len(pkts) == NUM_PACKETS and not flow_predicted[key]:
                 flow_predicted[key] = True
-                access_granted = load_token()
                 if protocol == "TCP":
                     if src == 1:
                         # if source is client then inbound port is port to client
-                        classify(access_granted, ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 1,
-                                 switch_id=SWITCH_ID, inbound_port=PORT_TO_CLIENTS, outbound_port=PORT_TO_ROUTER)
+                        classify(ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 1,
+                                 lan_ip=LAN_IP_ADDRESS, inbound_port=PORT_TO_CLIENTS, outbound_port=PORT_TO_ROUTER)
                     else:
-                        classify(access_granted, ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 1,
-                                 switch_id=SWITCH_ID, inbound_port=PORT_TO_ROUTER, outbound_port=PORT_TO_CLIENTS)
+                        classify(ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 1,
+                                 lan_ip=LAN_IP_ADDRESS, inbound_port=PORT_TO_ROUTER, outbound_port=PORT_TO_CLIENTS)
                 else:
                     if src == 1:
-                        classify(access_granted, ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 0,
-                                 switch_id=SWITCH_ID, inbound_port=PORT_TO_CLIENTS, outbound_port=PORT_TO_ROUTER)
+                        classify(ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 0,
+                                 lan_ip=LAN_IP_ADDRESS, inbound_port=PORT_TO_CLIENTS, outbound_port=PORT_TO_ROUTER)
                     else:
-                        classify(access_granted, ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 0,
-                                 switch_id=SWITCH_ID, inbound_port=PORT_TO_ROUTER, outbound_port=PORT_TO_CLIENTS)
+                        classify(ip_dst, ip_src, str(sport), str(dport), str(src_mac), pkts, src, 0,
+                                 lan_ip=LAN_IP_ADDRESS, inbound_port=PORT_TO_ROUTER, outbound_port=PORT_TO_CLIENTS)
                 # print(pkts)
                 # make_flow_adjustment(prediction, src_mac, 'None')
                 # print('final total time is')
@@ -198,16 +199,16 @@ def pkt_callback(pkt):
         # pkt_arr.append(decimal_data)
 
 
-def classify(access_token, src_ip, dst_ip, src_port, dst_port, src_mac, packet_arr, src, tcp, switch_id, inbound_port,
+def classify(src_ip, dst_ip, src_port, dst_port, src_mac, packet_arr, src, tcp, lan_ip, inbound_port,
              outbound_port):
     headers = {
-        "Authorization": "Bearer " + access_token,
         'Content-Type': 'application/json'
     }
 
-    protected_url = f"{API_BASE_URL}/classify"
+    protected_url = f"{API_BASE_URL}/classify/"
 
     data = {
+        "model_name": MODEL_NAME,
         "src_ip": src_ip,
         "dst_ip": dst_ip,
         "src_port": src_port,
@@ -216,7 +217,7 @@ def classify(access_token, src_ip, dst_ip, src_port, dst_port, src_mac, packet_a
         "payload": json.dumps(packet_arr),
         "src": src,
         "tcp": tcp,
-        "switch_id": switch_id,
+        "lan_ip_address": lan_ip,
         "inbound_port": inbound_port,
         "outbound_port": outbound_port
     }
@@ -225,8 +226,8 @@ def classify(access_token, src_ip, dst_ip, src_port, dst_port, src_mac, packet_a
     json_data = json.dumps(data)
 
     def send_request():
-        max_retry = 5
-        for _ in range(max_retry):
+        indefinite_retry = True
+        while indefinite_retry:
             try:
                 protected_response = requests.post(protected_url, headers=headers, data=json_data, timeout=5)
                 return protected_response
@@ -248,12 +249,6 @@ def classify(access_token, src_ip, dst_ip, src_port, dst_port, src_mac, packet_a
         logger.info("Failed to get a response after multiple attempts at line 245")
         return
 
-    if response.status_code == 401:
-        print("Token expired. Refreshing token and retrying...")
-        access_token = get_token()
-        headers["Authorization"] = "Bearer " + access_token
-        response = send_request()
-
     if response is not None:
         # Print the response from the protected endpoint
         print(response.text)
@@ -261,52 +256,6 @@ def classify(access_token, src_ip, dst_ip, src_port, dst_port, src_mac, packet_a
     else:
         print("Failed to get a response after refreshing the token.")
         logging.info("Failed classification or bad response: %s", response)
-
-
-def save_token(access_token):
-    # Define a filename to save the token
-    token_file = "access_token.txt"
-
-    # Open the file in write mode
-    with open(token_file, "w") as file:
-        # Write the token to the file
-        file.write(access_token)
-
-
-def get_token():
-    url = f"{API_BASE_URL}/login"
-
-    data = {
-        "username": "arctica",
-        "password": "arctica"
-    }
-    try:
-        json_data = json.dumps(data)
-
-        response = requests.post(url, data=json_data, headers={'Content-Type': 'application/json'})
-
-        print(response.json())
-        token = response.json()['access_token']
-
-        # Save the token when it's refreshed
-        save_token(token)
-
-        return token
-    except Exception as e:
-        logging.info(f"Failed to get token from API at line 299: {e}")
-        exit(1)
-
-
-def load_token():
-    # Define the filename of the saved token
-    token_file = "access_token.txt"
-
-    # Open the file in read mode
-    with open(token_file, "r") as file:
-        # Read the token from the file
-        access_token = file.read()
-
-    return access_token
 
 
 def hex_to_dec(hex_data):

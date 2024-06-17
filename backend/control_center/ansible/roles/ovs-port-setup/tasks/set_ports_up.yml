@@ -6,8 +6,6 @@
         {% for interface in interfaces %}
         echo "Setting up {{ interface }}..."
         sudo ip link set {{ interface }} up
-        sudo timeout 15 dhclient -r {{ interface }}
-        sudo timeout 15 dhclient -v {{ interface }}
         {% endfor %}
     mode: '0755'
 

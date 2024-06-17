@@ -157,7 +157,7 @@ if __name__ == "__main__":
                     'device_ip': device_ip,
                     'stats': interface_differences
                 }
-                code, response = send_data_to_api(api_url, data_to_send)
+                code, response = send_data_to_api(f'{api_url}/post_openflow_metrics/', data_to_send)
                 print(data_to_send)
                 print(f"API Response: {code} - {response}")
             old_stats = current_stats

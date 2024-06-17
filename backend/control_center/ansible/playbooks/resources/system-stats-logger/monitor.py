@@ -22,7 +22,7 @@ def get_system_stats():
 def send_stats_to_server(stats):
     url = os.getenv("API_URL", "http://localhost:8000/post_device_stats/")
     headers = {'Content-Type': 'application/json'}
-    response = requests.post(url, data=stats, headers=headers)
+    response = requests.post(f'{url}/post_device_stats/', data=stats, headers=headers)
     logging.info(f"Posted stats to server: {stats}")
     return response.status_code
 

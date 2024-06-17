@@ -18,6 +18,7 @@
     line: "{{ item }}"
     create: yes
   loop:
+    - "LAN_IP_ADDRESS={{ ip_address }}"
     - "SWITCH_ID={{ switch_id }}"
     - "API_BASE_URL={{ api_base_url }}"
     - "INTERFACE={{ monitor_interface }}"

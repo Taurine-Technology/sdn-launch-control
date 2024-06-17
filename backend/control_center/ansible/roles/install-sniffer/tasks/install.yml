@@ -12,6 +12,11 @@
     src: "{{ playbook_dir }}/resources/sniffer/"
     dest: "/mnt/sniffer"
 
+- name: Remove existing .env file if it exists
+  ansible.builtin.file:
+    path: "/mnt/sniffer/.env"
+    state: absent
+
 - name: Create .env file with environment variables
   lineinfile:
     path: "/mnt/sniffer/.env"

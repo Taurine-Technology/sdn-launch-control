@@ -35,6 +35,8 @@ docker compose up -d || exit 1
 
 echo "Populating ClassifierModel if empty"
 python3 manage.py initialize_classifier || exit 1
+echo "Populating Plugins if empty"
+python3 manage.py initialise_plugins || exit 1
 
 echo "Running server"
 python3 manage.py runserver 0.0.0.0:8000 || exit 1

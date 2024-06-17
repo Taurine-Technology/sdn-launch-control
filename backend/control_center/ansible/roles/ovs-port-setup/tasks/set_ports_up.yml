@@ -8,7 +8,7 @@
         sudo ip link set {{ interface }} up
         sudo dhclient -v {{ interface }}
         {% endfor %}
-      mode: '0755'
+    mode: '0755'
 
 - name: Run the script initially
   command: "/mnt/config_ports.sh"

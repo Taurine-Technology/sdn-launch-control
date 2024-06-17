@@ -1,3 +1,6 @@
 ---
 - name: Add ports to OVS bridge
   import_tasks: add_ports.yml
+
+- name: Set ports to up in config
+  import_tasks: set_ports_up.yml

@@ -1,0 +1,21 @@
+- name: Create network configuration script
+  copy:
+    dest: "/mnt/config_ports.sh"
+    content: |
+        #!/bin/bash
+        {% for interface in interfaces %}
+        echo "Setting up {{ interface }}..."
+        sudo ip link set {{ interface }} up
+        sudo dhclient -v {{ interface }}
+        {% endfor %}
+      mode: '0755'
+
+- name: Run the script initially
+  command: "/mnt/config_ports.sh"
+
+- name: Ensure the script runs at reboot via cron
+  cron:
+    name: "Configure network interfaces at reboot"
+    special_time: reboot
+    job: "/mnt/config_ports.sh"
+    user: root

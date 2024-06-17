@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 bridge = os.getenv('BRIDGE')
-openflow_version = os.getenv('OPENFLOW_VERSION')
+openflow_version = os.getenv('OPENFLOW_VERSION', 'openflow13')
 api_url = os.getenv('API_URL')
 device_ip = os.getenv('DEVICE_IP')
 
@@ -118,10 +118,11 @@ def parse_port_interface_map(output):
     lines = output.splitlines()
     for line in lines:
         if 'addr' in line:
-            parts = line.strip().split()
-            if '(' in parts[0]:
-                port_num, interface_name = parts[0].split('(')
-                interface_name = interface_name.strip('):')
+            parts = line.split()  # Splitting by spaces
+            port_info = parts[0].split('(')  # e.g., '9(eth2):'
+            if len(port_info) > 1:
+                port_num = port_info[0]  # '9'
+                interface_name = port_info[1].rstrip('):')  # 'eth2'
                 port_interface_map[port_num] = interface_name
     return port_interface_map
 
@@ -129,6 +130,7 @@ def parse_port_interface_map(output):
 def get_interface_map(bridge):
     ret, output, _err = start_process(["sudo", "ovs-ofctl", "show", bridge, '-O', openflow_version])
     if ret == 0:
+        print(output)
         return parse_port_interface_map(output)
     else:
         print(f"Error retrieving interface map: {_err}")
@@ -141,13 +143,13 @@ if __name__ == "__main__":
     while True:
         ret, out, _err = start_process(["sudo", "ovs-ofctl", "dump-ports", bridge, '-O', openflow_version])
         if ret == 0:
+            print(out)
             current_stats = parse_ovs_statistics(out)
             if old_stats:
                 differences = compute_differences(current_stats, old_stats)
-                # Create a new dictionary with interface names as keys
                 interface_differences = {}
                 for port, stats in differences.items():
-                    interface_name = port_interface_map.get(port, port)  # Default to port if no interface name found
+                    interface_name = port_interface_map.get(port, port)  # Fallback to port if no interface name found
                     interface_differences[interface_name] = stats
 
                 log_data_to_csv('./logs.csv', interface_differences)
@@ -156,8 +158,8 @@ if __name__ == "__main__":
                     'stats': interface_differences
                 }
                 code, response = send_data_to_api(api_url, data_to_send)
+                print(data_to_send)
                 print(f"API Response: {code} - {response}")
-
             old_stats = current_stats
         else:
             print(f"Error retrieving statistics: {_err}")

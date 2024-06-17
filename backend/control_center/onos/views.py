@@ -183,10 +183,12 @@ class CreateMeterView(APIView):
             rate = data.get('rate')
             categories = data.get('categories', [])
 
+
             if not switch_id:
                 return JsonResponse({'error': 'Switch ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
             # Check if meter already exists
+
             existing_meter = Meter.objects.filter(switch_id=switch_id, rate=rate, meter_type='drop').exists()
             if existing_meter:
                 return JsonResponse({'error': 'An identical Meter exists. Assign applications to that.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -231,6 +233,7 @@ class CreateMeterView(APIView):
                         meter_id = meter_json.get('id')
                 d = Device.objects.get(lan_ip_address=controller_ip)
                 print(d.lan_ip_address)
+
                 meter = Meter(
                     controller_device=d,
                     meter_id=meter_id,
@@ -239,11 +242,15 @@ class CreateMeterView(APIView):
                     switch_id=switch_id,
                 )
                 meter.save()
-                existing_categories = Category.objects.filter(meter__device=d, meter__switch_id=switch_id)
+
+                meters_for_device = Meter.objects.filter(switch_id=switch_id)
+                existing_categories = set()
+                for m in meters_for_device:
+                    existing_categories.update(m.categories.all().values_list('name', flat=True))
+
                 for category_name in categories:
-                    category, _ = Category.objects.get_or_create(name=category_name)
-                    if category in existing_categories:
-                        meter.delete()  # Clean up if there's an error
+                    category, created = Category.objects.get_or_create(name=category_name)
+                    if category.name in existing_categories and not created:
                         return JsonResponse({'error': f"Category '{category.name}' is already assigned to another meter on this switch."}, status=status.HTTP_400_BAD_REQUEST)
                     meter.categories.add(category)
 

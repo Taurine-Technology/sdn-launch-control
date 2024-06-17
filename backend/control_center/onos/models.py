@@ -15,7 +15,7 @@ class Category(models.Model):
 class Meter(models.Model):
     METER_TYPES = (('drop', 'drop'),)
     controller_device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='meters')
-    meter_id = models.IntegerField(unique=True)
+    meter_id = models.CharField(unique=True,max_length=30)
     meter_type = models.CharField(max_length=30, choices=METER_TYPES)
     rate = models.IntegerField()
     switch_id = models.CharField(max_length=30)

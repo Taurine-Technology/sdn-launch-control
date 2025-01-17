@@ -54,3 +54,5 @@ python manage.py createsuperuser
 ## Contribute
 Find out what we are doing and what needs to be done [here](https://trello.com/b/IVWKfVkB/launch-control). Email
 keeganwhite@taurinetech.com to contribute or open a draft pull request.
+
+Find a copy of the CLA [here](https://gist.github.com/keeganwhite/b41ddb8a761ccd6e6498a5cad4eb4d9b).

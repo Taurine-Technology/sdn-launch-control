@@ -1,19 +1,23 @@
-"""
-URL configuration for control_center project.
+# File: urls.py
+# Copyright (C) 2025 Taurine Technology
+#
+# This file is part of the SDN Launch Control project.
+#
+# This project is licensed under the GNU General Public License v3.0 (GPL-3.0),
+# available at: https://www.gnu.org/licenses/gpl-3.0.en.html#license-text
+#
+# Contributions to this project are governed by a Contributor License Agreement (CLA).
+# By submitting a contribution, contributors grant Taurine Technology exclusive rights to
+# the contribution, including the right to relicense it under a different license
+# at the copyright owner's discretion.
+#
+# Unless required by applicable law or agreed to in writing, software distributed
+# under this license is provided "AS IS", WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the GNU General Public License for more details.
+#
+# For inquiries, contact Keegan White at keeganwhite@taurinetech.com.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/4.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
+
 from django.contrib import admin
 from django.urls import path
 

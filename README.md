@@ -41,7 +41,7 @@ A comprehensive Software-Defined Networking (SDN) management platform that enabl
 2. **Create environment configuration:**
 
    ```bash
-   cp ui/.example ui/.env.local
+   cp .example .env.local
    # Edit .env.local with your backend API URLs
    ```
 

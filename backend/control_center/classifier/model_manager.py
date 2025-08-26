@@ -303,14 +303,41 @@ class ModelManager:
             Dict containing model, config, and class_names, or None if no active model
         """
         active_model_name = state_manager.get_active_model()
+        if not active_model_name:
+            # Try to restore from database
+            try:
+                active_model_config = ModelConfiguration.objects.filter(is_active=True).first()
+                if active_model_config:
+                    logger.info(f"Restoring active model from database: {active_model_config.name}")
+                    state_manager.set_active_model(active_model_config.name)
+                    active_model_name = active_model_config.name
+            except Exception as e:
+                logger.error(f"Error restoring active model from database: {e}")
+                return None
+        
         if not active_model_name or active_model_name not in self.loaded_models:
+            # Try to load the model if it's not loaded
+            if active_model_name and self.load_model(active_model_name):
+                return self.loaded_models[active_model_name]
             return None
+        
         return self.loaded_models[active_model_name]
     
     @property
     def active_model(self) -> Optional[str]:
         """Get the active model name from Redis"""
-        return state_manager.get_active_model()
+        active_model_name = state_manager.get_active_model()
+        if not active_model_name:
+            # Try to restore from database
+            try:
+                active_model_config = ModelConfiguration.objects.filter(is_active=True).first()
+                if active_model_config:
+                    logger.info(f"Restoring active model from database: {active_model_config.name}")
+                    state_manager.set_active_model(active_model_config.name)
+                    return active_model_config.name
+            except Exception as e:
+                logger.error(f"Error restoring active model from database: {e}")
+        return active_model_name
     
     def get_active_model_categories(self) -> List[str]:
         """

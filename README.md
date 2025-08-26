@@ -4,6 +4,8 @@ A comprehensive Software-Defined Networking (SDN) management platform that enabl
 
 ## 🚀 Quick Start
 
+There is an installation for the v1.0.0-beta realease [here](./SDN-Launch-Control-Installation-Manual-v1.0.0-beta.pdf). This will give you guidance on setting up the software and a network. Alternatively follow the instructions below to set up the software.
+
 ### Prerequisites
 
 - Docker and Docker Compose

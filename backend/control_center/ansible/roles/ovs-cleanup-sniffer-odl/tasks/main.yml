@@ -1,0 +1,3 @@
+---
+- name: Cleanup Sniffer ODL
+  import_tasks: cleanup_sniffer_odl.yml

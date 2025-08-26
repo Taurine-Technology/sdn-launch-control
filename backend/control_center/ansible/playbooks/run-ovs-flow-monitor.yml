@@ -1,0 +1,8 @@
+---
+- name:  Set up and run Flow monitor
+  hosts: localserver
+  gather_facts: yes
+  become: true
+
+  roles:
+    - ../roles/ovs-flow-monitoring

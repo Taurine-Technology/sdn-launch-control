@@ -1,0 +1,6 @@
+---
+- name: Get device ports
+  become: true
+  hosts: localserver
+  roles:
+    - ../roles/device-ports-ip-link

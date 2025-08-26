@@ -3,9 +3,20 @@
   hosts: localserver
   gather_facts: yes
   become: true
-  vars_files:
-    - ../group_vars/all.yml
+#  vars_files:
+#    - ../group_vars/all.yml
 
-  roles:
-    - ../roles/docker-install-pi
-    - ../roles/system-stats
+  tasks:
+    - name: Include docker-install-pi role if is_pi is true
+      include_role:
+        name: ../roles/docker-install-pi
+      when: is_pi | bool
+
+    - name: Include install-docker role if is_pi is false
+      include_role:
+        name: ../roles/install-docker
+      when: not is_pi | bool
+
+    - name: Include system-stats role
+      include_role:
+        name: ../roles/system-stats

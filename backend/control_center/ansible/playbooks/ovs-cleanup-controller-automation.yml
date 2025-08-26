@@ -1,0 +1,7 @@
+---
+- name: Cleanup Controller Automation
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  roles:
+    - ../roles/ovs-cleanup-controller-automation

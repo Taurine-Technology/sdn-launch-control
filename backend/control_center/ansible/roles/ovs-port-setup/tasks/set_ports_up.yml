@@ -1,18 +1,21 @@
-- name: Create network configuration script
+- name: Create individual network configuration scripts for each interface
   copy:
-    dest: "/mnt/config_ports.sh"
+    dest: "/mnt/config_port_{{ item }}.sh"
     content: |
-        #!/bin/bash
-        {% for interface in interfaces %}
-        echo "Setting up {{ interface }}..."
-        sudo ip link set {{ interface }} up
-        {% endfor %}
+      #!/bin/bash
+      echo "Setting up {{ item }}..."
+      sudo ip link set {{ item }} up
     mode: '0755'
-- name: Run the script initially
-  command: "/mnt/config_ports.sh"
-- name: Ensure the script runs at reboot via cron
+  loop: "{{ interfaces }}"
+
+- name: Run each network configuration script initially
+  command: "/mnt/config_port_{{ item }}.sh"
+  loop: "{{ interfaces }}"
+
+- name: Ensure each configuration script runs at reboot via cron
   cron:
-    name: "Configure network interfaces at reboot"
+    name: "Configure network interface {{ item }} at reboot"
     special_time: reboot
-    job: "/mnt/config_ports.sh"
+    job: "/mnt/config_port_{{ item }}.sh"
     user: root
+  loop: "{{ interfaces }}"

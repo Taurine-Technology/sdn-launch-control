@@ -1,0 +1,17 @@
+---
+# Remove cron jobs that were created to keep ports up after reboot
+- name: Remove cron jobs for network interface configuration at reboot
+  cron:
+    name: "Configure network interface {{ item }} at reboot"
+    special_time: reboot
+    job: "/mnt/config_port_{{ item }}.sh"
+    user: root
+    state: absent
+  loop: "{{ interfaces }}"
+
+# Remove the individual network configuration scripts
+- name: Remove individual network configuration scripts
+  file:
+    path: "/mnt/config_port_{{ item }}.sh"
+    state: absent
+  loop: "{{ interfaces }}"

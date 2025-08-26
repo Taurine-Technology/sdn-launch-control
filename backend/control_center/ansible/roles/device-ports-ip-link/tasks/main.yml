@@ -1,0 +1,3 @@
+---
+- name: Get Ports
+  import_tasks: ports.yml

@@ -1,0 +1,21 @@
+---
+- name: Stop sniffer systemd service if running
+  ansible.builtin.systemd:
+    name: sniffer
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+
+- name: Remove sniffer systemd service file
+  ansible.builtin.file:
+    path: /etc/systemd/system/sniffer.service
+    state: absent
+
+- name: Reload systemd to pick up removal
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Remove sniffer directory and all contents
+  ansible.builtin.file:
+    path: /mnt/sniffer
+    state: absent

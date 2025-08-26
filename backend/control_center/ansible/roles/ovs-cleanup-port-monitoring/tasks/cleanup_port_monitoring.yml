@@ -1,0 +1,28 @@
+---
+# Stop and disable the systemd service for port monitor
+- name: Stop and disable OVS Port Monitor service
+  ansible.builtin.systemd:
+    name: "ovs-monitor-{{ bridge_name }}"
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+
+# Remove the systemd service file
+- name: Remove systemd service file for port monitor
+  file:
+    path: "/etc/systemd/system/ovs-monitor-{{ bridge_name }}.service"
+    state: absent
+  ignore_errors: yes
+
+# Reload systemd to pick up the removed service
+- name: Reload systemd after removing service
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  ignore_errors: yes
+
+# Remove the entire port monitor directory and all its contents
+- name: Remove port monitor directory and all contents
+  file:
+    path: "/mnt/qos/{{ bridge_name }}"
+    state: absent
+  ignore_errors: yes

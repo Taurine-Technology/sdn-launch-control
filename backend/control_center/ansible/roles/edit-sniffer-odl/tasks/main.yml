@@ -1,0 +1,28 @@
+---
+- name: Remove existing .env file if it exists
+  ansible.builtin.file:
+    path: "/mnt/sniffer/.env"
+    state: absent
+
+- name: Create .env file with updated environment variables
+  lineinfile:
+    path: "/mnt/sniffer/.env"
+    line: "{{ item }}"
+    create: yes
+  loop:
+    - "LAN_IP_ADDRESS={{ ip_address }}"
+    - "ODL_SWITCH_NODE_ID={{ odl_node_id }}"
+    - "ODL_CONTROLLER_IP={{ controller_ip }}"
+    - "API_BASE_URL={{ api_base_url }}"
+    - "INTERFACE={{ monitor_interface }}"
+    - "PORT_TO_CLIENTS={{ port_to_clients }}"
+    - "PORT_TO_ROUTER={{ port_to_router }}"
+    - "NUM_BYTES={{ num_bytes }}"
+    - "NUM_PACKETS={{ num_packets }}"
+    - "BRIDGE={{ bridge_name }}"
+    - "MODEL_NAME={{ model_name }}"
+
+- name: Restart sniffer systemd service
+  ansible.builtin.systemd:
+    name: sniffer
+    state: restarted

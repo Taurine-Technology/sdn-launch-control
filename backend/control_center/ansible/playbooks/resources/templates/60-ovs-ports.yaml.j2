@@ -1,0 +1,10 @@
+# Ansible managed configuration for OVS bridge ports
+network:
+    version: 2
+    ethernets:
+    {% for interface in interfaces %}
+    {{ interface }}:
+          dhcp4: false
+          dhcp6: false
+          optional: true
+    {% endfor %}

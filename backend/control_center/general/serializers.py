@@ -27,7 +27,7 @@ class ControllerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Controller
-        fields = ['type', 'port_num', 'lan_ip_address']  # Include other fields as needed
+        fields = ['id', 'type', 'port_num', 'lan_ip_address']
 
     def get_lan_ip_address(self, obj):
         # Here, obj is a Controller instance
@@ -38,22 +38,33 @@ class ControllerSerializer(serializers.ModelSerializer):
 class PortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Port
-        fields = ['name', ]
+        fields = ['id', 'name', 'ovs_port_number']
 
 
 class DeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Device
-        fields = ['name', 'device_type', 'os_type', 'lan_ip_address', 'num_ports', 'ovs_enabled', 'ovs_version',
-                  'openflow_version']
+        fields = [
+            'id',
+            'name',
+            'device_type',
+            'os_type',
+            'lan_ip_address',
+            'num_ports',
+            'ovs_enabled',
+            'ovs_version',
+            'openflow_version',
+            'api_url'
+        ]
+
 
 
 class BridgeSerializer(serializers.ModelSerializer):
     device = DeviceSerializer(read_only=True)
     ports = PortSerializer(many=True, read_only=True)
-    controller = ControllerSerializer(read_only=True)  # Make sure this is included
+    controller = ControllerSerializer(read_only=True)
 
     class Meta:
         model = Bridge
-        fields = ['name', 'dpid', 'device', 'ports', 'controller']
+        fields = ['id', 'name', 'dpid', 'odl_node_id', 'device', 'ports', 'controller', 'api_url']
 

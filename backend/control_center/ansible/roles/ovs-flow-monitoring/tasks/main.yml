@@ -1,0 +1,3 @@
+---
+- name: Set up and run Flow monitor
+  import_tasks: monitoring-setup.yml

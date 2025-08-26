@@ -18,7 +18,7 @@
 # For inquiries, contact Keegan White at keeganwhite@taurinetech.com.
 
 import os
-
+import time
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.views import APIView
@@ -28,11 +28,14 @@ from .utilities.ansible_tasks import run_playbook
 from general.models import Device, Port
 from .utilities.utils import check_system_details
 from django.shortcuts import get_object_or_404
+from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, create_inv_data
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
-
-from .utilities.utils import write_to_inventory, save_ip_to_config
+from knox.auth import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from .utilities.utils import write_to_inventory, save_ip_to_config, save_api_url_to_config, save_pi_bool
+from time import sleep
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
@@ -42,21 +45,65 @@ playbook_dir_path = f"{parent_dir}/ansible/playbooks"
 inventory_path = f"{parent_dir}/ansible/inventory/inventory"
 config_path = f"{parent_dir}/ansible/group_vars/all.yml"
 get_ports = "get-ports"
+install_system_monitor = "install-stats-monitor"
 
 
 class InstallOvsView(APIView):
+
     def post(self, request):
+        start_time = time.perf_counter()
         try:
+
             data = request.data
             validate_ipv4_address(data.get('lan_ip_address'))
+            is_pi = data.get('is_pi')
+            requested_device_type = data.get('device_type')
+            requested_name = data.get('name')
+            requested_username = data.get('username')
+            requested_password = data.get('password')
+            requested_os_type = data.get('os_type')
+            # save_pi_bool(is_pi, config_path)
             lan_ip_address = data.get('lan_ip_address')
-            write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
-            save_ip_to_config(lan_ip_address, config_path)
-            result_install = run_playbook(install_ovs, playbook_dir_path, inventory_path)
+            inv_content = create_inv_data(lan_ip_address, data.get('username'), data.get('password'))
+            inv_path = create_temp_inv(inv_content)
+
+
+            # write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
+
+            # save_ip_to_config(lan_ip_address, config_path)
+            # result_install = run_playbook(install_ovs, playbook_dir_path, inventory_path)
+            result_install = run_playbook_with_extravars(
+                install_ovs,
+                playbook_dir_path,
+                inv_path,
+                {
+                    'is_pi': is_pi,
+                    'ip_address': lan_ip_address
+                }
+            )
+
+
             if result_install['status'] == 'failed':
+                print('install-ovs failed')
                 return Response({"status": "error", "message": result_install['error']}, status=status.HTTP_400_BAD_REQUEST)
 
-            result = run_playbook(get_ports, playbook_dir_path, inventory_path)
+            # save_api_url_to_config(data.get('api_url'), config_path)
+            api_url = data.get('api_url')
+            result_install_monitor = run_playbook_with_extravars(
+                install_system_monitor,
+                playbook_dir_path,
+                inv_path,
+                {
+                    'is_pi': is_pi,
+                    'api_url': api_url,
+                    'ip_address': lan_ip_address
+                }
+            )
+            if result_install_monitor['status'] == 'failed':
+                print('install-system_monitor failed')
+                return Response({"status": "error", "message": result_install_monitor['error']}, status=status.HTTP_400_BAD_REQUEST)
+           
+            result = run_playbook_with_extravars(get_ports, playbook_dir_path, inv_path)
             interfaces = check_system_details(result)
             print(f'Interfaces: {interfaces}')
             if interfaces is not None:
@@ -66,13 +113,13 @@ class InstallOvsView(APIView):
 
             device, created = Device.objects.get_or_create(
                 lan_ip_address=lan_ip_address,
+                device_type=requested_device_type,
                 defaults={
-                    'name': data.get('name'),
-                    'device_type': data.get('device_type'),
-                    'username': data.get('username'),
-                    'password': data.get('password'),
-                    'os_type': data.get('os_type'),
-                    'ovs_enabled': True,
+                    'name': requested_name,
+                    'username': requested_username,
+                    'password': requested_password,
+                    'os_type': requested_os_type,
+                    'ovs_enabled': True,  # Set for new devices
                     'ovs_version': '2.17.7',
                     'openflow_version': '1.3',
                     'num_ports': num_ports
@@ -96,6 +143,13 @@ class InstallOvsView(APIView):
                         )
 
             message = "OVS Installed." if created else "OVS already installed."
+            end_time = time.perf_counter()
+            duration = end_time - start_time
+
+            logger.info(
+                f"InstallOvsView execution time (success): {duration:.4f} seconds"
+            )
+
             return Response({"status": "success", "message": message}, status=status.HTTP_200_OK)
         except ValidationError:
             return Response({"status": "error", "message": "Invalid IP address format."},

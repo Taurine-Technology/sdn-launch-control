@@ -1,0 +1,7 @@
+---
+- name: Cleanup Flow Monitoring
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  roles:
+    - ../roles/ovs-cleanup-flow-monitoring

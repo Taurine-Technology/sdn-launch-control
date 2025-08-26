@@ -1,0 +1,48 @@
+services:
+  launch-control-ui:
+    container_name: launch-control-ui
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    env_file:
+      - .env.local
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/api/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - launch-control-network
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+
+networks:
+  launch-control-network:
+    driver: bridge

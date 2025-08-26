@@ -1,0 +1,17 @@
+- name: Get ofport for each specified interface
+  ansible.builtin.command: "ovs-vsctl get interface {{ item }} ofport"
+  register: ofport_result
+  loop: "{{ interfaces }}"
+  changed_when: false
+  failed_when: "'no row' in ofport_result.stderr" # Fail if interface doesn't exist in OVS DB
+
+- name: Assemble port map
+  ansible.builtin.set_fact:
+    ovs_port_map: "{{ ovs_port_map | default({}) | combine({item.item: item.stdout | int}) }}"
+  loop: "{{ ofport_result.results }}"
+  when: item.stdout is defined and item.stdout != "" and item.failed == false
+
+- name: Show assembled OVS port map
+  ansible.builtin.debug:
+    var: ovs_port_map
+  when: ovs_port_map is defined

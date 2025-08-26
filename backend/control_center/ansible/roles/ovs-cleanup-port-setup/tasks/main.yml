@@ -1,0 +1,3 @@
+---
+- name: Cleanup OVS Port Setup Effects
+  import_tasks: cleanup_port_setup.yml

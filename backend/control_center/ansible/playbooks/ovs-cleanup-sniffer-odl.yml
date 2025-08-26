@@ -1,0 +1,7 @@
+---
+- name: Cleanup Sniffer ODL
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  roles:
+    - ../roles/ovs-cleanup-sniffer-odl

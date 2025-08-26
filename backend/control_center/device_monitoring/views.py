@@ -26,6 +26,8 @@ from general.models import Device, Bridge, Port
 from django.shortcuts import get_object_or_404
 import json
 import os
+from knox.auth import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 from requests.auth import HTTPBasicAuth
 from rest_framework.decorators import api_view
@@ -41,6 +43,7 @@ from ovs_install.utilities.utils import (write_to_inventory, save_ip_to_config, 
                                          save_num_packets, save_monitor_interface)
 from rest_framework.response import Response
 from rest_framework import status
+from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, create_inv_data
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
@@ -52,7 +55,6 @@ inventory_path = f"{parent_dir}/ansible/inventory/inventory"
 config_path = f"{parent_dir}/ansible/group_vars/all.yml"
 
 
-# TODO test this
 @api_view(['POST'])
 def install_system_stats_monitor(request):
     try:
@@ -72,27 +74,44 @@ def install_system_stats_monitor(request):
         return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# TODO test this
 @api_view(['POST'])
 def install_ovs_qos_monitor(request):
     try:
         data = request.data
-        print('***')
-        print(data)
-        print('***')
+        # print('***')
+        # print(data)
+        # print('***')
         validate_ipv4_address(data.get('lan_ip_address'))
         lan_ip_address = data.get('lan_ip_address')
         bridge_name = data.get('name')
         openflow_version = data.get('openflow_version')
+        device = get_object_or_404(Device, lan_ip_address=lan_ip_address, device_type='switch')
+        api_url = data.get('api_url')
 
-        save_openflow_version_to_config(openflow_version, config_path)
-        save_bridge_name_to_config(bridge_name, config_path)
-        device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
-        write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
-        save_ip_to_config(lan_ip_address, config_path)
-        save_api_url_to_config(data.get('api_url'), config_path)
-        result_install = run_playbook(install_qos_monitor, playbook_dir_path, inventory_path)
-        print(result_install)
+        inv_content = create_inv_data(lan_ip_address, device.username, device.password)
+        inv_path = create_temp_inv(inv_content)
+
+        result_install = run_playbook_with_extravars(
+            install_qos_monitor,
+            playbook_dir_path,
+            inv_path,
+            {
+                'ip_address': lan_ip_address,
+                'bridge_name': bridge_name,
+                'openflow_version': 'openflow13',
+                'api_url': api_url
+            },
+            quiet=False
+        )
+
+        # save_openflow_version_to_config(openflow_version, config_path)
+        # save_bridge_name_to_config(bridge_name, config_path)
+        # device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
+        # write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
+        # save_ip_to_config(lan_ip_address, config_path)
+        # save_api_url_to_config(data.get('api_url'), config_path)
+        # result_install = run_playbook(install_qos_monitor, playbook_dir_path, inventory_path)
+        # print(result_install)
         return Response({"status": "success", "message": 'QoS monitor installed'}, status=status.HTTP_200_OK)
     except ValidationError:
         return Response({"status": "error", "message": "Invalid IP address format."},

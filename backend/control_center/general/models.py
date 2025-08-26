@@ -1,4 +1,4 @@
-# File: models.py
+# File: general/models.py
 # Copyright (C) 2025 Taurine Technology
 #
 # This file is part of the SDN Launch Control project.
@@ -32,22 +32,28 @@ class Device(models.Model):
     OS_TYPES = (
         ('ubuntu_20_server', 'Ubuntu 20 Server'),
         ('ubuntu_22_server', 'Ubuntu 22 Server'),
+        ('unknown', 'Unknown'),
         ('other', 'Other'),
     )
 
     name = models.CharField(max_length=100)
     device_type = models.CharField(max_length=20, choices=DEVICE_TYPES)
     os_type = models.CharField(max_length=20, choices=OS_TYPES)
-    username = models.CharField(max_length=100)
-    password = models.CharField(max_length=100)
+    username = models.CharField(max_length=100, blank=True, null=True)
+    password = models.CharField(max_length=100,  blank=True, null=True)
 
-    lan_ip_address = models.GenericIPAddressField(unique=True)
+    lan_ip_address = models.GenericIPAddressField()
 
     # ovs specific fields
     num_ports = models.IntegerField(default=0)
     ovs_enabled = models.BooleanField(default=False)
     ovs_version = models.CharField(max_length=10, blank=True, null=True)
     openflow_version = models.CharField(max_length=10, blank=True, null=True)
+    api_url = models.URLField(max_length=200, null=True, blank=True)
+
+    class Meta:
+        # This ensures that the combination of device_type and lan_ip_address is unique
+        unique_together = (('device_type', 'lan_ip_address'),)
 
     def __str__(self):
         return f"({self.name} {self.device_type})"
@@ -59,6 +65,11 @@ class Bridge(models.Model):
     dpid = models.CharField(max_length=30)
     controller = models.ForeignKey('Controller', on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='bridges')
+    api_url = models.URLField(max_length=200, null=True, blank=True)
+    odl_node_id = models.CharField(max_length=255, blank=True, null=True,)
+
+    class Meta:
+        unique_together = ('device', 'name')  # Enforce unique bridge names per device
 
     def __str__(self):
         return f"Bridge {self.name} on device {self.device.name}"
@@ -68,12 +79,17 @@ class Port(models.Model):
     bridge = models.ForeignKey(Bridge, on_delete=models.SET_NULL, related_name='ports', null=True, blank=True)
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='ports')
     name = models.CharField(max_length=100)
+    ovs_port_number = models.IntegerField(null=True, blank=True)
 
     class Meta:
         unique_together = ('device', 'name')
 
     def __str__(self):
-        return f"Port {self.name} on {self.device.name}"
+        if self.bridge:
+            ovs_num_str = f" (OVS Port: {self.ovs_port_number})" if self.ovs_port_number is not None else ""
+            return f"Port {self.name} on {self.device.name} (Bridge: {self.bridge.name}{ovs_num_str})"
+        else:
+            return f"Port {self.name} on {self.device.name} (Unassigned)"
 
 
 # TODO make this work for multiple controllers on the same host
@@ -82,6 +98,7 @@ class Controller(models.Model):
         ('onos', 'Onos'),
         ('odl', 'Open Daylight'),
         ('faucet', 'Faucet'),
+        ('unknown', 'Unknown'),
         ('other', 'Other')
     )
     type = models.CharField(max_length=20, choices=TYPES)
@@ -91,7 +108,7 @@ class Controller(models.Model):
 
 
 class ClassifierModel(models.Model):
-    name = models.CharField(max_length=20)
+    name = models.CharField(max_length=100)
     number_of_bytes = models.IntegerField()
     number_of_packets = models.IntegerField()
     categories = models.CharField(max_length=1000)

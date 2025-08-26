@@ -1,0 +1,4 @@
+NEXT_PUBLIC_API_BASE_URL=https://example.com/api/v1
+NEXT_PUBLIC_WS_OPENFLOW=ws://localhost:8000/ws/openflow_metrics/
+NEXT_PUBLIC_WS_DEVICESTATS=ws://localhost:8000/ws/device_stats/
+NEXT_PUBLIC_WS_CLASIFICATIONS=ws://localhost:8000/ws/flow_updates/

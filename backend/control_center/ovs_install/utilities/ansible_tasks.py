@@ -74,6 +74,7 @@ def run_playbook(playbook_name, playbook_dir_path, inventory_path, quiet=True):
         r = ansible_runner.run(private_data_dir="./", playbook=playbook_path, inventory=inventory_path,
                                status_handler=my_status_handler, quiet=True, event_handler=my_event_handler)
         if r.rc != 0:
+
             print(f'*** RESULTS IN ERROR CHECK {results} ***')
             unreachable_err = 'Failed to connect to the host via ssh:'
             if results:
@@ -112,7 +113,7 @@ def run_playbook(playbook_name, playbook_dir_path, inventory_path, quiet=True):
                 else:
                     return {'status': 'failed', 'error': 'unknown error.'}
             else:
-                return {'status': 'failed', 'error': 'unknown error.'}
+                return {'status': 'failed', 'error': 'Incorrect username/password combination.'}
 
         return {'status': 'success', 'results': results}
 

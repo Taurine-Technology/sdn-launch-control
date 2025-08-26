@@ -1,0 +1,3 @@
+---
+- name: Cleanup Controller Automation
+  import_tasks: cleanup_controller_automation.yml

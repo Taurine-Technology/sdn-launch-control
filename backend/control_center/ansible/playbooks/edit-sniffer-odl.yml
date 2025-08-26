@@ -1,0 +1,8 @@
+---
+- name: Edit Sniffer Configuration on Switch
+  hosts: localserver
+  gather_facts: yes
+  become: true
+
+  roles:
+    - ../roles/edit-sniffer-odl

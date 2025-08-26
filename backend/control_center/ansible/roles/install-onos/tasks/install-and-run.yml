@@ -9,6 +9,12 @@
   set_fact:
     container_exists: "{{ docker_inspect.rc == 0 }}"
 
+- name: Ensure /mnt/onos folder exists and has permissions 777
+  file:
+    path: /mnt/onos
+    state: directory
+    mode: '0777'
+
 - name: Debug - Show container exists status
   debug:
     msg: "The ONOS container {{ 'exists' if container_exists else 'does not exist' }}."
@@ -19,8 +25,11 @@
 
 - name: Start the ONOS container if not exists
   command: >
-    docker run -d --restart=unless-stopped --name onos -p 8181:8181 -p 8101:8101 -p 5005:5005 -p 830:830 -p 6653:6653
-    --network="host" onosproject/onos:2.7-latest
+    docker run -d --restart=unless-stopped --name onos \
+    -p 8181:8181 -p 8101:8101 -p 5005:5005 -p 830:830 -p 6653:6653 \
+    --network="host" \
+    -v /mnt/onos:/root/onos/apache-karaf-4.2.14/data \
+    onosproject/onos:2.7-latest
   when: not container_exists
 
 

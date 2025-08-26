@@ -40,9 +40,11 @@ def format_ovs_show(results):
     bridges = {}
     bridge_name = None
     num_bridges = 0
+
     if results.get(key):
         results_dic = results[key]
         show_output = results_dic[target]
+
         for line in show_output:
             line = line.strip(" ")
             if "Bridge" in line:
@@ -59,6 +61,14 @@ def format_ovs_show(results):
                     bridges[bridge_name]["Ports"].append(port_name)
                 else:
                     bridges[bridge_name]["Ports"] = [port_name]
+            elif "Controller" in line:
+                line = line.split("\"")
+                # print(line)
+                controller_info = line[1]
+                if bridges[bridge_name].get("Controller"):
+                    bridges[bridge_name]["Controller"].append(controller_info)
+                else:
+                    bridges[bridge_name]["Controller"] = [controller_info]
         return bridges
 
 
@@ -70,7 +80,7 @@ def format_ovs_get_controller(results):
         results_dic = results[key]
         show_output = results_dic[target]
         show_output_arr = show_output.split(":")
-        print(show_output_arr)
+    
         if len(show_output_arr) > 1:
             controller = {'ip': show_output_arr[1], 'port': show_output_arr[2]}
             if len(show_output_arr[2]) > 0:
@@ -129,27 +139,33 @@ def format_ovs_dump_flows(results):
         results_dic = results[key]
         show_output = results_dic[target]
         show_output = show_output.split('\n')
-        # print('***')
+  
         flows = []
         for row in show_output:
             row_arr = row.split(',')
             flow = {}
             for i in row_arr:
                 if 'in_port' in i:
-                    # print(i.split('=')[-1])
+                    
                     flow['in_port'] = i.split('=')[-1]
                 elif 'dl_src' in i:
-                    # print(i.split('=')[-1])
+                    
                     flow['dl_src'] = i.split('=')[-1]
                 elif 'dl_dst' in i:
                     data = i.split(' ')
-                    # print(data[0].split('=')[-1])
-                    # print(data[1].split('output:')[-1])
-                    flow['dl_dst'] = data[0].split('=')[-1]
-                    flow['out_port'] = data[1].split('output:')[-1]
+                    # Extract dl_dst from the first part
+                    dl_dst_val = data[0].split('=')[-1]
+                    flow['dl_dst'] = dl_dst_val
+                    # Only attempt to extract out_port if the second part exists and contains 'output:'
+                    if len(data) > 1 and 'output:' in data[1]:
+                        out_port_val = data[1].split('output:')[-1]
+                        flow['out_port'] = out_port_val
+                    else:
+                        # Handle cases where output port info is missing or structured differently
+                        flow['out_port'] = None
             if flow:
-                # print(flow)
+
                 flows.append(flow)
-        # print('***')
+
 
         return flows

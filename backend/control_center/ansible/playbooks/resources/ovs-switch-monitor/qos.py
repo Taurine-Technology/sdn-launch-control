@@ -7,6 +7,7 @@ import datetime
 import os
 import pytz
 from dotenv import load_dotenv
+import re
 
 load_dotenv()
 bridge = os.getenv('BRIDGE')
@@ -58,21 +59,24 @@ def send_data_to_api(url, data):
 
 
 def parse_ovs_statistics(output):
-    lines = output.strip().split('\n')[1:]  # Skip the first line which is a header
+    lines = output.strip().split('\n')[1:]  # Skip header
     stats = {}
-    parts = len(lines)
+    # Process every three lines (rx, tx, duration)
+    for i in range(0, len(lines), 3):
+        # Use regex to extract the port name after "port" and before the colon
+        m = re.search(r'port\s+(\S+):', lines[i])
+        if m:
+            port_id = m.group(1)
+        else:
+            port_id = "unknown"
 
-    for i in range(0, parts, 3):
-        # port name and rx packets
-        temp1 = lines[i].strip()
-        rx_stats = temp1.split(',')
-        port_number = rx_stats[0].split(':')[0].split(' ')[-1]
+        # Now extract the stats values (using your original split logic)
+        rx_stats = lines[i].strip().split(',')
         rx_pkts = rx_stats[0].split(':')[-1].split('=')[-1]
         rx_bytes = rx_stats[1].split('=')[-1]
         rx_drop = rx_stats[2].split('=')[-1]
         rx_errors = rx_stats[3].split('=')[-1]
 
-        # port name and tx packets
         temp2 = lines[i + 1].strip()
         tx_stats = temp2.split(',')
         tx_pkts = tx_stats[0].split('=')[-1]
@@ -80,12 +84,11 @@ def parse_ovs_statistics(output):
         tx_drop = tx_stats[2].split('=')[-1]
         tx_errors = tx_stats[3].split('=')[-1]
 
-        # duration
         temp3 = lines[i + 2].strip()
         duration_stats = temp3.split('=')
         duration = duration_stats[-1][:-1]
 
-        stats[port_number] = {
+        stats[port_id] = {
             'rx_pkts': int(rx_pkts),
             'rx_bytes': int(rx_bytes),
             'rx_drop': int(rx_drop),
@@ -118,12 +121,17 @@ def parse_port_interface_map(output):
     lines = output.splitlines()
     for line in lines:
         if 'addr' in line:
-            parts = line.split()  # Splitting by spaces
-            port_info = parts[0].split('(')  # e.g., '9(eth2):'
+            parts = line.split()  # e.g., ["1(eth1):", "addr:9c:a2:f4:fc:24:eb"]
+            port_info = parts[0].split('(')  # For "1(eth1):" → ["1", "eth1):"]
             if len(port_info) > 1:
-                port_num = port_info[0]  # '9'
-                interface_name = port_info[1].rstrip('):')  # 'eth2'
+                port_num = port_info[0]
+                interface_name = port_info[1].rstrip('):')
+                # Add both mappings: numeric port and interface name map to the interface name
                 port_interface_map[port_num] = interface_name
+                port_interface_map[interface_name] = interface_name
+            else:
+                key = parts[0].rstrip(':')
+                port_interface_map[key] = key
     return port_interface_map
 
 
@@ -152,13 +160,13 @@ if __name__ == "__main__":
                     interface_name = port_interface_map.get(port, port)  # Fallback to port if no interface name found
                     interface_differences[interface_name] = stats
 
-                log_data_to_csv('./logs.csv', interface_differences)
+                # log_data_to_csv('./logs.csv', interface_differences)
                 data_to_send = {
                     'device_ip': device_ip,
                     'stats': interface_differences
                 }
-                code, response = send_data_to_api(f'{api_url}/post_openflow_metrics/', data_to_send)
-                print(data_to_send)
+                code, response = send_data_to_api(f'{api_url}/api/v1/post_openflow_metrics/', data_to_send)
+                # print(data_to_send)
                 print(f"API Response: {code} - {response}")
             old_stats = current_stats
         else:

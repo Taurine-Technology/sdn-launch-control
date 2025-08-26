@@ -1,0 +1,8 @@
+---
+- name: Set up Sniffer on Switch
+  hosts: localserver
+  gather_facts: yes
+  become: true
+
+  roles:
+    - ../roles/install-sniffer-odl

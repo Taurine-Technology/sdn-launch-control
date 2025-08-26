@@ -1,3 +1,7 @@
 ---
 - name: Set bridge protocols to OpenFlow13
   command: "ovs-vsctl set bridge {{ bridge_name }} protocols=OpenFlow13"
+
+#- name: Add PERMANENT default L2 bridge flow rule using ovs-vsctl
+#  ansible.builtin.command: "ovs-ofctl -O Openflow13 add-flow {{ bridge_name }} \"priority=5,actions=NORMAL\""
+#

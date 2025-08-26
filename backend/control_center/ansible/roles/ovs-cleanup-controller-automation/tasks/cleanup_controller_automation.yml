@@ -1,0 +1,29 @@
+---
+# Remove the controller from the OVS bridge
+- name: Remove controller from OVS bridge
+  command: "ovs-vsctl del-controller {{ bridge_name }}"
+  ignore_errors: yes
+
+# Remove the cron job that runs the automation script on boot
+- name: Remove cron job for automate-flows script
+  cron:
+    name: "Run automate-flows for {{ bridge_name }} on boot"
+    special_time: reboot
+    user: root
+    job: "/mnt/controller-{{ bridge_name }}/automate.sh >> /var/log/automate_flows_{{ bridge_name }}.log 2>&1"
+    state: absent
+  ignore_errors: yes
+
+# Remove the log file created by the automation script
+- name: Remove automation script log file
+  file:
+    path: "/var/log/automate_flows_{{ bridge_name }}.log"
+    state: absent
+  ignore_errors: yes
+
+# Remove the entire controller directory and all its contents
+- name: Remove controller automation directory and all contents
+  file:
+    path: "/mnt/controller-{{ bridge_name }}"
+    state: absent
+  ignore_errors: yes

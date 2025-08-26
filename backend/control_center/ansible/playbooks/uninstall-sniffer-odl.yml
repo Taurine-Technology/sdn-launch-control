@@ -1,0 +1,8 @@
+---
+- name: Uninstall Sniffer on Switch
+  hosts: localserver
+  gather_facts: yes
+  become: true
+
+  roles:
+    - ../roles/uninstall-sniffer-odl

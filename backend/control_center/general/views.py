@@ -1,4 +1,4 @@
-# File: views.py
+# File: general/views.py
 # Copyright (C) 2025 Taurine Technology
 #
 # This file is part of the SDN Launch Control project.
@@ -19,6 +19,7 @@
 
 from django.shortcuts import render
 from django.shortcuts import get_list_or_404
+from rest_framework.decorators import action
 from ovs_install.utilities.ansible_tasks import run_playbook
 from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, save_bridge_name_to_config, \
     save_interfaces_to_config
@@ -33,9 +34,20 @@ from django.shortcuts import get_object_or_404
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
-from .serializers import BridgeSerializer
+from .serializers import BridgeSerializer, ControllerSerializer
 from .models import Controller, Plugins
 from .serializers import DeviceSerializer
+
+from rest_framework.viewsets import ModelViewSet
+from .models import Controller
+from .serializers import ControllerSerializer
+from rest_framework.permissions import IsAuthenticated
+from knox.auth import TokenAuthentication
+from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, create_inv_data
+# Import the model manager
+from classifier.model_manager import model_manager
+from odl.models import Category
+from classifier.models import ModelConfiguration
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
@@ -49,27 +61,23 @@ from .models import ClassifierModel
 
 # *---------- Network Connectivity Methods ----------*
 class CheckDeviceConnectionView(APIView):
-    def get(self, request, lan_ip_address):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    def get(self, request, lan_ip_address, device_type):
         try:
             validate_ipv4_address(lan_ip_address)
-            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
-            data = {
-                "name": device.name,
-                "device_type": device.device_type,
-                'username': device.username,
-                'password': device.password,
-                "os_type": device.os_type,
-                "lan_ip_address": device.lan_ip_address,
-                "ports": device.num_ports,
-                "ovs_enabled": device.ovs_enabled,
-                "ovs_version": device.ovs_version,
-                "openflow_version": device.openflow_version
-            }
-            write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
-            save_ip_to_config(lan_ip_address, config_path)
-            result = run_playbook(test_connection, playbook_dir_path, inventory_path)
+            device = get_object_or_404(Device, lan_ip_address=lan_ip_address, device_type=device_type)
+            print('### Found device', device)
+
+            inv_content = create_inv_data(lan_ip_address, device.username, device.password)
+            inv_path = create_temp_inv(inv_content)
+            # write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
+            # save_ip_to_config(lan_ip_address, config_path)
+            result = run_playbook_with_extravars(test_connection, playbook_dir_path, inv_path, {
+                        'ip_address': lan_ip_address,
+                    })
             if result['status'] == 'failed':
-                print()
+                print(result)
                 return Response({'status': 'error', 'message': result['error']},
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -233,6 +241,8 @@ class InstallPluginView(APIView):
 
 
 class DeviceListView(APIView):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
     def get(self, request):
         try:
             devices = Device.objects.all()
@@ -253,8 +263,28 @@ class DeviceListView(APIView):
             logger.error(e, exc_info=True)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class DeviceDetailView(APIView):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
 
-class DeviceDetailsView(APIView):
+    def get(self, request, device_id):
+        """
+        Returns the details of a specific device by its ID.
+        """
+        try:
+            # Get the device object or return a 404 if it doesn't exist
+            device = get_object_or_404(Device, id=device_id)
+
+            # Serialize the device data
+            serializer = DeviceSerializer(device)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(e, exc_info=True)
+            return Response(
+                {"status": "error", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+class DeviceDetailsViewByIp(APIView):
     def get(self, request, lan_ip_address):
         try:
             validate_ipv4_address(lan_ip_address)
@@ -295,7 +325,6 @@ class ForceDeleteDeviceView(APIView):
         try:
             lan_ip_address = data.get('lan_ip_address')
             device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
-            bridges = Bridge.objects.filter(device=device)
 
             # remove links to bridges if this device is a controller
             if Controller.objects.filter(device=device).exists():
@@ -305,9 +334,6 @@ class ForceDeleteDeviceView(APIView):
                 if associated_bridges:
                     for bridge in associated_bridges:
                         print(f"Bridge Name: {bridge.name}, Device: {bridge.device.name}")
-                        bridge_name = bridge.name
-                        bridge_host_device = bridge.device
-                        bridge_host_lan_ip_address = bridge_host_device.lan_ip_address
                         bridge.controller = None
                         bridge.save()
                 device.delete()
@@ -325,6 +351,7 @@ class DeleteDeviceView(APIView):
     def delete(self, request):
         data = request.data
         try:
+            print(data.get('lan_ip_address'))
             validate_ipv4_address(data.get('lan_ip_address'))
         except ValidationError:
             return Response({"status": "error", "message": "Invalid IP address format."},
@@ -345,29 +372,58 @@ class DeleteDeviceView(APIView):
                     bridge_name = bridge.name
                     bridge_host_device = bridge.device
                     bridge_host_lan_ip_address = bridge_host_device.lan_ip_address
-                    save_bridge_name_to_config(bridge_name, config_path)
-                    write_to_inventory(bridge_host_lan_ip_address, bridge_host_device.username,
-                                       bridge_host_device.password, inventory_path)
-                    save_ip_to_config(bridge_host_lan_ip_address, config_path)
-                    delete_controller = run_playbook('remove-controller', playbook_dir_path, inventory_path)
+
+                    inv_content = create_inv_data(bridge_host_lan_ip_address, bridge_host_device.username, bridge_host_device.password)
+                    inv_path = create_temp_inv(inv_content)
+
+                    delete_controller = run_playbook_with_extravars(
+                        'remove-controller', playbook_dir_path, inv_path,
+                        {
+                            'bridge_name': bridge_name,
+                            'ip_address': bridge_host_lan_ip_address,
+                        }
+                    )
+                    # save_bridge_name_to_config(bridge_name, config_path)
+                    # write_to_inventory(bridge_host_lan_ip_address, bridge_host_device.username,
+                    #                    bridge_host_device.password, inventory_path)
+                    # save_ip_to_config(bridge_host_lan_ip_address, config_path)
+                    # delete_controller = run_playbook('remove-controller', playbook_dir_path, inventory_path)
+
                     if delete_controller.get('status') == 'success':
                         bridge.controller = None
                         bridge.save()
                     else:
                         return Response(
-                            {'status': 'failed', 'message': 'Unable to remove controller from assosciated bridges'
+                            {'status': 'failed', 'message': 'Unable to remove controller from associated bridges'
                                                             ' due to external system failure.'},
                             status=status.HTTP_400_BAD_REQUEST)
             # delete bridges on the device
             if bridges:
                 for b in bridges:
-                    save_bridge_name_to_config(b.name, config_path)
-                    write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
-                    save_ip_to_config(lan_ip_address, config_path)
-                    delete_bridge = run_playbook('ovs-delete-bridge', playbook_dir_path, inventory_path)
+                    inv_content = create_inv_data(lan_ip_address, device.username, device.password)
+                    inv_path = create_temp_inv(inv_content)
+
+                    delete_bridge = run_playbook_with_extravars(
+                        'ovs-delete-bridge', playbook_dir_path, inv_path,
+                        {
+                            'bridge_name': b.name,
+                            'ip_address': lan_ip_address,
+                        }
+                    )
+
+                    # save_bridge_name_to_config(b.name, config_path)
+                    # write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
+                    # save_ip_to_config(lan_ip_address, config_path)
+                    # delete_bridge = run_playbook('ovs-delete-bridge', playbook_dir_path, inventory_path)
                     if delete_bridge.get('status') == 'success':
                         print(f'Bridge {b.name} successfully deleted on {device.name}')
                     else:
+                        print(delete_bridge)
+                        if 'Failed to connect' in delete_bridge.get('error'):
+                            return Response({
+                                'status': 'failed', 'message': 'Could not connect to the device. Is it online?'
+                            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
                         return Response({'status': 'error', 'message': f'unable to delete bridge {b.name}'},
                                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 device.delete()
@@ -407,39 +463,6 @@ class UpdateDeviceView(APIView):
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# *---------- OVS get and post methods ----------*
-class DeviceBridgesView(APIView):
-    def get(self, request, lan_ip_address):
-        try:
-            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
-            bridges = device.bridges.all()
-            if bridges.exists():
-                serializer = BridgeSerializer(bridges, many=True)
-                print(serializer.data)
-                return Response({'status': 'success', 'bridges': serializer.data})
-            else:
-                return Response({'status': 'info', 'message': 'No bridges assigned to this device.'})
-        except ValueError:
-            return Response({'status': 'error', 'message': 'Invalid IP address format.'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class DevicePortsView(APIView):
-    def get(self, request, lan_ip_address):
-        try:
-            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
-            ports = Port.objects.filter(bridge__device=device)
-            if ports.exists():
-                ports_data = [{'name': port.name} for port in ports]
-                return Response({'status': 'success', 'ports': ports_data})
-            else:
-                return Response({'status': 'info', 'message': 'No ports assigned to this device.'})
-        except Exception as e:
-            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 # class UnassignedDevicePortsView(APIView):
 #     def get(self, request, lan_ip_address):
 #         try:
@@ -455,85 +478,143 @@ class DevicePortsView(APIView):
 #         except Exception as e:
 #             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# *---------- Controller get and post methods ----------*
-class AddControllerView(APIView):
-    def post(self, request):
-        try:
-            data = request.data
-            lan_ip_address = data.get('lan_ip_address')
-            validate_ipv4_address(lan_ip_address)
-            device = get_object_or_404(Device, lan_ip_address=lan_ip_address)
-            controller = Controller.objects.create(
-                type=data.get('type'),
-                device=device,
-                lan_ip_address=lan_ip_address,
-            )
-        except ValidationError:
-            return Response({"status": "error", "message": "Invalid IP address format."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-
-class ControllerListView(APIView):
-    def get(self, request):
-        try:
-            controllers = Controller.objects.all()
-            for controller in controllers:
-                print(controller.switches.all())  # Check the output
-
-            data = [
-                {
-                    "type": controller.type,
-                    "device": controller.device.name,
-                    "lan_ip_address": controller.device.lan_ip_address,
-                    "switches": [
-                        {
-                            "name": switch.name,
-                            "lan_ip_address": switch.lan_ip_address,
-                        }
-                        for switch in controller.switches.all()
-                    ],
-                } for controller in controllers
-            ]
-
-            return Response(data, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class ControllerSwitchList(APIView):
-    def get(self, request, controller_ip):
-        try:
-            controller = Controller.objects.get(device__lan_ip_address=controller_ip)
-            switches = controller.switches.all()
-            serializer = DeviceSerializer(switches, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        except Controller.DoesNotExist:
-            return Response({'error': 'Controller not found'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class ONOSControllerListView(APIView):
-    def get(self, request):
-        try:
-            onos_controllers = Controller.objects.filter(type='onos')
-
-            lan_ips = [controller.device.lan_ip_address for controller in onos_controllers]
-            return Response(lan_ips, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 class CategoryListView(APIView):
     def get(self, request):
         try:
-            classifier = ClassifierModel.objects.first()
-            if classifier:
-                return JsonResponse({'categories': classifier.categories}, status=200)
+            # Get query parameters
+            model_name = request.query_params.get('model_name')
+            include_legacy = request.query_params.get('include_legacy', 'false').lower() == 'true'
+            
+            if model_name:
+                # Get categories for a specific model
+                
+                try:
+                    model_config = ModelConfiguration.objects.get(name=model_name)
+                    categories = Category.objects.filter(model_configuration=model_config)
+                    category_names = list(categories.values_list('name', flat=True))
+                    
+                    return JsonResponse({
+                        'categories': category_names,
+                        'model_name': model_name,
+                        'total_categories': len(category_names)
+                    }, status=200)
+                except ModelConfiguration.DoesNotExist:
+                    return JsonResponse({
+                        'error': f'Model "{model_name}" not found'
+                    }, status=404)
             else:
-                return JsonResponse({'error': 'Classifier not found'}, status=404)
+                # Get categories from the active model (default behavior)
+                active_model_categories = model_manager.get_active_model_categories()
+                
+                if include_legacy:
+                    # Include legacy categories (those without model_configuration)
+                    legacy_categories = list(Category.objects.filter(
+                        model_configuration__isnull=True
+                    ).values_list('name', flat=True))
+                    
+                    # Combine active model categories with legacy categories
+                    all_categories = list(set(active_model_categories + legacy_categories))
+                    
+                    return JsonResponse({
+                        'categories': all_categories,
+                        'active_model': model_manager.active_model,
+                        'total_categories': len(all_categories),
+                        'legacy_categories': legacy_categories
+                    }, status=200)
+                else:
+                    if active_model_categories:
+                        return JsonResponse({
+                            'categories': active_model_categories,
+                            'active_model': model_manager.active_model,
+                            'total_categories': len(active_model_categories)
+                        }, status=200)
+                    else:
+                        return JsonResponse({
+                            'error': 'No active model found or no categories available',
+                            'active_model': model_manager.active_model
+                        }, status=404)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
+
+# ------ CONTROLLER VIEWS -------
+class ControllerViewSet(ModelViewSet):
+    """
+    A viewset that provides the standard actions (GET, POST, PUT, DELETE)
+    for the Controller model.
+    """
+    queryset = Controller.objects.all()
+    serializer_class = ControllerSerializer
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def perform_create(self, serializer):
+        # Add any custom logic when creating a Controller, if needed
+        serializer.save()
+
+    def perform_update(self, serializer):
+        # Add any custom logic when updating a Controller, if needed
+        serializer.save()
+
+    @action(detail=False, methods=['get'], url_path='onos')
+    def onos(self, request):
+        onos_controllers = self.queryset.filter(type='onos')
+        serializer = self.get_serializer(onos_controllers, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='odl')
+    def odl_controllers(self, request):
+        odl_controllers = self.queryset.filter(type='odl').select_related('device')
+        serializer = self.get_serializer(odl_controllers, many=True)  # Or a more specific serializer if needed
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='switches')
+    def switches(self, request, pk=None):
+        controller = self.get_object()
+        switches = controller.switches.all()
+        serializer = DeviceSerializer(switches, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+# ----- SWITCH VIEWS ------
+class SwitchViewSet(ModelViewSet):
+    """
+    A viewset that provides standard actions (GET, POST, PUT, DELETE)
+    for switches (device_type='switch').
+    """
+    queryset = Device.objects.filter(device_type="switch")
+    serializer_class = DeviceSerializer
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def perform_create(self, serializer):
+        # Ensure only switches can be created here
+        serializer.save(device_type="switch")
+
+    @action(detail=True, methods=['get'], url_path='ports')
+    def ports(self, request, pk=None):
+        """
+        Custom action to fetch ports associated with a specific switch.
+        """
+        try:
+            switch = self.get_object()
+            ports = switch.ports.all()
+            ports_data = [{'name': port.name} for port in ports]
+            return Response({"ports": ports_data}, status=200)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+    @action(detail=True, methods=['get'], url_path='bridges')
+    def bridges(self, request, pk=None):
+        """
+        Custom action to fetch bridges associated with a specific switch.
+        """
+        try:
+            print('Getting switch')
+            switch = self.get_object()
+            print('Getting switch bridges...')
+            bridges = switch.bridges.all()
+            print('Serializing bridges...')
+            data = BridgeSerializer(bridges, many=True).data
+            return Response({"bridges": data}, status=200)
+        except Exception as e:
+            print('Error getting switch bridges...', e)
+            return Response({"error": str(e)}, status=500)

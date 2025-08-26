@@ -1,4 +1,28 @@
 ---
+- name: Create sniffer directory
+  file:
+    path: "/mnt/sniffer"
+    state: directory
+    mode: '0777'
+
+- name: Install Python and required packages
+  ansible.builtin.package:
+    name:
+      - python3
+      - python3-pip
+      - python3-venv
+    state: present
+
+- name: Install virtualenv via pip
+  ansible.builtin.pip:
+    name: virtualenv
+    state: present
+
+- name: Create a virtual environment for the sniffer
+  ansible.builtin.command:
+    cmd: python3 -m venv /mnt/sniffer/venv
+    creates: "/mnt/sniffer/venv/bin/activate"
+
 - name: Create directories
   file:
     path: "{{ item }}"
@@ -24,17 +48,46 @@
     create: yes
   loop:
     - "LAN_IP_ADDRESS={{ ip_address }}"
-    - "SWITCH_ID={{ switch_id }}"
     - "API_BASE_URL={{ api_base_url }}"
     - "INTERFACE={{ monitor_interface }}"
     - "PORT_TO_CLIENTS={{ port_to_clients }}"
     - "PORT_TO_ROUTER={{ port_to_router }}"
     - "NUM_BYTES={{ num_bytes }}"
     - "NUM_PACKETS={{ num_packets }}"
+    - "BRIDGE={{bridge_name}}"
     - "MODEL_NAME={{ model_name }}"
 
-- name: Build Docker Container
-  command: "docker compose -f /mnt/sniffer/docker-compose.yml build --no-cache"
+- name: Install Python libraries for sniffer
+  ansible.builtin.pip:
+    requirements: "/mnt/sniffer/requirements.txt"
+    virtualenv: "/mnt/sniffer/venv"
 
-- name: Run Docker Container
-  command: "docker compose -f /mnt/sniffer/docker-compose.yml up -d"
+- name: Create systemd service file for sniffer
+  copy:
+    dest: "/etc/systemd/system/sniffer.service"
+    content: |
+      [Unit]
+      Description=OVS Sniffer Service
+      After=network.target
+          
+      [Service]
+      User=root
+      Group=root
+      WorkingDirectory=/mnt/sniffer
+      EnvironmentFile=/mnt/sniffer/.env
+      ExecStart=/mnt/sniffer/venv/bin/python /mnt/sniffer/sniffer.py
+      Restart=always
+      RestartSec=5
+          
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+- name: Reload systemd to pick up new service file
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Enable and start OVS Monitor service
+  ansible.builtin.systemd:
+    name: "sniffer"
+    enabled: yes
+    state: started

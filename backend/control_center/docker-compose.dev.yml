@@ -1,0 +1,80 @@
+services:
+  pgdatabase:
+    container_name: launch-control-pg-db-dev
+    image: timescale/timescaledb:latest-pg17
+    restart: no
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - launch-control-timescale-data-dev:/var/lib/postgresql/data
+
+  redis:
+    container_name: launch-control-redis-dev
+    image: redis:alpine
+    restart: no
+    ports:
+      - "10000:6379"
+
+  django:
+    container_name: launch-control-api-dev
+    build: .
+    restart: no
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - TF_CPP_MIN_LOG_LEVEL=2
+      - DJANGO_LOG_LEVEL=INFO
+    command: >
+      bash -c "python manage.py wait_for_db &&
+               python manage.py makemigrations &&
+               python manage.py migrate &&
+               python manage.py initialize_models &&
+               python manage.py populate_categories_from_model &&
+               python manage.py migrate_categories_to_models &&
+               python manage.py populate_redis_asn &&
+               python manage.py initialise_plugins &&
+               python manage.py create_default_user &&
+               python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/usr/app/
+    depends_on:
+      - redis
+      - pgdatabase
+
+  celery:
+    container_name: launch-control-celery-dev
+    build:
+      context: .
+    restart: no
+    command: celery -A control_center worker -l INFO
+    environment:
+      - TF_CPP_MIN_LOG_LEVEL=2
+      - CELERY_WORKER_RUNNING=1
+    volumes:
+      - .:/usr/app/
+    depends_on:
+      - redis
+      - pgdatabase
+      - django
+
+  celery_beat:
+    container_name: launch-control-celery-beat-dev
+    build:
+      context: .
+    restart: no
+    command: celery -A control_center beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      - TF_CPP_MIN_LOG_LEVEL=2
+      - CELERY_WORKER_RUNNING=1
+    volumes:
+      - .:/usr/app/
+    depends_on:
+      - redis
+      - pgdatabase
+      - django
+
+volumes:
+  launch-control-timescale-data-dev:

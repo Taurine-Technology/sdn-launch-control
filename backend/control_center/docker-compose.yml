@@ -1,6 +1,80 @@
-version: '3'
 services:
+  pgdatabase:
+    container_name: launch-control-pg-db
+    image: timescale/timescaledb:latest-pg17
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - launch-control-timescale-data:/var/lib/postgresql/data
+
   redis:
-    image: redis
+    container_name: launch-control-redis
+    image: redis:alpine
+    restart: unless-stopped
     ports:
-      - '10000:6379'
+      - "10000:6379"
+
+  django:
+    container_name: launch-control-api
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - TF_CPP_MIN_LOG_LEVEL=2
+      - DJANGO_LOG_LEVEL=INFO
+    command: >
+      bash -c "python manage.py wait_for_db &&
+               python manage.py makemigrations &&
+               python manage.py migrate &&
+               python manage.py initialize_models &&
+               python manage.py populate_categories_from_model &&
+               python manage.py migrate_categories_to_models &&
+               python manage.py populate_redis_asn &&
+               python manage.py initialise_plugins &&
+               python manage.py create_default_user &&
+               gunicorn control_center.asgi:application -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000"
+    volumes:
+      - .:/usr/app/
+    depends_on:
+      - redis
+      - pgdatabase
+
+  celery:
+    container_name: launch-control-celery
+    build:
+      context: .
+    restart: unless-stopped
+    command: celery -A control_center worker -l ERROR -c 2
+    volumes:
+      - .:/usr/app/
+    environment:
+      - TF_CPP_MIN_LOG_LEVEL=2
+      - CELERY_WORKER_RUNNING=1
+    depends_on:
+      - redis
+      - pgdatabase
+      - django
+
+  celery_beat:
+    container_name: launch-control-celery-beat
+    build:
+      context: .
+    restart: unless-stopped
+    command: celery -A control_center beat -l ERROR --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/usr/app/
+    environment:
+      - TF_CPP_MIN_LOG_LEVEL=2
+      - CELERY_WORKER_RUNNING=1
+    depends_on:
+      - redis
+      - pgdatabase
+      - django
+
+volumes:
+  launch-control-timescale-data:

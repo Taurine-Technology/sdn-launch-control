@@ -1,0 +1,8 @@
+---
+- name: Run ip link show command with shell
+  shell: ip link show
+  register: ip_link_output
+
+- name: Display raw output
+  debug:
+    var: ip_link_output.stdout_lines

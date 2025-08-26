@@ -1,0 +1,36 @@
+---
+- name: Check if OpenDaylight container is already present
+  command: docker container inspect odl-openflow
+  register: docker_inspect
+  ignore_errors: true
+  changed_when: false
+
+- name: Set container exists variable
+  set_fact:
+    container_exists: "{{ docker_inspect.rc == 0 }}"
+
+- name: Create volume directories
+  file:
+    path: "/mnt/opendaylight/{{ item }}"
+    state: directory
+    mode: '0777'
+  with_items:
+    - 'data'
+    - 'etc'
+
+- name: Debug - Show container exists status
+  debug:
+    msg: "The OpenDaylight container {{ 'exists' if container_exists else 'does not exist' }}."
+
+- name: Create docker-compose.yml for OpenDaylight
+  template:
+    src: "{{ playbook_dir }}/resources/templates/docker-compose-odl.yml.j2"
+    dest: /mnt/opendaylight/docker-compose.yml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Pull and start OpenDaylight container
+  command: >
+    docker compose -f /mnt/opendaylight/docker-compose.yml up -d
+  when: not container_exists

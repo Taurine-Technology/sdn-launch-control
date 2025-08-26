@@ -1,0 +1,28 @@
+---
+# Stop and disable the systemd service for flow monitor
+- name: Stop and disable OVS Flow Monitor service
+  ansible.builtin.systemd:
+    name: "ovs-flow-monitor-{{ bridge_name }}"
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+
+# Remove the systemd service file
+- name: Remove systemd service file for flow monitor
+  file:
+    path: "/etc/systemd/system/ovs-flow-monitor-{{ bridge_name }}.service"
+    state: absent
+  ignore_errors: yes
+
+# Reload systemd to pick up the removed service
+- name: Reload systemd after removing service
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  ignore_errors: yes
+
+# Remove the entire flow monitor directory and all its contents
+- name: Remove flow monitor directory and all contents
+  file:
+    path: "/mnt/ovs-flow-monitor/{{ bridge_name }}"
+    state: absent
+  ignore_errors: yes

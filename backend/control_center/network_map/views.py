@@ -30,7 +30,10 @@ from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config, s
     save_interfaces_to_config, save_controller_port_to_config, save_controller_ip_to_config
 from ovs_install.utilities.ovs_results_format import format_ovs_dump_flows
 from ovs_install.utilities.ansible_tasks import run_playbook
+from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, create_inv_data
 import logging
+from knox.auth import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
@@ -66,7 +69,7 @@ class OnosNetworkMap(APIView):
                     'clusters': clusters_data,
                     'device_info': devices_info_data
                 }
-                print(data)
+
 
                 return JsonResponse(data)
             else:
@@ -78,11 +81,18 @@ class OnosNetworkMap(APIView):
 
 
 class OvsNetworkMap(APIView):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
     def get(self, request):
+
         data_resp = {}
         try:
+            
             bridges = Bridge.objects.all()
+
             for bridge in bridges:
+
                 data_resp[bridge.device.name] = {'bridges': []}
                 temp_data = {'name': bridge.name, 'flows': None}
                 if bridge.controller:
@@ -92,10 +102,21 @@ class OvsNetworkMap(APIView):
                 bridge_name = bridge.name
                 device = bridge.device
                 lan_ip_address = device.lan_ip_address
-                save_bridge_name_to_config(bridge_name, config_path)
-                write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
-                save_ip_to_config(lan_ip_address, config_path)
-                dump_flows = run_playbook('ovs-gather-network-data', playbook_dir_path, inventory_path)
+                # save_bridge_name_to_config(bridge_name, config_path)
+                # write_to_inventory(lan_ip_address,  inventory_path)
+                inv_content = create_inv_data(lan_ip_address,device.username, device.password,)
+                inv_path = create_temp_inv(inv_content)
+                # save_ip_to_config(lan_ip_address, config_path)
+                # dump_flows = run_playbook('ovs-gather-network-data', playbook_dir_path, inventory_path)
+                dump_flows = run_playbook_with_extravars(
+                    'ovs-gather-network-data',
+                    playbook_dir_path,
+                    inv_path,
+                    {
+                        "bridge_name": bridge_name,
+                        'ip_address': lan_ip_address,
+                    }
+                )
                 if dump_flows.get('status') == 'success':
                     results = dump_flows['results']
                     bridge_flows = format_ovs_dump_flows(results)

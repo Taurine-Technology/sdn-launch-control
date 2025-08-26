@@ -1,0 +1,13 @@
+---
+- name: Configure OVS physical interfaces in Netplan using template
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/resources/templates/60-ovs-ports.yaml.j2"
+    dest: /etc/netplan/60-ovs-ports.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  register: netplan_config_change
+
+- name: Apply Netplan configuration if changed
+  ansible.builtin.command: netplan apply
+  when: netplan_config_change.changed

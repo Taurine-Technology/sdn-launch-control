@@ -1,0 +1,7 @@
+---
+- name: Gather OVS Port Details
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  roles:
+    - ../roles/get-ovs-port-numbers

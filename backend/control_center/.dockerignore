@@ -1,0 +1,29 @@
+# Exclude virtual environment directories
+venv/
+.venv/
+
+# Exclude SQLite database files
+db.sqlite3
+
+# Exclude Python cache directories and files
+__pycache__/
+*.pyc
+
+# Exclude git files
+.git
+.gitignore
+
+# Exclude environment variable files
+.env.example
+env
+
+# Exclude Ansible artifacts
+artifacts
+
+# Exclude docker files
+docker-compose.yml
+Dockerfile
+
+# Exclude bash
+run.sh
+install.sh

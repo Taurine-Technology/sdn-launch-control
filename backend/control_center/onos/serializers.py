@@ -19,6 +19,7 @@
 
 from rest_framework import serializers
 from .models import Meter, Category
+from network_device.models import NetworkDevice
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,4 +31,52 @@ class MeterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Meter
-        fields = ('id', 'meter_id', 'meter_type', 'rate', 'switch_id', 'categories')
+        fields = (
+            'id', 'meter_id', 'meter_type', 'rate', 'switch_id',
+            'categories',
+        )  # Exclude optional fields
+
+    def create(self, validated_data):
+        """
+        Custom create method to handle optional fields properly.
+        """
+        request = self.context.get("request")
+
+        # Extract optional fields
+        mac_address = self.initial_data.get("network_device_mac")
+        activation_period = validated_data.pop("activation_period", None)
+        start_time = validated_data.pop("start_time", None)
+        end_time = validated_data.pop("end_time", None)
+
+        # Find network device by MAC if provided
+        network_device = None
+        if mac_address:
+            try:
+                network_device = NetworkDevice.objects.get(mac_address=mac_address)
+            except NetworkDevice.DoesNotExist:
+                raise serializers.ValidationError({"error": "Network device not found with this MAC address."})
+
+        # Create the Meter instance
+        meter = Meter.objects.create(
+            network_device=network_device,
+            activation_period=activation_period,
+            start_time=start_time,
+            end_time=end_time,
+            **validated_data
+        )
+
+        return meter
+
+    def to_representation(self, instance):
+        """
+        Customize the serialized output of a Meter instance.
+        """
+        data = super().to_representation(instance)
+
+        # Add optional fields to the response
+        data["network_device_mac"] = instance.network_device.mac_address if instance.network_device else None
+        data["activation_period"] = instance.activation_period
+        data["start_time"] = instance.start_time.strftime("%H:%M") if instance.start_time else None
+        data["end_time"] = instance.end_time.strftime("%H:%M") if instance.end_time else None
+
+        return data

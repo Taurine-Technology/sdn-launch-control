@@ -1,21 +1,27 @@
 ---
+- name: Update package cache
+  apt:
+    update_cache: yes
+
+
 - name: Create directories
   file:
     path: "{{ item }}"
     state: directory
-    mode: '0777'
+    mode: "0777"
   with_items:
     - "/mnt/qos"
     - "/mnt/qos/{{ bridge_name }}"
     - "/mnt/qos/{{ bridge_name }}/venv"
 
 - name: Install Python and pip
-  ansible.builtin.package:
-    name:
+  apt:
+    name: 
       - python3
-      - python3-pip
+      - python3-pip  
       - python3-venv
     state: present
+    update_cache: yes
 
 - name: Install virtualenv
   ansible.builtin.pip:
@@ -37,7 +43,6 @@
     path: "/mnt/qos/{{ bridge_name }}/.env"
     state: absent
 
-
 - name: Create .env file with environment variables
   copy:
     dest: "/mnt/qos/{{ bridge_name }}/.env"
@@ -46,7 +51,7 @@
       OPENFLOW_VERSION={{ openflow_version }}
       API_URL={{ api_url }}
       BRIDGE={{ bridge_name }}
-    mode: '0644'
+    mode: "0644"
 
 - name: Install Python libraries
   ansible.builtin.pip:
@@ -57,22 +62,22 @@
   copy:
     dest: "/etc/systemd/system/ovs-monitor-{{ bridge_name }}.service"
     content: |
-        [Unit]
-        Description=OVS QoS Monitoring Service for {{ bridge_name }}
-        After=network.target
-        
-        [Service]
-        User=root
-        Group=root
-        WorkingDirectory=/mnt/qos/{{ bridge_name }}
-        EnvironmentFile=/mnt/qos/{{ bridge_name }}/.env
-        ExecStart=/mnt/qos/{{ bridge_name }}/venv/bin/python /mnt/qos/{{ bridge_name }}/qos.py
-        Restart=always
-        RestartSec=5
-        
-        [Install]
-        WantedBy=multi-user.target
-    mode: '0644'
+      [Unit]
+      Description=OVS QoS Monitoring Service for {{ bridge_name }}
+      After=network.target
+
+      [Service]
+      User=root
+      Group=root
+      WorkingDirectory=/mnt/qos/{{ bridge_name }}
+      EnvironmentFile=/mnt/qos/{{ bridge_name }}/.env
+      ExecStart=/mnt/qos/{{ bridge_name }}/venv/bin/python /mnt/qos/{{ bridge_name }}/qos.py
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: "0644"
 
 - name: Reload systemd to pick up new service file
   ansible.builtin.systemd:
@@ -83,3 +88,8 @@
     name: "ovs-monitor-{{ bridge_name }}"
     enabled: yes
     state: started
+
+- name: Always restart OVS Monitor service
+  ansible.builtin.systemd:
+    name: "ovs-monitor-{{ bridge_name }}"
+    state: restarted

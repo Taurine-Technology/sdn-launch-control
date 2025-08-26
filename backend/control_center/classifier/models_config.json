@@ -1,0 +1,36 @@
+{
+  "models": {
+    "DeepTrafficCNN": {
+      "name": "Deep Traffic CNN with Multi-Scale Feature Extraction",
+      "model_type": "keras_h5",
+      "model_path": "classifier/ml_models/DeepTrafficCNN.h5",
+      "input_shape": [225, 5],
+      "num_categories": 13,
+      "confidence_threshold": 0.7,
+      "description": "Deep 1D CNN architecture with dual convolutional layers, max pooling, and dropout regularization. Achieved 83.00% test accuracy on traffic classification with excellent generalization. Features multi-scale feature extraction for robust packet analysis.",
+      "version": "25.08.25.1",
+      "is_active": true,
+      "categories": [
+        "Facebook",
+        "FbookReelStory",
+        "Google",
+        "GoogleServices",
+        "Instagram",
+        "PlayStore",
+        "QUIC",
+        "TikTok",
+        "TLS",
+        "WhatsApp",
+        "WhatsAppFiles",
+        "Xiaomi",
+        "YouTube"
+      ]
+    }
+  },
+  "metadata": {
+    "version": "1.0",
+    "description": "Model configurations for traffic classification",
+    "last_updated": "2025-01-19",
+    "author": "SDN Launch Control Team"
+  }
+}

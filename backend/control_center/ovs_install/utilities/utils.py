@@ -95,6 +95,8 @@ def save_ip_to_config(ip, config_path):
 def save_api_url_to_config(api_url, config_path):
     update_config({'api_url': api_url}, config_path)
 
+def save_pi_bool(is_pi, config_path):
+    update_config({'is_pi': is_pi}, config_path)
 
 def save_openflow_version_to_config(openflow_version, config_path):
     update_config({'openflow_version': openflow_version}, config_path)

@@ -1,0 +1,7 @@
+---
+- name: Cleanup OVS Port Setup Effects
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  roles:
+    - ../roles/ovs-cleanup-port-setup

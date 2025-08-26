@@ -16,54 +16,91 @@
 # either express or implied. See the GNU General Public License for more details.
 #
 # For inquiries, contact Keegan White at keeganwhite@taurinetech.com.
-
-
+# Import database configuration
+from .database import get_database_config
+from .connection_pool_setup import setup_connection_pool, setup_dev_connection_pool
+import environ
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+env = environ.Env()
+# load environment variables
+if os.path.exists(os.path.join(BASE_DIR, ".env")):
+    environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+    print('Found environment variables')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-!3w6gt+vcwl(3j4!1!y*u*merg-1ss$q%8(yu6&=+kc5t%btg3'
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
 ALLOWED_HOSTS = ['*']
 
+TELEGRAM_API_KEY=env('TELEGRAM_API_KEY')
 
-# Application definition
+# Celery Config:
+CELERY_BROKER_URL=env("CELERY_BROKER_URL")
+# CELERY_BEAT_SCHEDULE = {
+#     'aggregate-flows-every-60-seconds': {
+#         'task': 'network_data.tasks.aggregate_flows',
+#         'schedule': 60.0,
+#     },
+# }
+# Channels configuration: read host and port from environment
+CHANNEL_REDIS_HOST = env("CHANNEL_REDIS_HOST", default="redis")
+CHANNEL_REDIS_PORT = env.int("CHANNEL_REDIS_PORT", default=6379)
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [(CHANNEL_REDIS_HOST, CHANNEL_REDIS_PORT)],
+            "capacity": 1000,  # Only keep the latest 100 messages per group
+            "expiry": 10, # Expire messages after 10 seconds
+        },
+    },
+}
 
 INSTALLED_APPS = [
     'daphne',
+    'celery',
+    'django_celery_beat',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'drf_spectacular',
+    'knox',
+    'corsheaders',
+    'channels',
+    # custom apps
+    'network_device',
+    'odl',
+    'software_plugin',
+    'classifier',
+    'onos',
+    'controller',
     'general',
     'ovs_install',
-    'corsheaders',
-    'controller',
-    'channels',
-    'classifier',
-    'onos'
+    'network_data',
+    'account',
+    'notification'
+
 ]
 
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('127.0.0.1', 10000)],
-        },
-    },
-}
+# CHANNEL_LAYERS = {
+#     'default': {
+#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
+#         'CONFIG': {
+#             "hosts": [('127.0.0.1', 10000)],
+#         },
+#     },
+# }
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -74,6 +111,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'general.middleware.DatabaseConnectionMiddleware',  # Database connection monitoring
+    'general.middleware.ConnectionPoolMiddleware',  # Connection pool management
 ]
 
 ROOT_URLCONF = 'control_center.urls'
@@ -100,13 +139,17 @@ ASGI_APPLICATION = 'control_center.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    "default": get_database_config()
 }
 
+# Initialize connection pool based on environment
+if DEBUG:
+    setup_dev_connection_pool()
+else:
+    setup_connection_pool()
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -131,13 +174,14 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Africa/Johannesburg'
+TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
 USE_TZ = True
 
 CORS_ALLOWED_ORIGINS = [
+    "http://10.10.10.2:3000",
     "http://localhost:3000",
 ]
 
@@ -152,3 +196,66 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': ('knox.auth.TokenAuthentication',),
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'SDN Launch Control API',
+    'DESCRIPTION': 'API documentation for SDN Launch Control.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,  # Excludes the schema endpoint from the docs
+}
+
+LOG_LEVEL = os.environ.get('DJANGO_LOG_LEVEL', 'INFO')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': '/usr/app/api.log',  # Or another path in your Docker volume
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': LOG_LEVEL,
+    },
+    'loggers': {
+        # Only log your apps at INFO or DEBUG, not all of Django
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'WARNING',  # Only show warnings/errors from Django internals
+            'propagate': False,
+        },
+        'network_data': {
+            'handlers': ['console', 'file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'classifier': {
+            'handlers': ['console', 'file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        # Add other app loggers as needed
+    },
+}

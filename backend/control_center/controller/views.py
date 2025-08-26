@@ -31,13 +31,17 @@ from django.shortcuts import get_object_or_404
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
+from knox.auth import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, create_inv_data
+
 
 from ovs_install.utilities.utils import write_to_inventory, save_ip_to_config
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(script_dir)
 logger = logging.getLogger(__name__)
-install_ovs = "install-onos"
+install_onos = "install-onos"
 install_faucet = "install-faucet"
 install_odl = "install-odl"
 playbook_dir_path = f"{parent_dir}/ansible/playbooks"
@@ -47,20 +51,32 @@ get_ports = "get-ports"
 
 
 class InstallControllerView(APIView):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
     def post(self, request, controller_type):
         try:
             data = request.data
             validate_ipv4_address(data.get('lan_ip_address'))
             lan_ip_address = data.get('lan_ip_address')
-            write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
-            save_ip_to_config(lan_ip_address, config_path)
+            # write_to_inventory(lan_ip_address, data.get('username'), data.get('password'), inventory_path)
+            inv_content = create_inv_data(lan_ip_address,  data.get('username'),data.get('password'))
+            inv_path = create_temp_inv(inv_content)
+            # save_ip_to_config(lan_ip_address, config_path)
 
             if controller_type == 'onos':
-                result_install = run_playbook(install_ovs, playbook_dir_path, inventory_path)
-            elif controller_type == 'faucet':
-                result_install = run_playbook(install_faucet, playbook_dir_path, inventory_path)
+                result_install = run_playbook_with_extravars(
+                    install_onos,
+                    playbook_dir_path,
+                    inv_path, 
+                    {
+                    'ip_address': lan_ip_address,
+                    }
+                )
+            # elif controller_type == 'faucet':
+            #     result_install = run_playbook(install_faucet, playbook_dir_path, inventory_path)
             elif controller_type == 'odl':
-                result_install = run_playbook(install_odl, playbook_dir_path, inventory_path)
+                result_install = run_playbook_with_extravars(install_odl, playbook_dir_path, inv_path,{'ip_address': lan_ip_address,}, quiet=False)
             else:
                 return Response({"status": "error", "message": "Invalid controller type"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -68,7 +84,7 @@ class InstallControllerView(APIView):
                 print(result_install)
                 return Response({"status": "error", "message": result_install['error']}, status=status.HTTP_400_BAD_REQUEST)
             print(f'Installing {controller_type} on device')
-            result = run_playbook(get_ports, playbook_dir_path, inventory_path)
+            result = run_playbook(get_ports, playbook_dir_path, inv_path)
             interfaces = check_system_details(result)
             print(f'Interfaces: {interfaces}')
             if interfaces is not None:
@@ -78,9 +94,10 @@ class InstallControllerView(APIView):
 
             device, created = Device.objects.get_or_create(
                 lan_ip_address=lan_ip_address,
+                device_type=data.get('device_type'),
                 defaults={
                     'name': data.get('name'),
-                    'device_type': data.get('device_type'),
+
                     'username': data.get('username'),
                     'password': data.get('password'),
                     'os_type': data.get('os_type'),

@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   monitor:
     container_name: taurine-system-monitor

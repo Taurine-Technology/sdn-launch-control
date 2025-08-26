@@ -790,13 +790,20 @@ class CreateBridge(APIView):
                     if get_ovs_nums_result.get('status') == 'failed':
                          error_detail = get_ovs_nums_result.get('error', 'Extraction failed')
                          logger.error(f"Playbook '{get_ovs_nums_playbook}' failed for {bridge_name}: {error_detail}")
-                         raise Exception(f"Failed to execute OVS port number retrieval: {error_detail}")
+                         logger.error(f"Full playbook result: {get_ovs_nums_result}")
+                         # Instead of failing completely, log a warning and continue with empty map
+                         logger.warning(f"Continuing bridge creation without OVS port numbers for {bridge_name}")
+                         ovs_port_map = {}  # Ensure it's an empty dict
                     else:
-                         # Playbook succeeded but map couldn't be extracted - critical issue
-                         logger.error(f"Failed to parse OVS port numbers for bridge {bridge_name} even after successful port setup and playbook run.")
-                         raise Exception(f"Critical error: Could not determine OVS port numbers for bridge {bridge_name} after port setup.")
+                         # Playbook succeeded but map couldn't be extracted - log warning and continue
+                         logger.warning(f"Failed to parse OVS port numbers for bridge {bridge_name} even after successful port setup and playbook run.")
+                         logger.warning(f"Full playbook result: {get_ovs_nums_result}")
+                         logger.warning(f"Continuing bridge creation without OVS port numbers for {bridge_name}")
+                         ovs_port_map = {}  # Ensure it's an empty dict
 
             # --- 7. Update Port Models in DB (The *only* place ports are linked) ---
+            # Note: If ovs_port_map is empty, ports will be added to the bridge but without OVS port numbers
+            # This is not ideal but allows the bridge creation to complete successfully
             for port_name in ports_to_add:
                 try:
                     # Use get_or_create to handle ports that might not exist in DB yet

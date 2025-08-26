@@ -53,7 +53,8 @@ def create_temp_inv(inventory_content):
 def create_inv_data(ip, user, password,) :
     content = (f"[localserver]\n "
                f"{ip} ansible_user='{user}' ansible_password='{password}' "
-               f"ansible_ssh_common_args='-o StrictHostKeyChecking=no' ansible_become_pass='{password}'\n")
+               f"ansible_ssh_common_args='-o StrictHostKeyChecking=no' ansible_become_pass='{password}' "
+               f"ansible_become_method=sudo ansible_become_timeout=30\n")
     return content
 
 def my_status_handler(data, runner_config):
@@ -139,8 +140,13 @@ def run_playbook_with_env(playbook_name, playbook_dir_path, inventory_path, env_
 
 
 def run_playbook_with_extravars(playbook_name, playbook_dir_path, inventory_path, extra_var=None, quiet=True):
+    global results
     if extra_var is None:
         extra_var = {}
+    
+    # Clear results from previous runs
+    results = {}
+    
     playbook_path = f"{playbook_dir_path}/{playbook_name}.yml"
     try:
         r = ansible_runner.run(
@@ -149,7 +155,7 @@ def run_playbook_with_extravars(playbook_name, playbook_dir_path, inventory_path
             playbook=playbook_path,
             inventory=inventory_path,
             status_handler=my_status_handler,
-            quiet=quiet,
+            quiet=False,
             event_handler=my_event_handler
         )
         if r.rc != 0:

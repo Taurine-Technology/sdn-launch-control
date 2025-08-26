@@ -19,11 +19,12 @@ def get_interfaces_from_results(results):
 
     return interfaces
 
+
 def get_filtered_interfaces(results):
     interfaces = []
     
     # Define interfaces to exclude (e.g., loopback, bridges, virtual interfaces)
-    exclude_patterns = re.compile(r"^(lo|veth.*|br-.*|docker0)$")  
+    exclude_patterns = re.compile(r"^(lo|veth.*|br-.*|docker0)$")
 
     # Navigate to the relevant results dictionary
     command_key = "Run ip link show command with shell"
@@ -39,6 +40,7 @@ def get_filtered_interfaces(results):
                     interfaces.append(interface_name)
 
     return interfaces
+
 
 def extract_ovs_port_map(playbook_result):
     """
@@ -59,8 +61,9 @@ def extract_ovs_port_map(playbook_result):
         return ovs_map # Return empty dict
 
     if playbook_result.get('status') != 'success':
-        logger.warning("Playbook execution was not successful. Cannot extract port map.")
-        # Optionally log playbook_result.get('error') if available
+        error_detail = playbook_result.get('error', 'No error details available')
+        logger.warning(f"Playbook execution was not successful. Error: {error_detail}")
+        logger.warning(f"Full playbook result: {playbook_result}")
         return ovs_map # Return empty dict
 
     results_data = playbook_result.get('results')
@@ -76,7 +79,7 @@ def extract_ovs_port_map(playbook_result):
         if isinstance(debug_output, dict):
             potential_map = debug_output.get('ovs_port_map')
             if isinstance(potential_map, dict):
-                 # Basic validation: keys are strings, values are integers
+                # Basic validation: keys are strings, values are integers
                 if all(isinstance(k, str) and isinstance(v, int) for k, v in potential_map.items()):
                     logger.info(f"Successfully extracted ovs_port_map from debug task: {potential_map}")
                     return potential_map
@@ -118,14 +121,13 @@ def extract_ovs_port_map(playbook_result):
     try:
         potential_map = results_data.get('ovs_port_map')
         if isinstance(potential_map, dict):
-             if all(isinstance(k, str) and isinstance(v, int) for k, v in potential_map.items()):
+            if all(isinstance(k, str) and isinstance(v, int) for k, v in potential_map.items()):
                 logger.info(f"Successfully extracted ovs_port_map from top-level results: {potential_map}")
                 return potential_map
-             else:
+            else:
                 logger.warning("Map found in top-level results has invalid key/value types.")
     except Exception as e:
-         logger.warning(f"Error accessing top-level results for ovs_port_map: {e}", exc_info=True)
-
+        logger.warning(f"Error accessing top-level results for ovs_port_map: {e}", exc_info=True)
 
     logger.warning("Could not find 'ovs_port_map' in any expected location within the playbook results.")
-    return ovs_map # Return empty dict if not found
+    return ovs_map  # Return empty dict if not found

@@ -3,13 +3,15 @@
   command: "ovs-vsctl set-controller {{ bridge_name }} tcp:{{ controller_ip }}:{{ controller_port }}"
   register: ovs_output
 
-- name: Define paths and names for automate-flows script
+- name: Define paths and names for automate-flows scripts
   ansible.builtin.set_fact:
     script_source_dir: "{{ playbook_dir }}/resources/automate-flows"
     script_name: "automate.sh"
+    first_time_script_name: "automate_first_time.sh"
     target_controller_dir_name: "controller-{{ bridge_name }}"
     target_controller_dir_path: "/mnt/controller-{{ bridge_name }}"
     target_script_full_path: "/mnt/controller-{{ bridge_name }}/automate.sh"
+    target_first_time_script_full_path: "/mnt/controller-{{ bridge_name }}/automate_first_time.sh"
     env_file_full_path: "/mnt/controller-{{ bridge_name }}/.env"
     cron_log_full_path: "/var/log/automate_flows_{{ bridge_name }}.log"
 
@@ -21,20 +23,26 @@
   ansible.builtin.file:
     path: "{{ target_controller_dir_path }}"
     state: directory
-    mode: '0755' # Using 0755 for directories is common practice
+    mode: "0755" # Using 0755 for directories is common practice
 
 - name: Create .env file with controller IP for the script
   ansible.builtin.lineinfile:
     path: "{{ env_file_full_path }}"
     line: "CONTROLLER_IP={{ controller_ip }}"
     create: yes
-    mode: '0644' # Readable by owner, group, others; writable by owner
+    mode: "0644" # Readable by owner, group, others; writable by owner
 
 - name: Copy automate.sh script to {{ target_controller_dir_path }}
   ansible.builtin.copy:
     src: "{{ script_source_dir }}/{{ script_name }}"
     dest: "{{ target_script_full_path }}"
-    mode: '0755' # Make the script executable
+    mode: "0755" # Make the script executable
+
+- name: Copy automate_first_time.sh script to {{ target_controller_dir_path }}
+  ansible.builtin.copy:
+    src: "{{ script_source_dir }}/{{ first_time_script_name }}"
+    dest: "{{ target_first_time_script_full_path }}"
+    mode: "0755" # Make the script executable
 
 - name: Set up cron job for automate.sh to run on boot
   ansible.builtin.cron:
@@ -44,7 +52,7 @@
     job: "{{ target_script_full_path }} >> {{ cron_log_full_path }} 2>&1"
     state: present
 
-- name: Execute automate.sh script immediately after setup
-  ansible.builtin.command: "{{ target_script_full_path }}"
+- name: Execute automate_first_time.sh script immediately after setup
+  ansible.builtin.command: "{{ target_first_time_script_full_path }}"
   args:
     chdir: "{{ target_controller_dir_path }}"

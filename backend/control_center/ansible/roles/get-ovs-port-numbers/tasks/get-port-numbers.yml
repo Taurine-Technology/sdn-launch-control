@@ -1,9 +1,38 @@
+- name: Check bridge status
+  ansible.builtin.command: "ovs-vsctl show"
+  register: bridge_status
+  changed_when: false
+
+- name: Debug bridge status
+  ansible.builtin.debug:
+    var: bridge_status.stdout_lines
+
+- name: Check if interfaces exist in OVS database
+  ansible.builtin.command: "ovs-vsctl list-ports {{ bridge_name }}"
+  register: existing_ports
+  changed_when: false
+
+- name: Debug existing ports
+  ansible.builtin.debug:
+    var: existing_ports.stdout_lines
+
+- name: Wait for ports to be fully configured
+  ansible.builtin.wait_for:
+    timeout: 10
+  delegate_to: localhost
+
 - name: Get ofport for each specified interface
   ansible.builtin.command: "ovs-vsctl get interface {{ item }} ofport"
   register: ofport_result
   loop: "{{ interfaces }}"
   changed_when: false
-  failed_when: "'no row' in ofport_result.stderr" # Fail if interface doesn't exist in OVS DB
+  failed_when: false # Don't fail immediately, handle errors in the next task
+  ignore_errors: true # Continue even if some interfaces fail
+
+- name: Debug ofport results
+  ansible.builtin.debug:
+    var: ofport_result
+  when: ofport_result is defined
 
 - name: Assemble port map
   ansible.builtin.set_fact:

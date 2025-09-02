@@ -431,6 +431,7 @@ class ModelManager:
             packet_array = np.array(packet_arr).reshape(-1, *input_shape)
         else:
             # Fallback to default shape
+            logger.error("[ModelManager] Fallback to default shape")
             packet_array = np.array(packet_arr).reshape(-1, 225, 5)
         
         x_test = packet_array.astype(int) / 255

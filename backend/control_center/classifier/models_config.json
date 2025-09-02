@@ -1,14 +1,14 @@
 {
   "models": {
-    "DeepTrafficCNN": {
+    "Deep Traffic CNN 25.09.1": {
       "name": "Deep Traffic CNN with Multi-Scale Feature Extraction",
       "model_type": "keras_h5",
-      "model_path": "classifier/ml_models/DeepTrafficCNN.h5",
+      "model_path": "classifier/ml_models/DeepTrafficCNN-25.09.1.h5",
       "input_shape": [225, 5],
       "num_categories": 13,
       "confidence_threshold": 0.7,
-      "description": "Deep 1D CNN architecture with dual convolutional layers, max pooling, and dropout regularization. Achieved 83.00% test accuracy on traffic classification with excellent generalization. Features multi-scale feature extraction for robust packet analysis.",
-      "version": "25.08.25.1",
+      "description": "Deep 1D CNN architecture with dual convolutional layers, max pooling, and dropout regularization. Achieved 82.15% test accuracy on traffic classification with excellent generalization. Features multi-scale feature extraction for robust packet analysis. Trained on 02-09-2025.",
+      "version": "25.09.1",
       "is_active": true,
       "categories": [
         "Facebook",
@@ -18,8 +18,8 @@
         "Instagram",
         "PlayStore",
         "QUIC",
-        "TikTok",
         "TLS",
+        "TikTok",
         "WhatsApp",
         "WhatsAppFiles",
         "Xiaomi",
@@ -28,9 +28,9 @@
     }
   },
   "metadata": {
-    "version": "1.0",
+    "version": "v1.0.0",
     "description": "Model configurations for traffic classification",
-    "last_updated": "2025-01-19",
+    "last_updated": "2025-09-02",
     "author": "SDN Launch Control Team"
   }
 }

@@ -1,19 +1,21 @@
 # SDN Launch Control
 
-A comprehensive Software-Defined Networking (SDN) management platform that enables easy and automated adoption of the SDN paradigm into new or pre-existing networks. This monorepo contains both the backend API and modern TypeScript React frontend.
+A comprehensive Software-Defined Networking (SDN) management platform that enables easy and automated adoption of the SDN paradigm into new or pre-existing networks. This monorepo contains both the backend API and frontend.
 
 ## 🚀 Quick Start
 
-There is an installation for the v1.0.0-beta realease [here](./SDN-Launch-Control-Installation-Manual-v1.0.0-beta.pdf). This will give you guidance on setting up the software and a network. Alternatively follow the instructions below to set up the software.
+There is an installation manual for the v1.0.0-beta realease [here](./SDN-Launch-Control-Installation-Manual-v1.0.0-beta.pdf). This will give you guidance on setting up the software and a network. There is also a video version of this manual [here](https://youtu.be/BMdbTTLqWG0?si=BHCsDOqXWhxoyXjQ).
+
+Alternatively follow the instructions below to set up the software.
 
 ### Prerequisites
+Successfully Tested on Ubuntu Desktop, Ubuntu Server, Windows WSL and Mac.
 
 - Docker and Docker Compose
-- Tested on Ubuntu Desktop, Ubuntu Server, Windows WSL and Mac.
 
 ### Backend Setup
 
-1. **Navigate to the backend directory:**
+1. From the root of the repo **Navigate to the backend directory:**
 
    ```bash
    cd backend/
@@ -34,7 +36,7 @@ There is an installation for the v1.0.0-beta realease [here](./SDN-Launch-Contro
 
 ### Frontend Setup
 
-1. **Navigate to the UI directory:**
+1. From the root of the repo **Navigate to the UI directory:**
 
    ```bash
    cd ui/ui/
@@ -54,9 +56,9 @@ There is an installation for the v1.0.0-beta realease [here](./SDN-Launch-Contro
    ```
 
 4. **Access the application:**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8000
-   - Admin Interface: http://localhost:8000/admin
+   - Frontend: http://localhost:3000 / http://<SERVER_IP_ADDRESS>:3000
+   - Backend API: http://localhost:8000 / http://<SERVER_IP_ADDRESS>:8000
+   - Admin Interface: http://localhost:8000/admin / http://<SERVER_IP_ADDRESS>:8000/admin
 
 ## 📁 Project Structure
 
@@ -109,7 +111,7 @@ sdn-launch-control/
 
 ### Frontend Features
 
-- **Modern UI**: Built with React, TypeScript, and Next.js
+- **Typesafe**: Built with React, TypeScript, and Next.js
 - **Device Management**: Intuitive interface for switches and controllers
 - **Real-time Monitoring**: Live charts and statistics using WebSocket connections
 - **Network Visualization**: Interactive network topology diagrams
@@ -217,10 +219,12 @@ docker-compose up -d
 
 ## 🤝 Contributing
 
+Please keep your contributions focused and small to help with pull request management.
+
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run linting and tests
+4. Run linting and integration tests
 5. Submit a pull request
 
 ### Development Guidelines
@@ -243,11 +247,11 @@ For issues, questions, or commercial licensing:
 - **Email**: keeganwhite@taurinetech.com
 - **Contributor License Agreement**: [CLA](https://gist.github.com/keeganwhite/b41ddb8a761ccd6e6498a5cad4eb4d9b)
 
-## 🎥 Demo
+## 🎥 Video Content
 
-New demo video coming soon!
+Watch the v1.0.0 release installation guide [here](https://youtu.be/BMdbTTLqWG0?si=BHCsDOqXWhxoyXjQ)
 
-[_DEPRECIATED_] Watch the [pre-production alpha release demo](https://youtu.be/eFjDr7ym5Yw) to see SDN Launch Control in action.
+[_DEPRECIATED_] Watch the [pre-production alpha release installation guide](https://youtu.be/eFjDr7ym5Yw) to see SDN Launch Control in action.
 
 ---
 

@@ -16,6 +16,12 @@ class Notification(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     message = models.TextField()
     is_read = models.BooleanField(default=False)
+    URGENCY_CHOICES = [
+        ("low", "low"),
+        ("medium", "medium"),
+        ("high", "high"),
+    ]
+    urgency = models.CharField(max_length=10, choices=URGENCY_CHOICES, default="medium")
     created_at = models.DateTimeField(auto_now_add=True)
     notifier = models.ForeignKey(Notifier, on_delete=models.CASCADE, blank=True, null=True)
 

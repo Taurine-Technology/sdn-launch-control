@@ -26,6 +26,15 @@ export const listNetworkNotifications = async (
   if (params.read) query.push(`read=${params.read}`);
   const q = query.length ? `?${query.join("&")}` : "";
   const { data } = await axios.get(`/network-notifications/${q}`);
+  // Normalize: backend may return a plain array or a paginated object
+  if (Array.isArray(data)) {
+    return {
+      count: data.length,
+      next: null,
+      previous: null,
+      results: data as NetworkNotification[],
+    };
+  }
   return data as PaginatedResponse<NetworkNotification>;
 };
 
@@ -35,6 +44,10 @@ export const getNetworkNotification = async (
 ): Promise<{ notification: NetworkNotification }> => {
   const axios = createAxiosInstanceWithToken(token);
   const { data } = await axios.get(`/network-notifications/${id}/`);
+  // Backend returns the notification fields directly or wrapped
+  if (data && typeof data === "object" && "id" in data) {
+    return { notification: data as NetworkNotification };
+  }
   return data as { notification: NetworkNotification };
 };
 
@@ -43,14 +56,14 @@ export const markNotificationRead = async (
   id: number
 ): Promise<void> => {
   const axios = createAxiosInstanceWithToken(token);
-  await axios.get(`/network-notifications/read/${id}/`);
+  await axios.patch(`/network-notifications/${id}/`, { read: true });
 };
 
 export const markAllNotificationsRead = async (
   token: string
 ): Promise<void> => {
   const axios = createAxiosInstanceWithToken(token);
-  await axios.get(`/network-notifications/read/all/`);
+  await axios.post(`/network-notifications/read/all/`);
 };
 
 

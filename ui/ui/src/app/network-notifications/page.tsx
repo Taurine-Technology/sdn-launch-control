@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check } from "lucide-react";
 import {
   listNetworkNotifications,
   markAllNotificationsRead,
@@ -179,11 +179,30 @@ function NetworkNotificationsContent() {
                       <Card key={n.id} className={n.read ? "opacity-70" : ""}>
                         <CardContent className="p-4 flex items-center justify-between gap-4">
                           <div className="flex-1 cursor-pointer" onClick={() => onOpenNotification(n)}>
-                            <div className="text-sm text-muted-foreground">{n.type}</div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                              <span>{n.type}</span>
+                              {n.urgency && (
+                                <span
+                                  className={
+                                    `inline-flex items-center px-1.5 h-5 rounded text-[10px] ` +
+                                    (n.urgency === 'high'
+                                      ? 'bg-red-500 text-white'
+                                      : n.urgency === 'medium'
+                                      ? 'bg-amber-500 text-white'
+                                      : 'bg-emerald-500 text-white')
+                                  }
+                                >
+                                  {n.urgency}
+                                </span>
+                              )}
+                            </div>
                             <div className="font-medium">{n.description}</div>
+                            <div className="text-[11px] text-muted-foreground mt-1">{new Date(n.created_at || "").toLocaleString()}</div>
                           </div>
                           {!n.read && (
-                            <Button size="sm" onClick={() => onMarkRead(n)}>Mark as read</Button>
+                            <Button variant="ghost" size="icon" aria-label="Mark as read" onClick={() => onMarkRead(n)}>
+                              <Check className="h-4 w-4" />
+                            </Button>
                           )}
                         </CardContent>
                       </Card>

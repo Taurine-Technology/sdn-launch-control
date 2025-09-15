@@ -8,10 +8,11 @@ class NetworkNotificationUISerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     description = serializers.CharField(source="message")
     user = serializers.SerializerMethodField()
+    urgency = serializers.CharField(required=False)
 
     class Meta:
         model = Notification
-        fields = ["id", "read", "type", "description", "user", "created_at"]
+        fields = ["id", "read", "type", "description", "user", "urgency", "created_at"]
 
     def get_type(self, obj: Notification) -> str:
         # Default type until categorization is added

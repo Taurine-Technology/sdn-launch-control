@@ -25,11 +25,26 @@ class NetworkNotificationViewSet(viewsets.ModelViewSet):
         # Support { read: true } mapping to is_read
         instance = self.get_object()
         read_val = request.data.get("read")
+        urgency = request.data.get("urgency")
         if read_val is not None:
             instance.is_read = bool(read_val)
-            instance.save(update_fields=["is_read"])
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data)
+        if urgency in ("low", "medium", "high"):
+            instance.urgency = urgency
+        instance.save()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+        
+    def create(self, request, *args, **kwargs):
+        # Allow creating simple notifications for the current user
+        message = request.data.get("description") or request.data.get("message")
+        urgency = request.data.get("urgency", "medium")
+        if not message:
+            return Response({"error": "description is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if urgency not in ("low", "medium", "high"):
+            urgency = "medium"
+        n = Notification.objects.create(user=request.user, message=message, urgency=urgency)
+        serializer = self.get_serializer(n)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
         return super().partial_update(request, *args, **kwargs)
 
     @action(detail=False, methods=["post"], url_path="read/all")

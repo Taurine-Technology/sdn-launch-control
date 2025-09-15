@@ -328,6 +328,7 @@ export interface NetworkNotification {
   read: boolean;
   type: NetworkNotificationType;
   description: string;
+  urgency?: "low" | "medium" | "high";
   user?: string | null;
   created_at?: string;
   updated_at?: string;

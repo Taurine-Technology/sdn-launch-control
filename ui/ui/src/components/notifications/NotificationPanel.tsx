@@ -3,11 +3,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCcw } from "lucide-react";
+import { RefreshCcw, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   listNetworkNotifications,
@@ -63,6 +63,23 @@ export function NotificationPanel() {
     }
   }, []);
 
+  // Fetch unread count once on page load (and whenever token becomes available)
+  useEffect(() => {
+    if (!token) return;
+    (async () => {
+      try {
+        const unreadResp = await listNetworkNotifications(token, {
+          page: 1,
+          page_size: 1,
+          read: "false",
+        });
+        setUnreadCount(unreadResp.count || 0);
+      } catch (_) {
+        // ignore
+      }
+    })();
+  }, [token]);
+
   useEffect(() => {
     if (open) refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,6 +105,35 @@ export function NotificationPanel() {
     refresh();
   };
 
+  const formatTime = (iso?: string | null) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const sec = Math.floor(diffMs / 1000);
+    const min = Math.floor(sec / 60);
+    const hr = Math.floor(min / 60);
+    const day = Math.floor(hr / 24);
+    if (sec < 45) return "Just now";
+    if (min < 60) return `${min}m ago`;
+    if (hr < 24) return `${hr}h ago`;
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (
+      d.getFullYear() === yesterday.getFullYear() &&
+      d.getMonth() === yesterday.getMonth() &&
+      d.getDate() === yesterday.getDate()
+    )
+      return "Yesterday";
+    return d.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -101,6 +147,10 @@ export function NotificationPanel() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-96 p-0">
+        {/* A11y title for Radix Dialog base */}
+        <SheetHeader className="sr-only">
+          <SheetTitle>Notifications</SheetTitle>
+        </SheetHeader>
         <div className="px-4 py-3 border-b">
           <div className="flex items-center justify-between pr-12">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)}>
@@ -116,20 +166,37 @@ export function NotificationPanel() {
           </div>
         </div>
         <ScrollArea className="h-[calc(100%-112px)]">
-          <div className="divide-y">
+          <div className="divide-y divide-border">
             {(data?.results || []).map((n) => (
               <Card key={n.id} className="rounded-none shadow-none border-0">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 cursor-pointer" onClick={() => openNotification(n)}>
-                      <p className="font-medium">
-                        {n.type}
-                        {!n.read && <span className="ml-2 inline-block h-2 w-2 rounded-full bg-primary align-middle" />}
+                      <p className="font-medium flex items-center gap-2">
+                        <span>{n.type}</span>
+                        {n.urgency && (
+                          <span
+                            className={
+                              `inline-flex items-center px-1.5 h-5 rounded text-[10px] ` +
+                              (n.urgency === 'high'
+                                ? 'bg-red-500 text-white'
+                                : n.urgency === 'medium'
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-emerald-500 text-white')
+                            }
+                          >
+                            {n.urgency}
+                          </span>
+                        )}
+                        {!n.read && <span className="ml-1 inline-block h-2 w-2 rounded-full bg-primary align-middle" />}
                       </p>
                       <p className="text-sm text-muted-foreground">{n.description}</p>
+                      <span className="text-[11px] text-muted-foreground">{formatTime(n.created_at)}</span>
                     </div>
                     {!n.read && (
-                      <Button size="sm" onClick={() => onMarkRead(n)}>Mark as read</Button>
+                      <Button variant="ghost" size="icon" aria-label="Mark as read" onClick={() => onMarkRead(n)}>
+                        <Check className="h-4 w-4" />
+                      </Button>
                     )}
                   </div>
                 </CardContent>

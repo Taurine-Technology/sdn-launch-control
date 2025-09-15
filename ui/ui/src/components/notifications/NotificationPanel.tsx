@@ -80,6 +80,27 @@ export function NotificationPanel() {
     })();
   }, [token]);
 
+  // Background polling every 30s: update unread count, and if open, refresh list
+  useEffect(() => {
+    if (!token) return;
+    const interval = setInterval(async () => {
+      try {
+        const unreadResp = await listNetworkNotifications(token, {
+          page: 1,
+          page_size: 1,
+          read: "false",
+        });
+        setUnreadCount(unreadResp.count || 0);
+        if (open) {
+          await refresh();
+        }
+      } catch (_) {
+        // ignore polling errors
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [token, open, readFilter]);
+
   useEffect(() => {
     if (open) refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,7 +190,7 @@ export function NotificationPanel() {
           <div className="divide-y divide-border">
             {(data?.results || []).map((n) => (
               <Card key={n.id} className="rounded-none shadow-none border-0">
-                <CardContent className="p-4">
+                <CardContent className="p-4 border-b last:border-b-0">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 cursor-pointer" onClick={() => openNotification(n)}>
                       <p className="font-medium flex items-center gap-2">

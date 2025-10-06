@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.fields import BooleanField
 
 from .models import Notification
 from .ui_serializers import NetworkNotificationUISerializer
@@ -26,11 +27,22 @@ class NetworkNotificationViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         read_val = request.data.get("read")
         urgency = request.data.get("urgency")
+        changed = False
         if read_val is not None:
-            instance.is_read = bool(read_val)
-        if urgency in ("low", "medium", "high"):
-            instance.urgency = urgency
-        instance.save()
+            try:
+                parsed = BooleanField().to_internal_value(read_val)
+            except Exception:
+                return Response({"error": "Invalid read value"}, status=status.HTTP_400_BAD_REQUEST)
+            if instance.is_read != parsed:
+                instance.is_read = parsed
+                changed = True
+        if urgency:
+            val = urgency.lower()
+            if val in ("low", "medium", "high") and val != instance.urgency:
+                instance.urgency = val
+                changed = True
+        if changed:
+            instance.save()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
         
@@ -45,7 +57,6 @@ class NetworkNotificationViewSet(viewsets.ModelViewSet):
         n = Notification.objects.create(user=request.user, message=message, urgency=urgency)
         serializer = self.get_serializer(n)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return super().partial_update(request, *args, **kwargs)
 
     @action(detail=False, methods=["post"], url_path="read/all")
     def mark_all_read(self, request):

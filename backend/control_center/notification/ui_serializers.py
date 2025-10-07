@@ -4,25 +4,33 @@ from .models import Notification
 
 class NetworkNotificationUISerializer(serializers.ModelSerializer):
     # Map backend fields to UI contract
-    read = serializers.BooleanField(source="is_read")
+    read = serializers.BooleanField(source="is_read", required=False)
     type = serializers.SerializerMethodField()
     description = serializers.CharField(source="message")
-    user = serializers.SerializerMethodField()
+    user = serializers.SerializerMethodField(read_only=True)
     urgency = serializers.CharField(required=False)
 
     class Meta:
         model = Notification
         fields = ["id", "read", "type", "description", "user", "urgency", "created_at"]
+        read_only_fields = ["id", "created_at", "type"]
 
     def get_type(self, obj: Notification) -> str:
         # Default type until categorization is added
         return "OTHER"
 
     def get_user(self, obj: Notification):
-        # Optional surface of notifier information if available
+        # Return the username of the user who owns this notification
         try:
-            return obj.notifier.chat_id if obj.notifier else None
+            return obj.user.username if obj.user else None
         except Exception:
             return None
+    
+    def create(self, validated_data):
+        # Automatically set the user from the request context
+        request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            validated_data["user"] = request.user
+        return super().create(validated_data)
 
 

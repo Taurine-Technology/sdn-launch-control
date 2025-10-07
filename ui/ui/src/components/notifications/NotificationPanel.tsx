@@ -1,0 +1,252 @@
+"use client";
+
+import React, { useEffect, useMemo, useState } from "react";
+import { Bell } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RefreshCcw, Check } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  listNetworkNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "@/lib/networkNotifications";
+import type { NetworkNotification, PaginatedResponse } from "@/lib/types";
+
+type TabKey = "unread" | "read" | "all";
+
+/**
+ * Render a left-side slide-over panel that lists and manages network notifications with tabbed filters.
+ *
+ * The panel shows unread counts, supports refreshing, per-notification and bulk "mark as read" actions,
+ * navigates to notification detail pages, and polls periodically to keep the unread count updated.
+ *
+ * @returns A React element that displays the notification sheet with tabs for "Unread", "Read", and "All", a refresh control, per-item actions, and a footer link to the full Network Notifications page.
+ */
+export function NotificationPanel() {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>("unread");
+  const [data, setData] = useState<PaginatedResponse<NetworkNotification> | null>(
+    null
+  );
+  const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState<string>("");
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  const readFilter = useMemo(() => {
+    if (activeTab === "unread") return "false" as const;
+    if (activeTab === "read") return "true" as const;
+    return undefined;
+  }, [activeTab]);
+
+  const refresh = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const resp = await listNetworkNotifications(token, {
+        page: 1,
+        page_size: 20,
+        read: readFilter,
+      });
+      setData(resp);
+      // Update unread count independently
+      const unreadResp = await listNetworkNotifications(token, {
+        page: 1,
+        page_size: 1,
+        read: "false",
+      });
+      setUnreadCount(unreadResp.count || 0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setToken(localStorage.getItem("taurineToken") || "");
+    }
+  }, []);
+
+  // Fetch unread count once on page load (and whenever token becomes available)
+  useEffect(() => {
+    if (!token) return;
+    (async () => {
+      try {
+        const unreadResp = await listNetworkNotifications(token, {
+          page: 1,
+          page_size: 1,
+          read: "false",
+        });
+        setUnreadCount(unreadResp.count || 0);
+      } catch (_) {
+        // ignore
+      }
+    })();
+  }, [token]);
+
+  // Background polling every 30s: update unread count, and if open, refresh list
+  useEffect(() => {
+    if (!token) return;
+    const interval = setInterval(async () => {
+      try {
+        const unreadResp = await listNetworkNotifications(token, {
+          page: 1,
+          page_size: 1,
+          read: "false",
+        });
+        setUnreadCount(unreadResp.count || 0);
+        if (open) {
+          await refresh();
+        }
+      } catch (_) {
+        // ignore polling errors
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [token, open, readFilter]);
+
+  useEffect(() => {
+    if (open) refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeTab, token]);
+
+  const openNotification = async (n: NetworkNotification) => {
+    try {
+      if (!n.read) await markNotificationRead(token, n.id);
+    } catch (_) {
+      // ignore
+    }
+    setOpen(false);
+    router.push(`/network-notifications/${n.id}`);
+  };
+
+  const onMarkRead = async (n: NetworkNotification) => {
+    await markNotificationRead(token, n.id);
+    refresh();
+  };
+
+  const onMarkAllRead = async () => {
+    await markAllNotificationsRead(token);
+    refresh();
+  };
+
+  const formatTime = (iso?: string | null) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const sec = Math.floor(diffMs / 1000);
+    const min = Math.floor(sec / 60);
+    const hr = Math.floor(min / 60);
+    const day = Math.floor(hr / 24);
+    if (sec < 45) return "Just now";
+    if (min < 60) return `${min}m ago`;
+    if (hr < 24) return `${hr}h ago`;
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (
+      d.getFullYear() === yesterday.getFullYear() &&
+      d.getMonth() === yesterday.getMonth() &&
+      d.getDate() === yesterday.getDate()
+    )
+      return "Yesterday";
+    return d.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
+          <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] leading-5 text-center">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-96 p-0">
+        {/* A11y title for Radix Dialog base */}
+        <SheetHeader className="sr-only">
+          <SheetTitle>Notifications</SheetTitle>
+        </SheetHeader>
+        <div className="px-4 py-3 border-b">
+          <div className="flex items-center justify-between pr-12">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)}>
+              <TabsList>
+                <TabsTrigger value="unread">Unread</TabsTrigger>
+                <TabsTrigger value="read">Read</TabsTrigger>
+                <TabsTrigger value="all">All</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button className="mr-2" variant="ghost" size="icon" aria-label="Refresh" onClick={refresh} disabled={loading}>
+              <RefreshCcw className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <ScrollArea className="h-[calc(100%-112px)]">
+          <div className="divide-y divide-border">
+            {(data?.results || []).map((n) => (
+              <Card key={n.id} className="rounded-none shadow-none border-0">
+                <CardContent className="p-4 border-b last:border-b-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 cursor-pointer" onClick={() => openNotification(n)}>
+                      <p className="font-medium flex items-center gap-2">
+                        <span>{n.type}</span>
+                        {n.urgency && (
+                          <span
+                            className={
+                              `inline-flex items-center px-1.5 h-5 rounded text-[10px] ` +
+                              (n.urgency === 'high'
+                                ? 'bg-red-500 text-white'
+                                : n.urgency === 'medium'
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-emerald-500 text-white')
+                            }
+                          >
+                            {n.urgency}
+                          </span>
+                        )}
+                        {!n.read && <span className="ml-1 inline-block h-2 w-2 rounded-full bg-primary align-middle" />}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{n.description}</p>
+                      <span className="text-[11px] text-muted-foreground">{formatTime(n.created_at)}</span>
+                    </div>
+                    {!n.read && (
+                      <Button variant="ghost" size="icon" aria-label="Mark as read" onClick={() => onMarkRead(n)}>
+                        <Check className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {!loading && data && data.count === 0 && (
+              <div className="p-4 text-sm text-muted-foreground">No notifications.</div>
+            )}
+            {loading && (
+              <div className="p-4 text-sm text-muted-foreground">Loading...</div>
+            )}
+          </div>
+        </ScrollArea>
+        <div className="px-4 py-2 border-t flex items-center justify-between text-xs text-muted-foreground">
+          <div>
+            View all in <button className="underline" onClick={() => { setOpen(false); router.push("/network-notifications"); }}>Network Notifications</button>
+          </div>
+          <Button variant="secondary" size="sm" onClick={onMarkAllRead}>Mark all as read</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+

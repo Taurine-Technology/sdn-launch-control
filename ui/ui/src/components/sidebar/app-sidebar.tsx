@@ -19,7 +19,14 @@ import { usePluginContext } from "@/context/PluginContext";
 import { useLanguage } from "@/context/languageContext";
 import { buildSidebarConfig } from "@/lib/sidebarConfig";
 import Image from "next/image";
+import { NotificationPanel } from "@/components/notifications/NotificationPanel";
 
+/**
+ * Renders the application sidebar with a clickable header (logo and product/company names), the main navigation, and a footer showing user info and notifications.
+ *
+ * @param props - Props forwarded to the underlying Sidebar component.
+ * @returns The Sidebar element containing header, navigation, and footer sections.
+ */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { username } = useAuth();
   const { installedPlugins } = usePluginContext();
@@ -55,13 +62,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <div className="flex flex-col gap-2 p-2">
-          <NavUser
-            user={{
-              name: username || getT("sidebar.default_user"),
-              email: `${username}@example.com`,
-              avatar: "/icons/profile-picture.png",
-            }}
-          />
+          <div className="flex items-center justify-between">
+            <NavUser
+              user={{
+                name: username || getT("sidebar.default_user"),
+                email: `${username}@example.com`,
+                avatar: "/icons/profile-picture.png",
+              }}
+            />
+            <NotificationPanel />
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>

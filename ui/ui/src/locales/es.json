@@ -198,6 +198,29 @@
       "error_fetching_notifications": "Error al obtener las notificaciones",
       "notification_created_success": "¡Notificación creada exitosamente!"
     },
+    "NetworkNotificationDetailPage": {
+      "notification_number": "Notificación #{id}",
+      "id_label": "ID",
+      "status_label": "Estado",
+      "status_read": "Leído",
+      "status_unread": "No leído",
+      "user_label": "Usuario",
+      "not_found": "Notificación no encontrada."
+    },
+    "NetworkNotificationsPage": {
+      "page_title": "Notificaciones de Red",
+      "mark_all_read": "Marcar todas como leídas",
+      "tab_unread": "No leídas",
+      "tab_read": "Leídas",
+      "tab_all": "Todas",
+      "no_notifications": "No hay notificaciones.",
+      "urgency_high": "alta",
+      "urgency_medium": "media",
+      "urgency_low": "baja",
+      "mark_as_read": "Marcar como leída",
+      "page_info": "Página {page} de {pageCount}",
+      "loading_fallback": "Cargando..."
+    },
     "RealTimeClassificationsGraph": {
       "title": "Clasificaciones en Tiempo Real",
       "description": "Datos de clasificación en vivo desde la conexión WebSocket",
@@ -325,7 +348,7 @@
       "network_summary": "Resumen de red",
       "data_usage_alert": "Alerta de uso de datos",
       "application_usage_alert": "Alerta de uso de aplicaciones",
-      "frequency": "Frecuencia de notificación",
+      "frequency_options": "Frecuencia de notificación",
       "every_minute": "Cada minuto",
       "every_10_minutes": "Cada 10 minutos",
       "every_hour": "Cada hora",
@@ -811,7 +834,7 @@
         "top_users_count": "Cantidad de Usuarios Top",
         "top_apps_count": "Cantidad de Apps Top",
         "data_limit": "Límite de Datos",
-        "frequency": {
+        "frequency_options": {
           "every_minute": "Cada minuto",
           "every_10_minutes": "Cada 10 minutos",
           "every_hour": "Cada hora",
@@ -840,7 +863,7 @@
           "data_usage_alert": "Alerta de Uso de Datos",
           "application_usage_alert": "Alerta de Uso de Aplicaciones"
         },
-        "frequency": {
+        "frequency_options": {
           "every_minute": "Cada minuto",
           "every_10_minutes": "Cada 10 minutos",
           "every_hour": "Cada hora",
@@ -851,6 +874,23 @@
       },
       "telegram_notification_list": {
         "no_active_notifications": "No hay notificaciones activas"
+      },
+      "notification_panel": {
+        "notifications_title": "Notificaciones",
+        "tab_unread": "No leídas",
+        "tab_read": "Leídas",
+        "tab_all": "Todas",
+        "refresh": "Actualizar",
+        "mark_as_read": "Marcar como leída",
+        "no_notifications": "No hay notificaciones.",
+        "loading": "Cargando...",
+        "view_all_in": "Ver todas en",
+        "network_notifications": "Notificaciones de Red",
+        "mark_all_read": "Marcar todas como leídas",
+        "just_now": "Justo ahora",
+        "minutes_ago": "Hace {minutes}m",
+        "hours_ago": "Hace {hours}h",
+        "yesterday": "Ayer"
       }
     }
   },
@@ -946,7 +986,8 @@
     "traffic_classification_plugin": "Plugin de Clasificación de Tráfico",
     "model_management": "Gestión de Modelos",
     "sniffer_management": "Gestión de Sniffers",
-    "toggle": "Alternar"
+    "toggle": "Alternar",
+    "network_notifications": "Notificaciones de Red"
   },
   "sidebar": {
     "company_name": "Taurine Tech",

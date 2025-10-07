@@ -320,6 +320,27 @@ export interface ApiResponse<T> {
   data?: T;
 }
 
+// --- Network Notifications Types ---
+export type NetworkNotificationType = "RESOURCES" | "USAGE" | "ACTIONS" | "OTHER";
+
+export interface NetworkNotification {
+  id: number;
+  read: boolean;
+  type: NetworkNotificationType;
+  description: string;
+  urgency?: "low" | "medium" | "high";
+  user?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 // Plugin Requirement Types (if needed)
 export interface PluginRequirement {
   id: number;

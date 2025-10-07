@@ -1,4 +1,12 @@
-NEXT_PUBLIC_API_BASE_URL=https://example.com/api/v1
+# API Configuration
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
 NEXT_PUBLIC_WS_OPENFLOW=ws://localhost:8000/ws/openflow_metrics/
 NEXT_PUBLIC_WS_DEVICESTATS=ws://localhost:8000/ws/device_stats/
 NEXT_PUBLIC_WS_CLASIFICATIONS=ws://localhost:8000/ws/flow_updates/
+
+# Development Only: Allowed origins for cross-origin requests
+# This is only applied when NODE_ENV=development
+# Comma-separated list of origins or wildcard patterns
+# See: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ALLOWED_DEV_ORIGINS=localhost,127.0.0.1
+

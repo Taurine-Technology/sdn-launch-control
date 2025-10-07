@@ -13,11 +13,30 @@ class Notifier(models.Model):
         return f"Notifier for {self.user.username} ({self.phone_number})"
 
 class Notification(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications"
+    )
     message = models.TextField()
-    is_read = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False, db_index=True)
+    URGENCY_CHOICES = [
+        ("low", "low"),
+        ("medium", "medium"),
+        ("high", "high"),
+    ]
+    urgency = models.CharField(max_length=10, choices=URGENCY_CHOICES, default="medium")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     notifier = models.ForeignKey(Notifier, on_delete=models.CASCADE, blank=True, null=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            # Composite index for filtering by user and ordering by created_at
+            models.Index(fields=["user", "-created_at"], name="notif_user_created_idx"),
+            # Composite index for filtering by user, read status, and ordering
+            models.Index(fields=["user", "is_read", "-created_at"], name="notif_user_read_created_idx"),
+        ]
 
     def __str__(self):
         return f"Notification for {self.user.username}: {self.message[:20]}"

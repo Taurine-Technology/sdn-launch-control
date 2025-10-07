@@ -198,6 +198,29 @@
       "error_fetching_notifications": "Error fetching notifications",
       "notification_created_success": "Notification created successfully!"
     },
+    "NetworkNotificationDetailPage": {
+      "notification_number": "Notification #{id}",
+      "id_label": "ID",
+      "status_label": "Status",
+      "status_read": "Read",
+      "status_unread": "Unread",
+      "user_label": "User",
+      "not_found": "Notification not found."
+    },
+    "NetworkNotificationsPage": {
+      "page_title": "Network Notifications",
+      "mark_all_read": "Mark all as read",
+      "tab_unread": "Unread",
+      "tab_read": "Read",
+      "tab_all": "All",
+      "no_notifications": "No notifications.",
+      "urgency_high": "high",
+      "urgency_medium": "medium",
+      "urgency_low": "low",
+      "mark_as_read": "Mark as read",
+      "page_info": "Page {page} of {pageCount}",
+      "loading_fallback": "Loading..."
+    },
     "RealTimeClassificationsGraph": {
       "title": "Real-time Classifications",
       "description": "Live classification data from WebSocket connection",
@@ -811,7 +834,7 @@
         "top_users_count": "Top Users Count",
         "top_apps_count": "Top Apps Count",
         "data_limit": "Data Limit",
-        "frequency": {
+        "frequency_options": {
           "every_minute": "Every minute",
           "every_10_minutes": "Every 10 minutes",
           "every_hour": "Every hour",
@@ -840,7 +863,7 @@
           "data_usage_alert": "Data Usage Alert",
           "application_usage_alert": "Application Usage Alert"
         },
-        "frequency": {
+        "frequency_options": {
           "every_minute": "Every minute",
           "every_10_minutes": "Every 10 minutes",
           "every_hour": "Every hour",
@@ -851,6 +874,23 @@
       },
       "telegram_notification_list": {
         "no_active_notifications": "No active notifications"
+      },
+      "notification_panel": {
+        "notifications_title": "Notifications",
+        "tab_unread": "Unread",
+        "tab_read": "Read",
+        "tab_all": "All",
+        "refresh": "Refresh",
+        "mark_as_read": "Mark as read",
+        "no_notifications": "No notifications.",
+        "loading": "Loading...",
+        "view_all_in": "View all in",
+        "network_notifications": "Network Notifications",
+        "mark_all_read": "Mark all as read",
+        "just_now": "Just now",
+        "minutes_ago": "{minutes}m ago",
+        "hours_ago": "{hours}h ago",
+        "yesterday": "Yesterday"
       }
     }
   },
@@ -946,7 +986,8 @@
     "traffic_classification_plugin": "Traffic Classification Plugin",
     "model_management": "Model Management",
     "sniffer_management": "Sniffer Management",
-    "toggle": "Toggle"
+    "toggle": "Toggle",
+    "network_notifications": "Network Notifications"
   },
   "sidebar": {
     "company_name": "Taurine Tech",

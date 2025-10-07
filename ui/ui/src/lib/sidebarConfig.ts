@@ -15,6 +15,13 @@ export interface SidebarNavItem {
   items?: { title: string; url: string }[];
 }
 
+/**
+ * Builds the sidebar navigation configuration using the provided installed plugins and translation function.
+ *
+ * @param installedPlugins - Array of installed plugin descriptors used to determine conditional sections and items (e.g., traffic and sniffer plugins).
+ * @param getT - Translation function that maps a translation key and optional fallback to a localized string.
+ * @returns An array of SidebarNavItem objects representing the sidebar structure; includes the "AI Services" section only when relevant plugins are installed.
+ */
 export function buildSidebarConfig(
   installedPlugins: PluginInstallation[],
   getT: (key: string, fallback?: string) => string
@@ -40,6 +47,7 @@ export function buildSidebarConfig(
         },
         { title: getT("navigation.switches"), url: "/devices/switches" },
         { title: getT("navigation.controllers"), url: "/devices/controllers" },
+        { title: "Network Notifications", url: "/network-notifications" },
       ],
     },
     {

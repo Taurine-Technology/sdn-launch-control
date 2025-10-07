@@ -19,7 +19,18 @@ import { usePluginContext } from "@/context/PluginContext";
 import { useLanguage } from "@/context/languageContext";
 import { buildSidebarConfig } from "@/lib/sidebarConfig";
 import Image from "next/image";
+import { NotificationPanel } from "@/components/notifications/NotificationPanel";
 
+/**
+ * Render the application sidebar with branding, plugin-aware navigation, user details, and notifications.
+ *
+ * The component builds the main navigation from installed plugins and localization, then renders a Sidebar
+ * with a branded header linking to the dashboard, the main navigation, and a footer showing the current user
+ * and a notification panel.
+ *
+ * @param props - Props forwarded to the root Sidebar component
+ * @returns The Sidebar React element populated with header, main navigation, and footer content
+ */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { username } = useAuth();
   const { installedPlugins } = usePluginContext();
@@ -55,13 +66,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <div className="flex flex-col gap-2 p-2">
-          <NavUser
-            user={{
-              name: username || getT("sidebar.default_user"),
-              email: `${username}@example.com`,
-              avatar: "/icons/profile-picture.png",
-            }}
-          />
+          <div className="flex items-center justify-between">
+            <NavUser
+              user={{
+                name: username || getT("sidebar.default_user"),
+                email: `${username}@example.com`,
+                avatar: "/icons/profile-picture.png",
+              }}
+            />
+            <NotificationPanel />
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>

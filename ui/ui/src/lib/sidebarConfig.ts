@@ -15,6 +15,13 @@ export interface SidebarNavItem {
   items?: { title: string; url: string }[];
 }
 
+/**
+ * Build the sidebar navigation configuration used by the app, including conditional AI services entries.
+ *
+ * @param installedPlugins - List of installed plugins; presence of specific plugin names controls inclusion of AI-related menu entries.
+ * @param getT - Translation function that maps a translation key (and optional fallback) to its localized string.
+ * @returns An array of sidebar navigation items. If a plugin with `plugin_name` equal to "tau-onos-metre-traffic-classification" or "tau-traffic-classification-sniffer" is present, the "AI services" section and its relevant sub-items are included.
+ */
 export function buildSidebarConfig(
   installedPlugins: PluginInstallation[],
   getT: (key: string, fallback?: string) => string
@@ -40,6 +47,10 @@ export function buildSidebarConfig(
         },
         { title: getT("navigation.switches"), url: "/devices/switches" },
         { title: getT("navigation.controllers"), url: "/devices/controllers" },
+        {
+          title: getT("navigation.network_notifications"),
+          url: "/network-notifications",
+        },
       ],
     },
     {

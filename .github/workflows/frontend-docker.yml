@@ -1,0 +1,44 @@
+name: Frontend Docker Build
+
+on:
+  pull_request:
+    paths:
+      - "ui/**"
+      - ".github/workflows/frontend-docker.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "ui/**"
+      - ".github/workflows/frontend-docker.yml"
+
+# Cancel in-progress runs for the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker-build:
+    name: Docker Build Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Copy environment variables
+        working-directory: ui/ui
+        run: cp .env.example .env.local
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./ui/ui
+          file: ./ui/ui/Dockerfile
+          push: false
+          tags: sdn-launch-control-ui:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

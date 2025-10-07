@@ -1,0 +1,52 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - "ui/**"
+      - ".github/workflows/frontend-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "ui/**"
+      - ".github/workflows/frontend-ci.yml"
+
+# Cancel in-progress runs for the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-build:
+    name: Lint, Type-check & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: "ui/ui/package-lock.json"
+
+      - name: Install dependencies
+        working-directory: ui/ui
+        run: npm ci
+
+      - name: Copy environment variables
+        working-directory: ui/ui
+        run: cp .env.example .env.local
+
+      - name: Run type-check and lint
+        working-directory: ui/ui
+        run: npm run check
+
+      - name: Build Next.js application
+        working-directory: ui/ui
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+        run: npm run build

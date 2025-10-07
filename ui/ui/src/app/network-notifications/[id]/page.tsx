@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import React, { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -20,21 +19,29 @@ import {
 } from "@/components/ui/breadcrumb";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import ProtectedRoute from "@/lib/ProtectedRoute";
-import { getNetworkNotification, markNotificationRead } from "@/lib/networkNotifications";
+import {
+  getNetworkNotification,
+  markNotificationRead,
+} from "@/lib/networkNotifications";
 import type { NetworkNotification } from "@/lib/types";
+import { useLanguage } from "@/context/languageContext";
 
 export default function NetworkNotificationDetailPage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
+  const { getT } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<NetworkNotification | null>(
     null
   );
-  const token = useMemo(() => localStorage.getItem("taurineToken") || "", []);
+  const [token, setToken] = useState("");
 
   const id = Number(params.id);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    setToken(localStorage.getItem("taurineToken") || "");
+  }, []);
+
+  const fetchData = useCallback(async () => {
     if (!token || Number.isNaN(id)) return;
     setLoading(true);
     try {
@@ -47,35 +54,51 @@ export default function NetworkNotificationDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, id]);
 
   useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+    if (token) {
+      fetchData();
+    }
+  }, [id, token, fetchData]);
 
   return (
     <ProtectedRoute>
       <SidebarProvider
-        style={{
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties}
+        style={
+          {
+            "--sidebar-width": "calc(var(--spacing) * 72)",
+            "--header-height": "calc(var(--spacing) * 12)",
+          } as React.CSSProperties
+        }
       >
         <AppSidebar />
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center gap-2">
             <div className="flex items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1" />
-              <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+              <Separator
+                orientation="vertical"
+                className="mr-2 data-[orientation=vertical]:h-4"
+              />
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem className="hidden md:block">
-                    <BreadcrumbLink href="/network-notifications">Network Notifications</BreadcrumbLink>
+                    <BreadcrumbLink href="/network-notifications">
+                      {getT(
+                        "navigation.network_notifications",
+                        "Network Notifications"
+                      )}
+                    </BreadcrumbLink>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem>
-                    <BreadcrumbLink href="#">Notification #{id}</BreadcrumbLink>
+                    <BreadcrumbLink href="#">
+                      {getT(
+                        "page.NetworkNotificationDetailPage.notification_number",
+                        `Notification #${id}`
+                      ).replace("{id}", String(id))}
+                    </BreadcrumbLink>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
@@ -93,27 +116,55 @@ export default function NetworkNotificationDetailPage() {
             {!loading && notification && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
+                  <CardTitle>
                     <span>{notification.type}</span>
-                    <Button variant="outline" onClick={() => router.back()}>
-                      Back
-                    </Button>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="text-sm text-muted-foreground">ID: {notification.id}</div>
-                  <div className="text-sm text-muted-foreground">Status: {notification.read ? "Read" : "Unread"}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {getT("page.NetworkNotificationDetailPage.id_label", "ID")}:{" "}
+                    {notification.id}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {getT(
+                      "page.NetworkNotificationDetailPage.status_label",
+                      "Status"
+                    )}
+                    :{" "}
+                    {notification.read
+                      ? getT(
+                          "page.NetworkNotificationDetailPage.status_read",
+                          "Read"
+                        )
+                      : getT(
+                          "page.NetworkNotificationDetailPage.status_unread",
+                          "Unread"
+                        )}
+                  </div>
                   <Separator />
-                  <div className="whitespace-pre-wrap leading-relaxed">{notification.description}</div>
+                  <div className="whitespace-pre-wrap leading-relaxed">
+                    {notification.description}
+                  </div>
                   {notification.user && (
-                    <div className="text-sm text-muted-foreground">User: {notification.user}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {getT(
+                        "page.NetworkNotificationDetailPage.user_label",
+                        "User"
+                      )}
+                      : {notification.user}
+                    </div>
                   )}
                 </CardContent>
               </Card>
             )}
 
             {!loading && !notification && (
-              <div className="text-muted-foreground">Notification not found.</div>
+              <div className="text-muted-foreground">
+                {getT(
+                  "page.NetworkNotificationDetailPage.not_found",
+                  "Notification not found."
+                )}
+              </div>
             )}
           </div>
         </SidebarInset>
@@ -121,5 +172,3 @@ export default function NetworkNotificationDetailPage() {
     </ProtectedRoute>
   );
 }
-
-

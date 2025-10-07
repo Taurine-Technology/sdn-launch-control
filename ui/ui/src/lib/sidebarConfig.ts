@@ -40,7 +40,10 @@ export function buildSidebarConfig(
         },
         { title: getT("navigation.switches"), url: "/devices/switches" },
         { title: getT("navigation.controllers"), url: "/devices/controllers" },
-        { title: "Network Notifications", url: "/network-notifications" },
+        {
+          title: getT("navigation.network_notifications"),
+          url: "/network-notifications",
+        },
       ],
     },
     {

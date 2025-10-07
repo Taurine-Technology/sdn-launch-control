@@ -109,37 +109,37 @@ const TelegramNotificationSetupDialog: React.FC<
     {
       value: 1,
       label: getT(
-        "components.notifications.telegram_notification_setup.frequency.every_minute"
+        "components.notifications.telegram_notification_setup.frequency_options.every_minute"
       ),
     },
     {
       value: 10,
       label: getT(
-        "components.notifications.telegram_notification_setup.frequency.every_10_minutes"
+        "components.notifications.telegram_notification_setup.frequency_options.every_10_minutes"
       ),
     },
     {
       value: 60,
       label: getT(
-        "components.notifications.telegram_notification_setup.frequency.every_hour"
+        "components.notifications.telegram_notification_setup.frequency_options.every_hour"
       ),
     },
     {
       value: 360,
       label: getT(
-        "components.notifications.telegram_notification_setup.frequency.every_6_hours"
+        "components.notifications.telegram_notification_setup.frequency_options.every_6_hours"
       ),
     },
     {
       value: 720,
       label: getT(
-        "components.notifications.telegram_notification_setup.frequency.every_12_hours"
+        "components.notifications.telegram_notification_setup.frequency_options.every_12_hours"
       ),
     },
     {
       value: 1440,
       label: getT(
-        "components.notifications.telegram_notification_setup.frequency.every_24_hours"
+        "components.notifications.telegram_notification_setup.frequency_options.every_24_hours"
       ),
     },
   ];

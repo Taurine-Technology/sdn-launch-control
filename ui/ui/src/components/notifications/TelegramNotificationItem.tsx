@@ -83,31 +83,31 @@ const TelegramNotificationItem: React.FC<TelegramNotificationItemProps> = ({
     switch (frequency) {
       case 1:
         return getT(
-          "components.notifications.telegram_notification_item.frequency.every_minute"
+          "components.notifications.telegram_notification_item.frequency_options.every_minute"
         );
       case 10:
         return getT(
-          "components.notifications.telegram_notification_item.frequency.every_10_minutes"
+          "components.notifications.telegram_notification_item.frequency_options.every_10_minutes"
         );
       case 60:
         return getT(
-          "components.notifications.telegram_notification_item.frequency.every_hour"
+          "components.notifications.telegram_notification_item.frequency_options.every_hour"
         );
       case 360:
         return getT(
-          "components.notifications.telegram_notification_item.frequency.every_6_hours"
+          "components.notifications.telegram_notification_item.frequency_options.every_6_hours"
         );
       case 720:
         return getT(
-          "components.notifications.telegram_notification_item.frequency.every_12_hours"
+          "components.notifications.telegram_notification_item.frequency_options.every_12_hours"
         );
       case 1440:
         return getT(
-          "components.notifications.telegram_notification_item.frequency.every_24_hours"
+          "components.notifications.telegram_notification_item.frequency_options.every_24_hours"
         );
       default:
         return getT(
-          "components.notifications.telegram_notification_item.frequency.every_x_minutes",
+          "components.notifications.telegram_notification_item.frequency_options.every_x_minutes",
           `Every ${frequency} minutes`
         );
     }

@@ -27,6 +27,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { useLanguage } from "@/context/languageContext";
 
 type TabKey = "unread" | "read" | "all";
 
@@ -35,13 +36,13 @@ const PAGE_SIZE_DEFAULT = 10;
 function NetworkNotificationsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { getT } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabKey>("unread");
   const [page, setPage] = useState<number>(1);
   const [pageSize] = useState<number>(PAGE_SIZE_DEFAULT);
   const [loading, setLoading] = useState<boolean>(true);
-  const [data, setData] = useState<PaginatedResponse<NetworkNotification> | null>(
-    null
-  );
+  const [data, setData] =
+    useState<PaginatedResponse<NetworkNotification> | null>(null);
   const [token, setToken] = useState<string>("");
 
   const readFilter = useMemo(() => {
@@ -101,7 +102,7 @@ function NetworkNotificationsContent() {
   const onOpenNotification = async (n: NetworkNotification) => {
     try {
       if (!n.read) await markNotificationRead(token, n.id);
-    } catch (e) {
+    } catch {
       // ignore
     }
     router.push(`/network-notifications/${n.id}`);
@@ -125,26 +126,36 @@ function NetworkNotificationsContent() {
   return (
     <ProtectedRoute>
       <SidebarProvider
-        style={{
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties}
+        style={
+          {
+            "--sidebar-width": "calc(var(--spacing) * 72)",
+            "--header-height": "calc(var(--spacing) * 12)",
+          } as React.CSSProperties
+        }
       >
         <AppSidebar />
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center gap-2">
             <div className="flex items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1" />
-              <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+              <Separator
+                orientation="vertical"
+                className="mr-2 data-[orientation=vertical]:h-4"
+              />
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem className="hidden md:block">
-                    <BreadcrumbLink href="#">Network</BreadcrumbLink>
+                    <BreadcrumbLink href="#">
+                      {getT("navigation.network", "Network")}
+                    </BreadcrumbLink>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem>
                     <BreadcrumbLink href="/network-notifications">
-                      Network Notifications
+                      {getT(
+                        "navigation.network_notifications",
+                        "Network Notifications"
+                      )}
                     </BreadcrumbLink>
                   </BreadcrumbItem>
                 </BreadcrumbList>
@@ -154,17 +165,37 @@ function NetworkNotificationsContent() {
 
           <div className="@container/main w-full max-w-7.5xl flex flex-col gap-6 px-4 lg:px-8 py-8 mx-auto">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold text-muted-foreground">Network Notifications</h1>
-              <Button variant="secondary" onClick={onMarkAllRead}>Mark all as read</Button>
+              <h1 className="text-2xl font-bold text-muted-foreground">
+                {getT(
+                  "page.NetworkNotificationsPage.page_title",
+                  "Network Notifications"
+                )}
+              </h1>
+              <Button variant="secondary" onClick={onMarkAllRead}>
+                {getT(
+                  "page.NetworkNotificationsPage.mark_all_read",
+                  "Mark all as read"
+                )}
+              </Button>
             </div>
 
-            <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col min-h-[60vh]">
+            <Tabs
+              value={activeTab}
+              onValueChange={onTabChange}
+              className="flex flex-col min-h-[60vh]"
+            >
               <div className="w-auto">
-              <TabsList className="justify-start">
-                <TabsTrigger value="unread">Unread</TabsTrigger>
-                <TabsTrigger value="read">Read</TabsTrigger>
-                <TabsTrigger value="all">All</TabsTrigger>
-              </TabsList>
+                <TabsList className="justify-start">
+                  <TabsTrigger value="unread">
+                    {getT("page.NetworkNotificationsPage.tab_unread", "Unread")}
+                  </TabsTrigger>
+                  <TabsTrigger value="read">
+                    {getT("page.NetworkNotificationsPage.tab_read", "Read")}
+                  </TabsTrigger>
+                  <TabsTrigger value="all">
+                    {getT("page.NetworkNotificationsPage.tab_all", "All")}
+                  </TabsTrigger>
+                </TabsList>
               </div>
 
               <TabsContent value={activeTab} className="flex flex-col flex-1">
@@ -178,18 +209,21 @@ function NetworkNotificationsContent() {
                     {(data?.results || []).map((n) => (
                       <Card key={n.id} className={n.read ? "opacity-70" : ""}>
                         <CardContent className="p-4 flex items-center justify-between gap-4">
-                          <div className="flex-1 cursor-pointer" onClick={() => onOpenNotification(n)}>
+                          <div
+                            className="flex-1 cursor-pointer"
+                            onClick={() => onOpenNotification(n)}
+                          >
                             <div className="text-sm text-muted-foreground flex items-center gap-2">
                               <span>{n.type}</span>
                               {n.urgency && (
                                 <span
                                   className={
                                     `inline-flex items-center px-1.5 h-5 rounded text-[10px] ` +
-                                    (n.urgency === 'high'
-                                      ? 'bg-red-500 text-white'
-                                      : n.urgency === 'medium'
-                                      ? 'bg-amber-500 text-white'
-                                      : 'bg-emerald-500 text-white')
+                                    (n.urgency === "high"
+                                      ? "bg-red-500 text-white"
+                                      : n.urgency === "medium"
+                                      ? "bg-amber-500 text-white"
+                                      : "bg-emerald-500 text-white")
                                   }
                                 >
                                   {n.urgency}
@@ -197,10 +231,20 @@ function NetworkNotificationsContent() {
                               )}
                             </div>
                             <div className="font-medium">{n.description}</div>
-                            <div className="text-[11px] text-muted-foreground mt-1">{new Date(n.created_at || "").toLocaleString()}</div>
+                            <div className="text-[11px] text-muted-foreground mt-1">
+                              {new Date(n.created_at || "").toLocaleString()}
+                            </div>
                           </div>
                           {!n.read && (
-                            <Button variant="ghost" size="icon" aria-label="Mark as read" onClick={() => onMarkRead(n)}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={getT(
+                                "page.NetworkNotificationsPage.mark_as_read",
+                                "Mark as read"
+                              )}
+                              onClick={() => onMarkRead(n)}
+                            >
                               <Check className="h-4 w-4" />
                             </Button>
                           )}
@@ -208,7 +252,12 @@ function NetworkNotificationsContent() {
                       </Card>
                     ))}
                     {data && data.count === 0 && (
-                      <div className="text-muted-foreground">No notifications.</div>
+                      <div className="text-muted-foreground">
+                        {getT(
+                          "page.NetworkNotificationsPage.no_notifications",
+                          "No notifications."
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -223,9 +272,16 @@ function NetworkNotificationsContent() {
                       updateUrl(activeTab, p);
                     }}
                   >
-                    Previous
+                    {getT("common.previous", "Previous")}
                   </Button>
-                  <div className="text-sm text-muted-foreground">Page {page} of {pageCount}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {getT(
+                      "page.NetworkNotificationsPage.page_info",
+                      "Page {page} of {pageCount}"
+                    )
+                      .replace("{page}", String(page))
+                      .replace("{pageCount}", String(pageCount))}
+                  </div>
                   <Button
                     variant="outline"
                     disabled={page >= pageCount}
@@ -235,7 +291,7 @@ function NetworkNotificationsContent() {
                       updateUrl(activeTab, p);
                     }}
                   >
-                    Next
+                    {getT("common.next", "Next")}
                   </Button>
                 </div>
               </TabsContent>
@@ -247,8 +303,15 @@ function NetworkNotificationsContent() {
   );
 }
 export default function NetworkNotificationsPage() {
+  const { getT } = useLanguage();
   return (
-    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-4 text-sm text-muted-foreground">
+          {getT("page.NetworkNotificationsPage.loading_fallback", "Loading...")}
+        </div>
+      }
+    >
       <NetworkNotificationsContent />
     </Suspense>
   );

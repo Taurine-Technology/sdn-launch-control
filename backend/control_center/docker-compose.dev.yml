@@ -35,6 +35,7 @@ services:
                python manage.py populate_categories_from_model &&
                python manage.py migrate_categories_to_models &&
                python manage.py populate_redis_asn &&
+               python manage.py load_dns_servers &&
                python manage.py initialise_plugins &&
                python manage.py create_default_user &&
                python manage.py runserver 0.0.0.0:8000"

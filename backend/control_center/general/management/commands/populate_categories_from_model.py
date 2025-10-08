@@ -126,11 +126,11 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(
                     f'❌ Error processing category "{category_name}": {e}'))
         
-        # Ensure "Unknown" category always exists for fallback
-        self.stdout.write(self.style.NOTICE('Ensuring "Unknown" category exists for fallback...'))
+        # Ensure standard fallback categories always exist
+        self.stdout.write(self.style.NOTICE('Ensuring standard fallback categories exist...'))
         
+        # Get the model configuration for linking
         try:
-            # Get the model configuration for linking
             if model_name:
                 from classifier.models import ModelConfiguration
                 model_config = ModelConfiguration.objects.get(name=model_name)
@@ -138,32 +138,41 @@ class Command(BaseCommand):
                 from classifier.models import ModelConfiguration
                 active_model_config = ModelConfiguration.objects.get(name=model_manager.active_model)
                 model_config = active_model_config
-            
-            # Check if "Unknown" category already exists for this model
-            unknown_category, unknown_created = Category.objects.get_or_create(
-                name="Unknown",
-                model_configuration=model_config
-            )
-            
-            if unknown_created:
-                self.stdout.write(self.style.SUCCESS(
-                    f'✅ Created fallback "Unknown" category (Cookie: {unknown_category.category_cookie})'))
-                created_count += 1
-            else:
-                # Verify the cookie exists
-                if not unknown_category.category_cookie:
-                    unknown_category.save()  # This will generate the cookie
-                    self.stdout.write(self.style.NOTICE(
-                        f'🔧 Fixed fallback "Unknown" category (Cookie: {unknown_category.category_cookie})'))
-                    updated_count += 1
-                else:
-                    self.stdout.write(self.style.NOTICE(
-                        f'⏭️  Fallback "Unknown" category already exists (Cookie: {unknown_category.category_cookie})'))
-                    skipped_count += 1
-                    
         except Exception as e:
-            self.stdout.write(self.style.ERROR(
-                f'❌ Error ensuring "Unknown" category: {e}'))
+            self.stdout.write(self.style.ERROR(f'❌ Error getting model configuration: {e}'))
+            model_config = None
+        
+        if model_config:
+            # Standard fallback categories that should always exist
+            standard_categories = ["Unknown", "DNS", "Apple"]
+            
+            for standard_category_name in standard_categories:
+                try:
+                    # Check if category already exists for this model
+                    category, category_created = Category.objects.get_or_create(
+                        name=standard_category_name,
+                        model_configuration=model_config
+                    )
+                    
+                    if category_created:
+                        self.stdout.write(self.style.SUCCESS(
+                            f'✅ Created standard "{standard_category_name}" category (Cookie: {category.category_cookie})'))
+                        created_count += 1
+                    else:
+                        # Verify the cookie exists
+                        if not category.category_cookie:
+                            category.save()  # This will generate the cookie
+                            self.stdout.write(self.style.NOTICE(
+                                f'🔧 Fixed standard "{standard_category_name}" category (Cookie: {category.category_cookie})'))
+                            updated_count += 1
+                        else:
+                            self.stdout.write(self.style.NOTICE(
+                                f'⏭️  Standard "{standard_category_name}" category already exists (Cookie: {category.category_cookie})'))
+                            skipped_count += 1
+                            
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(
+                        f'❌ Error ensuring "{standard_category_name}" category: {e}'))
         
         self.stdout.write(self.style.SUCCESS(
             f'Finished populating categories from model "{target_model.name}". '

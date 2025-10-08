@@ -12,12 +12,16 @@ from typing import Dict, List, Optional, Tuple, Any
 from django.conf import settings
 import keras
 import numpy as np
+import redis
 
 from .models import ModelConfiguration, ModelState
 from .state_manager import state_manager
 from utils.ip_lookup_service import get_asn_from_ip
 
 logger = logging.getLogger(__name__)
+
+# DNS Redis key - same as in dns_loader.py
+REDIS_DNS_KEY = "dns_servers:ip_set"
 
 
 class ModelManager:
@@ -27,7 +31,26 @@ class ModelManager:
     
     def __init__(self):
         self.loaded_models: Dict[str, Any] = {}
+        # Initialize Redis connection for DNS lookups (separate from state_manager)
+        self._init_redis_connection()
         self._initialize_from_database()
+    
+    def _init_redis_connection(self):
+        """Initialize Redis connection for DNS server lookups"""
+        try:
+            redis_host = getattr(settings, 'CHANNEL_REDIS_HOST', 'redis')
+            redis_port = getattr(settings, 'CHANNEL_REDIS_PORT', 6379)
+            self.redis_dns = redis.Redis(
+                host=redis_host,
+                port=redis_port,
+                decode_responses=True
+            )
+            # Test connection
+            self.redis_dns.ping()
+            logger.info("DNS Redis connection initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize DNS Redis connection: {e}")
+            self.redis_dns = None
     
     def _initialize_from_database(self):
         """Initialize model manager from database"""
@@ -344,7 +367,7 @@ class ModelManager:
         Get categories from the active model configuration
         
         Returns:
-            List of category names from the active model (always includes "Unknown" for fallback)
+            List of category names from the active model (always includes "Unknown", "DNS", and "Apple" for fallback)
         """
         active_model_name = state_manager.get_active_model()
         if not active_model_name:
@@ -362,9 +385,14 @@ class ModelManager:
             except ModelConfiguration.DoesNotExist:
                 categories = []
         
-        # Ensure "Unknown" category is always available for fallback
+        # Ensure standard fallback categories are always available
+        categories = list(categories)
         if "Unknown" not in categories:
-            categories = list(categories) + ["Unknown"]
+            categories.append("Unknown")
+        if "DNS" not in categories:
+            categories.append("DNS")
+        if "Apple" not in categories:
+            categories.append("Apple")
         
         return categories
     
@@ -376,7 +404,7 @@ class ModelManager:
             model_name: Name of the model
             
         Returns:
-            List of category names from the specified model (always includes "Unknown" for fallback)
+            List of category names from the specified model (always includes "Unknown", "DNS", and "Apple" for fallback)
         """
         # Try Redis cache first
         config_dict = state_manager.get_model_config(model_name)
@@ -390,9 +418,14 @@ class ModelManager:
             except ModelConfiguration.DoesNotExist:
                 categories = []
         
-        # Ensure "Unknown" category is always available for fallback
+        # Ensure standard fallback categories are always available
+        categories = list(categories)
         if "Unknown" not in categories:
-            categories = list(categories) + ["Unknown"]
+            categories.append("Unknown")
+        if "DNS" not in categories:
+            categories.append("DNS")
+        if "Apple" not in categories:
+            categories.append("Apple")
         
         return categories
     
@@ -417,10 +450,17 @@ class ModelManager:
         config = active_model_data['config']
         class_names = active_model_data['class_names']
         
-        # Ensure "Unknown" category is always available for fallback
+        # Ensure standard fallback categories are always available
+        class_names = list(class_names)
         if "Unknown" not in class_names:
-            logger.info("Adding 'Unknown' category to available categories for fallback")
-            class_names = list(class_names) + ["Unknown"]
+            # logger.info("Adding 'Unknown' category to available categories for fallback")
+            class_names.append("Unknown")
+        if "DNS" not in class_names:
+            # logger.info("Adding 'DNS' category to available categories for DNS detection")
+            class_names.append("DNS")
+        if "Apple" not in class_names:
+            # logger.info("Adding 'Apple' category to available categories for Apple traffic")
+            class_names.append("Apple")
         
         start_time = time.time()
         
@@ -492,10 +532,18 @@ class ModelManager:
         logger.info(f"Final Prediction: {final_prediction}")
         logger.info("************************************************")
         
-        # Enhanced ASN-based category matching
+        # Enhanced ASN-based category matching with DNS detection
         if client_ip_address and (final_prediction == "Unknown" or final_prediction == "QUIC"):
             try:
+                # First check if it's a known DNS server IP
+                dns_category = self._check_dns_ip(client_ip_address, class_names)
+                if dns_category:
+                    final_prediction = dns_category
+                    logger.info(f"DNS server detected: {client_ip_address} -> {dns_category}")
+                    logger.info("************************************************")
+                    return final_prediction, time_elapsed
                 
+                # If not DNS, proceed with ASN lookup
                 asn_info = get_asn_from_ip(client_ip_address)
                 
                 if asn_info:
@@ -774,6 +822,36 @@ class ModelManager:
         for org_key, category in quic_asn_mappings.items():
             if any(word in organization_lower for word in org_key.split()) and category in available_categories:
                 return category
+        
+        return None
+    
+    def _check_dns_ip(self, ip_address: str, available_categories: List[str]) -> Optional[str]:
+        """
+        Check if the IP address is a known DNS server (using Redis directly, like ASN lookup)
+        
+        Args:
+            ip_address: IP address to check
+            available_categories: List of available categories in the model
+            
+        Returns:
+            'DNS' if IP is a known DNS server and DNS category exists, None otherwise
+        """
+        # Check DNS category is available first
+        if 'DNS' not in available_categories:
+            return None
+        
+        # Check against Redis SET of DNS server IPs (O(1) lookup, like ASN uses ZSET)
+        try:
+            if self.redis_dns and self.redis_dns.sismember(REDIS_DNS_KEY, ip_address):
+                logger.info(f"Detected DNS server from Redis: {ip_address}")
+                return 'DNS'
+        except Exception as e:
+            logger.error(f"Error checking DNS server in Redis: {e}")
+            # Fallback to a minimal set of critical DNS servers if Redis fails
+            fallback_dns_servers = {'8.8.8.8', '8.8.4.4', '1.1.1.1', '1.0.0.1'}
+            if ip_address in fallback_dns_servers:
+                logger.warning(f"Using fallback DNS detection for: {ip_address}")
+                return 'DNS'
         
         return None
 

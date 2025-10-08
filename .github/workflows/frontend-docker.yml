@@ -31,7 +31,7 @@ jobs:
 
       - name: Copy environment variables
         working-directory: ui/ui
-        run: cp .env.example .env.local
+        run: cp .example .env.local
 
       - name: Build Docker image
         uses: docker/build-push-action@v6

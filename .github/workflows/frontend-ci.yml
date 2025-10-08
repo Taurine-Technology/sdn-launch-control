@@ -39,7 +39,7 @@ jobs:
 
       - name: Copy environment variables
         working-directory: ui/ui
-        run: cp .env.example .env.local
+        run: cp .example .env.local
 
       - name: Run type-check and lint
         working-directory: ui/ui

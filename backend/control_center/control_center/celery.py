@@ -59,6 +59,10 @@ app.conf.update(
     broker_connection_max_retries=10,
 )
 
+# Note: Periodic tasks are managed via DatabaseScheduler (django_celery_beat)
+# See docker-compose.yml for auto-setup via setup_classification_stats command
+# To view/manage periodic tasks, use Django admin or management commands
+
 @app.task(bind=True)
 def debug_task(self):
     print(f'Request: {self.request!r}')

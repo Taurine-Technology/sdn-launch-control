@@ -10,11 +10,13 @@ import json
 import logging
 from typing import Dict, List, Optional, Tuple, Any
 from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 import keras
 import numpy as np
 import redis
 
-from .models import ModelConfiguration, ModelState
+from .models import ModelConfiguration, ModelState, ClassificationStats
 from .state_manager import state_manager
 from utils.ip_lookup_service import get_asn_from_ip
 
@@ -33,6 +35,10 @@ class ModelManager:
         self.loaded_models: Dict[str, Any] = {}
         # Initialize Redis connection for DNS lookups (separate from state_manager)
         self._init_redis_connection()
+        
+        # Classification stats are now tracked in Redis (shared across processes)
+        # No in-memory counters needed - using state_manager.increment_classification_stat()
+        
         self._initialize_from_database()
     
     def _init_redis_connection(self):
@@ -532,6 +538,10 @@ class ModelManager:
         logger.info(f"Final Prediction: {final_prediction}")
         logger.info("************************************************")
         
+        # Track DNS and ASN usage
+        dns_detected = False
+        asn_used = False
+        
         # Enhanced ASN-based category matching with DNS detection
         if client_ip_address and (final_prediction == "Unknown" or final_prediction == "QUIC"):
             try:
@@ -539,8 +549,11 @@ class ModelManager:
                 dns_category = self._check_dns_ip(client_ip_address, class_names)
                 if dns_category:
                     final_prediction = dns_category
+                    dns_detected = True
                     logger.info(f"DNS server detected: {client_ip_address} -> {dns_category}")
                     logger.info("************************************************")
+                    # Track stats before returning
+                    self._increment_stats(confidence_level, time_elapsed, dns_detected=True, asn_used=False)
                     return final_prediction, time_elapsed
                 
                 # If not DNS, proceed with ASN lookup
@@ -563,6 +576,7 @@ class ModelManager:
                         matched_category = self._match_asn_to_category(organization_lower, class_names)
                         if matched_category:
                             final_prediction = matched_category
+                            asn_used = True
                             logger.info(f"ASN Match Found: '{asn_info['organization']}' -> '{matched_category}'")
                         else:
                             logger.info(f"No ASN match found for '{asn_info['organization']}', keeping as 'Unknown'")
@@ -572,6 +586,7 @@ class ModelManager:
                         quic_category = self._match_quic_asn_to_category(organization_lower, class_names)
                         if quic_category:
                             final_prediction = quic_category
+                            asn_used = True
                             logger.info(f"QUIC ASN Match: '{asn_info['organization']}' -> '{quic_category}'")
                         else:
                             logger.info(f"No QUIC ASN match found for '{asn_info['organization']}', keeping as 'QUIC'")
@@ -582,6 +597,9 @@ class ModelManager:
                     logger.info(f"ASN lookup failed for IP: {client_ip_address}")
             except Exception as e:
                 logger.error(f"Error during ASN lookup for IP {client_ip_address}: {e}")
+        
+        # Track classification stats
+        self._increment_stats(confidence_level, time_elapsed, dns_detected=dns_detected, asn_used=asn_used)
         
         return final_prediction, time_elapsed
     
@@ -854,6 +872,121 @@ class ModelManager:
                 return 'DNS'
         
         return None
+    
+    def _increment_stats(self, confidence_level: str, prediction_time: float, dns_detected: bool = False, asn_used: bool = False):
+        """
+        Increment classification statistics counters in Redis (cross-process safe)
+        
+        Args:
+            confidence_level: One of 'HIGH', 'LOW', 'MULTIPLE_CANDIDATES', 'UNCERTAIN'
+            prediction_time: Time taken for prediction in seconds
+            dns_detected: Whether DNS detection was used
+            asn_used: Whether ASN fallback was used
+        """
+        try:
+            # Increment total (shared across all processes via Redis)
+            state_manager.increment_classification_stat('total', 1)
+            
+            # Increment confidence level
+            if confidence_level == 'HIGH':
+                state_manager.increment_classification_stat('high_confidence', 1)
+            elif confidence_level == 'LOW':
+                state_manager.increment_classification_stat('low_confidence', 1)
+            elif confidence_level == 'MULTIPLE_CANDIDATES':
+                state_manager.increment_classification_stat('multiple_candidates', 1)
+            elif confidence_level == 'UNCERTAIN':
+                state_manager.increment_classification_stat('uncertain', 1)
+            
+            # Increment detection methods
+            if dns_detected:
+                state_manager.increment_classification_stat('dns_detections', 1)
+            
+            if asn_used:
+                state_manager.increment_classification_stat('asn_fallback', 1)
+            
+            # Store prediction time (convert to milliseconds)
+            state_manager.add_prediction_time(prediction_time * 1000)
+            
+        except Exception as e:
+            logger.error(f"Error incrementing stats: {e}")
+    
+    def save_classification_stats(self) -> bool:
+        """
+        Save accumulated statistics from Redis to database and reset counters
+        
+        Returns:
+            bool: True if stats were saved successfully
+        """
+        try:
+            # Get stats from Redis (shared across all processes)
+            redis_stats = state_manager.get_classification_stats()
+            
+            # Skip if no classifications
+            if redis_stats.get('total', 0) == 0:
+                logger.debug("No classifications to save")
+                return False
+            
+            # Get active model
+            active_model_name = self.active_model
+            if not active_model_name:
+                logger.warning("No active model, cannot save stats")
+                return False
+            
+            # Get model configuration
+            model_config = ModelConfiguration.objects.get(name=active_model_name)
+            
+            # Calculate average prediction time
+            prediction_times = redis_stats.get('prediction_times', [])
+            avg_prediction_time = sum(prediction_times) / len(prediction_times) if prediction_times else 0.0
+            
+            # Get period start from Redis (or use 5 minutes ago as fallback)
+            period_end = timezone.now()
+            period_start_key = state_manager.redis_client.get("classification_stats:period_start")
+            if period_start_key:
+                from datetime import datetime
+                period_start = datetime.fromisoformat(period_start_key)
+                if not period_start.tzinfo:
+                    period_start = timezone.make_aware(period_start)
+            else:
+                period_start = period_end - timedelta(minutes=5)
+            
+            # Create stats record
+            stats = ClassificationStats.objects.create(
+                model_configuration=model_config,
+                timestamp=period_end,
+                period_start=period_start,
+                period_end=period_end,
+                total_classifications=redis_stats['total'],
+                high_confidence_count=redis_stats['high_confidence'],
+                low_confidence_count=redis_stats['low_confidence'],
+                multiple_candidates_count=redis_stats['multiple_candidates'],
+                uncertain_count=redis_stats['uncertain'],
+                dns_detections=redis_stats['dns_detections'],
+                asn_fallback_count=redis_stats['asn_fallback'],
+                avg_prediction_time_ms=avg_prediction_time
+            )
+            
+            logger.info(
+                f"Saved classification stats for {active_model_name}: "
+                f"{redis_stats['total']} total, "
+                f"{redis_stats['high_confidence']} high confidence "
+                f"({stats.high_confidence_percentage:.1f}%)"
+            )
+            
+            # Reset counters in Redis
+            state_manager.reset_classification_stats()
+            
+            # Store new period start time
+            state_manager.redis_client.set("classification_stats:period_start", period_end.isoformat())
+            
+            return True
+            
+        except ModelConfiguration.DoesNotExist:
+            logger.error(f"Model configuration '{active_model_name}' not found")
+            return False
+        except Exception as e:
+            logger.error(f"Error saving classification stats: {e}", exc_info=True)
+            return False
 
 
 # Global model manager instance

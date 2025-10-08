@@ -131,6 +131,56 @@ class ModelStateManager:
         except Exception as e:
             logger.error(f"Redis health check failed: {e}")
             return False
+    
+    # Classification statistics methods (for cross-process tracking)
+    def increment_classification_stat(self, stat_type: str, value: int = 1):
+        """Increment a classification statistic counter in Redis"""
+        try:
+            key = f"classification_stats:{stat_type}"
+            self.redis_client.incrby(key, value)
+        except Exception as e:
+            logger.error(f"Error incrementing classification stat: {e}")
+    
+    def add_prediction_time(self, time_ms: float):
+        """Add a prediction time to the list in Redis"""
+        try:
+            key = "classification_stats:prediction_times"
+            # Store as list with max 1000 entries (rolling window)
+            self.redis_client.lpush(key, time_ms)
+            self.redis_client.ltrim(key, 0, 999)  # Keep only last 1000
+        except Exception as e:
+            logger.error(f"Error adding prediction time: {e}")
+    
+    def get_classification_stats(self) -> dict:
+        """Get all classification statistics from Redis"""
+        try:
+            stats = {
+                'total': int(self.redis_client.get("classification_stats:total") or 0),
+                'high_confidence': int(self.redis_client.get("classification_stats:high_confidence") or 0),
+                'low_confidence': int(self.redis_client.get("classification_stats:low_confidence") or 0),
+                'multiple_candidates': int(self.redis_client.get("classification_stats:multiple_candidates") or 0),
+                'uncertain': int(self.redis_client.get("classification_stats:uncertain") or 0),
+                'dns_detections': int(self.redis_client.get("classification_stats:dns_detections") or 0),
+                'asn_fallback': int(self.redis_client.get("classification_stats:asn_fallback") or 0),
+            }
+            
+            # Get prediction times
+            times = self.redis_client.lrange("classification_stats:prediction_times", 0, -1)
+            stats['prediction_times'] = [float(t) for t in times] if times else []
+            
+            return stats
+        except Exception as e:
+            logger.error(f"Error getting classification stats: {e}")
+            return {}
+    
+    def reset_classification_stats(self):
+        """Reset all classification statistics counters"""
+        try:
+            keys = self.redis_client.keys("classification_stats:*")
+            if keys:
+                self.redis_client.delete(*keys)
+        except Exception as e:
+            logger.error(f"Error resetting classification stats: {e}")
 
 
 # Global state manager instance

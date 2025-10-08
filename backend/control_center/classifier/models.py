@@ -108,3 +108,84 @@ class ModelState(models.Model):
         state.value = value
         state.save()
         return state
+
+
+class ClassificationStats(models.Model):
+    """Track classification statistics over time"""
+    
+    CONFIDENCE_TYPES = [
+        ('HIGH', 'High Confidence'),
+        ('LOW', 'Low Confidence'),
+        ('MULTIPLE_CANDIDATES', 'Multiple Candidates'),
+        ('UNCERTAIN', 'Uncertain'),
+    ]
+    
+    # Link to model
+    model_configuration = models.ForeignKey(
+        ModelConfiguration,
+        on_delete=models.CASCADE,
+        related_name='classification_stats'
+    )
+    
+    # Timestamp for this stats period
+    timestamp = models.DateTimeField(db_index=True)
+    period_start = models.DateTimeField()
+    period_end = models.DateTimeField()
+    
+    # Total classifications in this period
+    total_classifications = models.IntegerField(default=0)
+    
+    # Breakdown by confidence level
+    high_confidence_count = models.IntegerField(default=0)
+    low_confidence_count = models.IntegerField(default=0)
+    multiple_candidates_count = models.IntegerField(default=0)
+    uncertain_count = models.IntegerField(default=0)
+    
+    # DNS and other special detections
+    dns_detections = models.IntegerField(default=0)
+    asn_fallback_count = models.IntegerField(default=0)
+    
+    # Average prediction time
+    avg_prediction_time_ms = models.FloatField(default=0.0)
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['model_configuration', '-timestamp']),
+            models.Index(fields=['-timestamp']),
+        ]
+        verbose_name_plural = 'Classification Statistics'
+    
+    def __str__(self):
+        return f"{self.model_configuration.name} - {self.timestamp} ({self.total_classifications} classifications)"
+    
+    @property
+    def high_confidence_percentage(self):
+        """Calculate percentage of high confidence classifications"""
+        if self.total_classifications == 0:
+            return 0.0
+        return (self.high_confidence_count / self.total_classifications) * 100
+    
+    @property
+    def low_confidence_percentage(self):
+        """Calculate percentage of low confidence classifications"""
+        if self.total_classifications == 0:
+            return 0.0
+        return (self.low_confidence_count / self.total_classifications) * 100
+    
+    @property
+    def multiple_candidates_percentage(self):
+        """Calculate percentage of multiple candidates classifications"""
+        if self.total_classifications == 0:
+            return 0.0
+        return (self.multiple_candidates_count / self.total_classifications) * 100
+    
+    @property
+    def uncertain_percentage(self):
+        """Calculate percentage of uncertain classifications"""
+        if self.total_classifications == 0:
+            return 0.0
+        return (self.uncertain_count / self.total_classifications) * 100

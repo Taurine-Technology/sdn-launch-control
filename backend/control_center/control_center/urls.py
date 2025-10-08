@@ -24,7 +24,7 @@ from ovs_management.views import GetBridgePortsView
 from ovs_install.views import InstallOvsView
 from ovs_management.views import EditBridge, GetDevicePorts, CreateBridge, GetDeviceBridges, DeleteBridge, DeleteControllerView, GetUnassignedDevicePorts
 from controller.views import InstallControllerView
-from classifier.views import classify
+from classifier.views import classify, ClassificationStatsView
 from onos.views import MeterListView, CreateMeterView, SwitchList, MeterListByIdView, update_meter, delete_meter
 from device_monitoring.views import post_device_stats, post_openflow_metrics, install_system_stats_monitor, install_ovs_qos_monitor, install_sniffer
 from general.views import (AddDeviceView, DeviceDetailView, DeviceListView, PluginListView, InstallPluginDatabaseAlterView, UninstallPluginDatabaseAlterView, CheckPluginInstallation, InstallPluginView,
@@ -88,6 +88,10 @@ urlpatterns = [
     path('api/v1/install-ovs/', InstallOvsView.as_view(), name='install-ovs'),
     path('api/v1/install-controller/<str:controller_type>/', InstallControllerView.as_view(), name='install-controller'),
 
+    # ---- CLASSIFIER ----
+    path('api/v1/classify/', classify, name='classify'),
+    path('api/v1/classification-stats/', ClassificationStatsView.as_view(), name='classification-stats'),
+
     # ---- DEVICES ----
     path('api/v1/devices/', DeviceListView.as_view(), name='device-list'),
     path('api/v1/add-device/', AddDeviceView.as_view(), name='add-device'),
@@ -137,7 +141,7 @@ urlpatterns = [
     path('api/v1/ovs-network-map/', OvsNetworkMap.as_view(), name='ovs-network-map'),
     path('api/v1/post_device_stats/', post_device_stats, name='post_device_stats'),
     path('api/v1/post_openflow_metrics/', post_openflow_metrics, name='post_openflow_metrics'),
-    path('api/v1/classify/', classify, name='classify'),
+
     path('api/v1/install_system_stats_monitor/', install_system_stats_monitor, name='install_system_stats_monitor'),
     path('api/v1/install-ovs-qos-monitor/', install_ovs_qos_monitor, name='install_ovs_qos_monitor'),
     path('api/v1/install-sniffer/', install_sniffer, name='install_sniffer'),

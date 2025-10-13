@@ -18,7 +18,7 @@
 # For inquiries, contact Keegan White at keeganwhite@taurinetech.com.
 
 from django.utils.timezone import now
-from django.db.models import Q, Sum, Avg
+from django.db.models import Q, Sum, Avg, F, FloatField, ExpressionWrapper
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.decorators import api_view
@@ -205,8 +205,8 @@ class ClassificationStatsView(APIView):
         - hours: Number of hours to look back (default: 24)
         - summary: Return summary only (default: false)
     """
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
     
     def get(self, request):
         try:
@@ -273,6 +273,11 @@ class ClassificationStatsView(APIView):
                 })
             
             # Calculate aggregated statistics
+            # Use weighted average for prediction time (weight by classification count)
+            weighted_expr = ExpressionWrapper(
+                F('avg_prediction_time_ms') * F('total_classifications'),
+                output_field=FloatField()
+            )
             totals = stats_query.aggregate(
                 total_classifications=Sum('total_classifications'),
                 high_confidence=Sum('high_confidence_count'),
@@ -281,15 +286,16 @@ class ClassificationStatsView(APIView):
                 uncertain=Sum('uncertain_count'),
                 dns_detections=Sum('dns_detections'),
                 asn_fallback=Sum('asn_fallback_count'),
-                avg_prediction_time=Avg('avg_prediction_time_ms')
+                sum_weighted_avg=Sum(weighted_expr)
             )
             
             total_count = totals['total_classifications'] or 0
+            weighted_avg = (totals['sum_weighted_avg'] or 0) / total_count if total_count > 0 else 0
             
             # Build summary
             summary = {
                 'total_classifications': total_count,
-                'avg_prediction_time_ms': round(totals['avg_prediction_time'] or 0, 2),
+                'avg_prediction_time_ms': round(weighted_avg, 2),
                 'confidence_breakdown': {
                     'high_confidence': {
                         'count': totals['high_confidence'] or 0,

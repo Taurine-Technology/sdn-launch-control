@@ -28,14 +28,16 @@ class Command(BaseCommand):
         
         self.stdout.write(self.style.SUCCESS('Starting to populate categories from model configuration...'))
         
-        # Get the model to use for categories
+        # Get the model to use for categories and store the ModelConfiguration instance
+        model_config = None
+        
         if model_name:
             # Check if model exists in database
             try:
-                target_model_config = ModelConfiguration.objects.get(name=model_name)
+                model_config = ModelConfiguration.objects.get(name=model_name)
                 target_model = type('ModelConfig', (), {
-                    'name': target_model_config.display_name,
-                    'categories': target_model_config.categories
+                    'name': model_config.display_name,
+                    'categories': model_config.categories
                 })()
                 self.stdout.write(f"Using specified model: {model_name}")
             except ModelConfiguration.DoesNotExist:
@@ -44,13 +46,13 @@ class Command(BaseCommand):
             if not model_manager.active_model:
                 # Try to get the first active model from database
                 try:
-                    active_model_config = ModelConfiguration.objects.filter(is_active=True).first()
-                    if active_model_config:
+                    model_config = ModelConfiguration.objects.filter(is_active=True).first()
+                    if model_config:
                         target_model = type('ModelConfig', (), {
-                            'name': active_model_config.display_name,
-                            'categories': active_model_config.categories
+                            'name': model_config.display_name,
+                            'categories': model_config.categories
                         })()
-                        self.stdout.write(f"Using active model from database: {active_model_config.name}")
+                        self.stdout.write(f"Using active model from database: {model_config.name}")
                     else:
                         raise CommandError("No active model found in database")
                 except Exception as e:
@@ -58,14 +60,18 @@ class Command(BaseCommand):
             else:
                 # Use the active model from model manager
                 try:
-                    target_model_config = ModelConfiguration.objects.get(name=model_manager.active_model)
+                    model_config = ModelConfiguration.objects.get(name=model_manager.active_model)
                     target_model = type('ModelConfig', (), {
-                        'name': target_model_config.display_name,
-                        'categories': target_model_config.categories
+                        'name': model_config.display_name,
+                        'categories': model_config.categories
                     })()
                     self.stdout.write(f"Using active model: {model_manager.active_model}")
                 except ModelConfiguration.DoesNotExist:
                     raise CommandError(f"Active model '{model_manager.active_model}' not found in database")
+        
+        # Verify we have a valid model_config
+        if not model_config:
+            raise CommandError("Failed to retrieve model configuration")
         
         # Get categories from the model configuration
         categories = target_model.categories
@@ -74,16 +80,6 @@ class Command(BaseCommand):
             raise CommandError(f"No categories found in model configuration for '{target_model.name}'")
         
         self.stdout.write(f"Found {len(categories)} categories in model configuration")
-        
-        # Get the model configuration once for reuse in loop
-        try:
-            if model_name:
-                model_config = ModelConfiguration.objects.get(name=model_name)
-            else:
-                model_config = ModelConfiguration.objects.get(name=model_manager.active_model)
-        except ModelConfiguration.DoesNotExist as e:
-            logger.exception(f'Model configuration not found: {model_name or model_manager.active_model}')
-            raise CommandError(f"Model configuration not found: {e}")
         
         created_count = 0
         updated_count = 0

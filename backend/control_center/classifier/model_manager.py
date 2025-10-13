@@ -1054,15 +1054,12 @@ def get_model_manager() -> ModelManager:
     return _model_manager
 
 
-# Backward compatibility: expose as module attribute
-# Code can use either `model_manager` or `get_model_manager()`
-model_manager = property(lambda self: get_model_manager())
-
-
 class _ModelManagerProxy:
     """Proxy to provide backward-compatible module-level access"""
     def __getattr__(self, name):
         return getattr(get_model_manager(), name)
 
 
+# Backward compatibility: expose as module attribute
+# Code can use either `model_manager` or `get_model_manager()`
 model_manager = _ModelManagerProxy()

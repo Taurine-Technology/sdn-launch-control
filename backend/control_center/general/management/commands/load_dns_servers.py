@@ -9,7 +9,7 @@ from django.core.management.base import BaseCommand
 from django.conf import settings
 from classifier.dns_loader import dns_loader, REDIS_DNS_KEY
 import redis
-
+from classifier.dns_loader import DNSServerLoader
 
 class Command(BaseCommand):
     help = 'Load DNS server IPs from nameservers.csv into Redis for fast lookups'
@@ -83,7 +83,7 @@ class Command(BaseCommand):
             return
         
         # Initialize DNS loader with the tested Redis connection
-        from classifier.dns_loader import DNSServerLoader
+        
         loader = DNSServerLoader(csv_path, redis_conn=redis_conn) if csv_path else DNSServerLoader(redis_conn=redis_conn)
         
         self.stdout.write('Loading DNS servers from CSV into Redis...')

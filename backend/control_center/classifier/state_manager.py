@@ -113,14 +113,23 @@ class ModelStateManager:
             return False
     
     def clear_cache(self) -> bool:
-        """Clear all model state cache"""
+        """Clear all model state cache (non-blocking with SCAN)"""
         try:
-            keys = self.redis_client.keys(f"{self.cache_prefix}*")
-            if keys:
-                self.redis_client.delete(*keys)
+            # Use SCAN instead of KEYS to avoid blocking Redis
+            cursor = 0
+            pattern = f"{self.cache_prefix}*"
+            while True:
+                cursor, keys = self.redis_client.scan(cursor=cursor, match=pattern, count=1000)
+                if keys:
+                    pipe = self.redis_client.pipeline()
+                    for k in keys:
+                        pipe.delete(k)
+                    pipe.execute()
+                if cursor == 0:
+                    break
             return True
-        except Exception as e:
-            logger.error(f"Error clearing model state cache: {e}")
+        except redis.exceptions.RedisError:
+            logger.exception("Error clearing model state cache")
             return False
     
     def health_check(self) -> bool:

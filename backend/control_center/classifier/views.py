@@ -25,6 +25,8 @@ from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from knox.auth import TokenAuthentication
 from django.http import JsonResponse
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -196,11 +198,15 @@ class ClassificationStatsView(APIView):
     """
     API endpoint to view classification statistics
     
+    Authentication: Required (Knox Token)
+    
     Query Parameters:
-        - model_name: Filter by model name (optional)
+        - model_name: Filter by model name (optional, defaults to active model)
         - hours: Number of hours to look back (default: 24)
         - summary: Return summary only (default: false)
     """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         try:
@@ -219,6 +225,12 @@ class ClassificationStatsView(APIView):
                 timestamp__lte=end_time
             )
             
+            # If no model specified, default to active model
+            if not model_name:
+                active_model_name = model_manager.active_model
+                if active_model_name:
+                    model_name = active_model_name
+            
             model_info = None
             if model_name:
                 try:
@@ -226,13 +238,17 @@ class ClassificationStatsView(APIView):
                     stats_query = stats_query.filter(model_configuration=model_config)
                     model_info = {
                         'name': model_config.name,
-                        'display_name': model_config.display_name
+                        'display_name': model_config.display_name,
+                        'is_active': model_config.is_active
                     }
                 except ModelConfiguration.DoesNotExist:
                     return Response({
                         'status': 'error',
                         'message': f'Model "{model_name}" not found'
                     }, status=status.HTTP_404_NOT_FOUND)
+            else:
+                # Show all models if no active model
+                model_info = {'name': 'all', 'display_name': 'All Models', 'is_active': False}
             
             # Get stats
             stats = stats_query.order_by('-timestamp')

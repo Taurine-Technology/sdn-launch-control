@@ -213,6 +213,7 @@ class ClassificationStatsView(APIView):
             # Get query parameters
             model_name = request.query_params.get('model_name', None)
             hours = int(request.query_params.get('hours', 24))
+            hours = max(1, min(hours, 24 * 30))  # Clamp to [1, 720] (1 hour to 30 days)
             summary_only = request.query_params.get('summary', 'false').lower() == 'true'
             
             # Calculate time range
@@ -363,10 +364,10 @@ class ClassificationStatsView(APIView):
                 'status': 'error',
                 'message': f'Invalid parameter: {str(e)}'
             }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.error(f"Error retrieving classification stats: {e}")
+        except Exception:
+            logger.exception("Error retrieving classification stats")
             return Response({
                 'status': 'error',
-                'message': f'Internal server error: {str(e)}'
+                'message': 'Internal server error'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

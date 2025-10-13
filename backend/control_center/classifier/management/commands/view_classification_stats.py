@@ -99,7 +99,8 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('-' * 80))
         
         self.stdout.write(f'\nTotal Classifications: {total_count:,}')
-        self.stdout.write(f'Average Prediction Time: {totals["avg_prediction_time"]:.2f} ms')
+        avg_time = totals["avg_prediction_time"] or 0.0
+        self.stdout.write(f'Average Prediction Time: {avg_time:.2f} ms')
         
         self.stdout.write(f'\n📈 CONFIDENCE BREAKDOWN:')
         self.stdout.write(f'  High Confidence:      {totals["high_confidence"]:>8,}  ({(totals["high_confidence"]/total_count)*100:>5.1f}%)')

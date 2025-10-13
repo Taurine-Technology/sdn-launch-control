@@ -69,12 +69,12 @@ class Command(BaseCommand):
         # Show status if requested
         if show_status:
             current_count = redis_conn.scard(REDIS_DNS_KEY)
-            self.stdout.write(self.style.NOTICE(f'📊 Current DNS servers in Redis: {current_count:,}'))
+            self.stdout.write(f'Current DNS servers in Redis: {current_count:,}')
             return
         
         # Clear DNS servers if requested
         if clear_only:
-            self.stdout.write(self.style.WARNING('🗑️  Clearing DNS servers from Redis...'))
+            self.stdout.write(self.style.WARNING('Clearing DNS servers from Redis...'))
             try:
                 redis_conn.delete(REDIS_DNS_KEY)
                 self.stdout.write(self.style.SUCCESS('✅ DNS servers cleared from Redis'))
@@ -82,14 +82,11 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f'❌ Failed to clear DNS servers: {e}'))
             return
         
-        # Initialize DNS loader
-        if csv_path:
-            from classifier.dns_loader import DNSServerLoader
-            loader = DNSServerLoader(csv_path)
-        else:
-            loader = dns_loader
+        # Initialize DNS loader with the tested Redis connection
+        from classifier.dns_loader import DNSServerLoader
+        loader = DNSServerLoader(csv_path, redis_conn=redis_conn) if csv_path else DNSServerLoader(redis_conn=redis_conn)
         
-        self.stdout.write(self.style.NOTICE('📥 Loading DNS servers from CSV into Redis...'))
+        self.stdout.write('Loading DNS servers from CSV into Redis...')
         self.stdout.write(f'   Batch size: {batch_size:,}')
         
         # Load DNS servers
@@ -101,7 +98,7 @@ class Command(BaseCommand):
             
             # Verify with sample IPs if requested
             if verify:
-                self.stdout.write(self.style.NOTICE('\n🔍 Verifying DNS server detection...'))
+                self.stdout.write('\n Verifying DNS server detection...')
                 sample_ips = loader.get_sample_dns_servers(count=10)
                 
                 verified_count = 0
@@ -116,10 +113,10 @@ class Command(BaseCommand):
                 
                 # Test some well-known DNS servers
                 well_known_dns = ['8.8.8.8', '1.1.1.1', '208.67.222.222']
-                self.stdout.write(self.style.NOTICE('\n🔍 Testing well-known DNS servers...'))
+                self.stdout.write('\n Testing well-known DNS servers...')
                 
                 for ip in well_known_dns:
-                    if redis_conn.sismember(REDIS_DNS_KEY, ip):
+                    if loader.redis_conn.sismember(REDIS_DNS_KEY, ip):
                         self.stdout.write(self.style.SUCCESS(f'   ✅ {ip} - Found'))
                     else:
                         self.stdout.write(self.style.WARNING(f'   ⚠️  {ip} - Not found (may not be in CSV)'))

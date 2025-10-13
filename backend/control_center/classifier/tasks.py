@@ -39,7 +39,7 @@ def save_classification_statistics():
         else:
             logger.debug("No classification statistics to save")
             return "No statistics to save"
-    except Exception as e:
-        logger.error(f"Error in save_classification_statistics task: {e}")
-        return f"Error: {e}"
+    except Exception:
+        logger.exception("Error in save_classification_statistics task")
+        raise
 

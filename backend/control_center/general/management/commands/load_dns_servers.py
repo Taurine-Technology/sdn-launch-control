@@ -7,7 +7,7 @@ for fast O(1) lookups during traffic classification.
 
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from classifier.dns_loader import dns_loader, REDIS_DNS_KEY
+from classifier.dns_loader import REDIS_DNS_KEY
 import redis
 from classifier.dns_loader import DNSServerLoader
 
@@ -50,14 +50,17 @@ class Command(BaseCommand):
         clear_only = options.get('clear', False)
         show_status = options.get('status', False)
         
-        # Connect to Redis (like ASN pattern)
+        # Connect to Redis (with same timeout/retry settings as DNSServerLoader)
         try:
             redis_host = getattr(settings, 'CHANNEL_REDIS_HOST', 'redis')
             redis_port = getattr(settings, 'CHANNEL_REDIS_PORT', 6379)
             redis_conn = redis.Redis(
                 host=redis_host,
                 port=redis_port,
-                decode_responses=True
+                decode_responses=True,
+                socket_timeout=5,           # 5 second timeout for operations
+                socket_connect_timeout=5,   # 5 second timeout for connection
+                retry_on_timeout=True       # Automatically retry once on timeout
             )
             # Test connection
             redis_conn.ping()
@@ -83,8 +86,7 @@ class Command(BaseCommand):
             return
         
         # Initialize DNS loader with the tested Redis connection
-        
-        loader = DNSServerLoader(csv_path, redis_conn=redis_conn) if csv_path else DNSServerLoader(redis_conn=redis_conn)
+        loader = DNSServerLoader(csv_path=csv_path, redis_conn=redis_conn)
         
         self.stdout.write('Loading DNS servers from CSV into Redis...')
         self.stdout.write(f'   Batch size: {batch_size:,}')

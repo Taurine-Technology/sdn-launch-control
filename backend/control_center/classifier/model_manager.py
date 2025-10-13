@@ -1023,8 +1023,8 @@ class ModelManager:
                 if persist_lock:
                     try:
                         persist_lock.release()
-                    except Exception as lock_error:
-                        logger.exception(f"Failed to release classification stats persist lock: {lock_error}")
+                    except Exception:
+                        logger.exception("Failed to release classification stats persist lock")
             
         except ModelConfiguration.DoesNotExist:
             logger.exception(f"Model configuration '{active_model_name}' not found")

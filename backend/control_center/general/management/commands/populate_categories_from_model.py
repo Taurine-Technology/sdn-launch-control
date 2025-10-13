@@ -56,7 +56,7 @@ class Command(BaseCommand):
                     else:
                         raise CommandError("No active model found in database")
                 except Exception as e:
-                    raise CommandError(f"No active model configured: {e}")
+                    raise CommandError(f"No active model configured: {e}") from e
             else:
                 # Use the active model from model manager
                 try:
@@ -67,7 +67,7 @@ class Command(BaseCommand):
                     })()
                     self.stdout.write(f"Using active model: {model_manager.active_model}")
                 except ModelConfiguration.DoesNotExist:
-                    raise CommandError(f"Active model '{model_manager.active_model}' not found in database")
+                    raise CommandError(f"Active model '{model_manager.active_model}' not found in database") from None
         
         # Verify we have a valid model_config
         if not model_config:

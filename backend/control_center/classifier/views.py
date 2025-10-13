@@ -18,7 +18,7 @@
 # For inquiries, contact Keegan White at keeganwhite@taurinetech.com.
 
 from django.utils.timezone import now
-from django.db.models import Q, Sum, Avg, F, FloatField, ExpressionWrapper
+from django.db.models import Q, Sum
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.decorators import api_view
@@ -273,11 +273,6 @@ class ClassificationStatsView(APIView):
                 })
             
             # Calculate aggregated statistics
-            # Use weighted average for prediction time (weight by classification count)
-            weighted_expr = ExpressionWrapper(
-                F('avg_prediction_time_ms') * F('total_classifications'),
-                output_field=FloatField()
-            )
             totals = stats_query.aggregate(
                 total_classifications=Sum('total_classifications'),
                 high_confidence=Sum('high_confidence_count'),
@@ -285,12 +280,20 @@ class ClassificationStatsView(APIView):
                 multiple_candidates=Sum('multiple_candidates_count'),
                 uncertain=Sum('uncertain_count'),
                 dns_detections=Sum('dns_detections'),
-                asn_fallback=Sum('asn_fallback_count'),
-                sum_weighted_avg=Sum(weighted_expr)
+                asn_fallback=Sum('asn_fallback_count')
             )
             
             total_count = totals['total_classifications'] or 0
-            weighted_avg = (totals['sum_weighted_avg'] or 0) / total_count if total_count > 0 else 0
+            
+            # Calculate weighted average for prediction time (weight by classification count)
+            # Use separate query to avoid aggregate-in-aggregate issues
+            weighted_sum = 0
+            if total_count > 0:
+                for stat in stats_query.values('avg_prediction_time_ms', 'total_classifications'):
+                    weighted_sum += (stat['avg_prediction_time_ms'] or 0) * (stat['total_classifications'] or 0)
+                weighted_avg = weighted_sum / total_count
+            else:
+                weighted_avg = 0
             
             # Build summary
             summary = {

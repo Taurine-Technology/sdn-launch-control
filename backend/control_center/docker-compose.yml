@@ -35,6 +35,8 @@ services:
                python manage.py populate_categories_from_model &&
                python manage.py migrate_categories_to_models &&
                python manage.py populate_redis_asn &&
+               python manage.py load_dns_servers &&
+               python manage.py setup_classification_stats &&
                python manage.py initialise_plugins &&
                python manage.py create_default_user &&
                gunicorn control_center.asgi:application -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000"

@@ -1,6 +1,10 @@
 from django.core.management.base import BaseCommand, CommandError
 from odl.models import Category
 from classifier.model_manager import model_manager
+from classifier.models import ModelConfiguration
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -24,15 +28,16 @@ class Command(BaseCommand):
         
         self.stdout.write(self.style.SUCCESS('Starting to populate categories from model configuration...'))
         
-        # Get the model to use for categories
+        # Get the model to use for categories and store the ModelConfiguration instance
+        model_config = None
+        
         if model_name:
             # Check if model exists in database
             try:
-                from classifier.models import ModelConfiguration
-                target_model_config = ModelConfiguration.objects.get(name=model_name)
+                model_config = ModelConfiguration.objects.get(name=model_name)
                 target_model = type('ModelConfig', (), {
-                    'name': target_model_config.display_name,
-                    'categories': target_model_config.categories
+                    'name': model_config.display_name,
+                    'categories': model_config.categories
                 })()
                 self.stdout.write(f"Using specified model: {model_name}")
             except ModelConfiguration.DoesNotExist:
@@ -41,30 +46,32 @@ class Command(BaseCommand):
             if not model_manager.active_model:
                 # Try to get the first active model from database
                 try:
-                    from classifier.models import ModelConfiguration
-                    active_model_config = ModelConfiguration.objects.filter(is_active=True).first()
-                    if active_model_config:
+                    model_config = ModelConfiguration.objects.filter(is_active=True).first()
+                    if model_config:
                         target_model = type('ModelConfig', (), {
-                            'name': active_model_config.display_name,
-                            'categories': active_model_config.categories
+                            'name': model_config.display_name,
+                            'categories': model_config.categories
                         })()
-                        self.stdout.write(f"Using active model from database: {active_model_config.name}")
+                        self.stdout.write(f"Using active model from database: {model_config.name}")
                     else:
                         raise CommandError("No active model found in database")
                 except Exception as e:
-                    raise CommandError(f"No active model configured: {e}")
+                    raise CommandError(f"No active model configured: {e}") from e
             else:
                 # Use the active model from model manager
                 try:
-                    from classifier.models import ModelConfiguration
-                    target_model_config = ModelConfiguration.objects.get(name=model_manager.active_model)
+                    model_config = ModelConfiguration.objects.get(name=model_manager.active_model)
                     target_model = type('ModelConfig', (), {
-                        'name': target_model_config.display_name,
-                        'categories': target_model_config.categories
+                        'name': model_config.display_name,
+                        'categories': model_config.categories
                     })()
                     self.stdout.write(f"Using active model: {model_manager.active_model}")
                 except ModelConfiguration.DoesNotExist:
-                    raise CommandError(f"Active model '{model_manager.active_model}' not found in database")
+                    raise CommandError(f"Active model '{model_manager.active_model}' not found in database") from None
+        
+        # Verify we have a valid model_config
+        if not model_config:
+            raise CommandError("Failed to retrieve model configuration")
         
         # Get categories from the model configuration
         categories = target_model.categories
@@ -80,22 +87,11 @@ class Command(BaseCommand):
         
         for category_name in categories:
             try:
-                # Get or create category with model configuration
-                if model_name:
-                    from classifier.models import ModelConfiguration
-                    model_config = ModelConfiguration.objects.get(name=model_name)
-                    category, created = Category.objects.get_or_create(
-                        name=category_name,
-                        model_configuration=model_config
-                    )
-                else:
-                    # For active model, link to the model configuration
-                    from classifier.models import ModelConfiguration
-                    active_model_config = ModelConfiguration.objects.get(name=model_manager.active_model)
-                    category, created = Category.objects.get_or_create(
-                        name=category_name,
-                        model_configuration=active_model_config
-                    )
+                # Get or create category with model configuration (reuse model_config)
+                category, created = Category.objects.get_or_create(
+                    name=category_name,
+                    model_configuration=model_config
+                )
                 
                 if created:
                     self.stdout.write(self.style.SUCCESS(
@@ -107,63 +103,61 @@ class Command(BaseCommand):
                         # Force regenerate the cookie
                         old_cookie = category.category_cookie
                         category.save()  # This will regenerate the cookie
-                        self.stdout.write(self.style.NOTICE(
+                        self.stdout.write(self.style.WARNING(
                             f'🔄 Updated category: "{category.name}" (Cookie: {old_cookie} → {category.category_cookie})'))
                         updated_count += 1
                     else:
                         # Just verify the cookie exists
                         if not category.category_cookie:
                             category.save()  # This will generate the cookie
-                            self.stdout.write(self.style.NOTICE(
+                            self.stdout.write(self.style.WARNING(
                                 f'🔧 Fixed category: "{category.name}" (Cookie: {category.category_cookie})'))
                             updated_count += 1
                         else:
-                            self.stdout.write(self.style.NOTICE(
-                                f'⏭️  Skipped category: "{category.name}" (Cookie: {category.category_cookie})'))
+                            self.stdout.write(
+                                f'⏭️  Skipped category: "{category.name}" (Cookie: {category.category_cookie})')
                             skipped_count += 1
                             
             except Exception as e:
+                logger.exception(f'Error processing category "{category_name}"')
                 self.stdout.write(self.style.ERROR(
                     f'❌ Error processing category "{category_name}": {e}'))
         
-        # Ensure "Unknown" category always exists for fallback
-        self.stdout.write(self.style.NOTICE('Ensuring "Unknown" category exists for fallback...'))
+        # Ensure standard fallback categories always exist (reuse model_config from above)
+        self.stdout.write('Ensuring standard fallback categories exist...')
         
-        try:
-            # Get the model configuration for linking
-            if model_name:
-                from classifier.models import ModelConfiguration
-                model_config = ModelConfiguration.objects.get(name=model_name)
-            else:
-                from classifier.models import ModelConfiguration
-                active_model_config = ModelConfiguration.objects.get(name=model_manager.active_model)
-                model_config = active_model_config
+        if model_config:
+            # Standard fallback categories that should always exist
+            standard_categories = ["Unknown", "DNS", "Apple"]
             
-            # Check if "Unknown" category already exists for this model
-            unknown_category, unknown_created = Category.objects.get_or_create(
-                name="Unknown",
-                model_configuration=model_config
-            )
-            
-            if unknown_created:
-                self.stdout.write(self.style.SUCCESS(
-                    f'✅ Created fallback "Unknown" category (Cookie: {unknown_category.category_cookie})'))
-                created_count += 1
-            else:
-                # Verify the cookie exists
-                if not unknown_category.category_cookie:
-                    unknown_category.save()  # This will generate the cookie
-                    self.stdout.write(self.style.NOTICE(
-                        f'🔧 Fixed fallback "Unknown" category (Cookie: {unknown_category.category_cookie})'))
-                    updated_count += 1
-                else:
-                    self.stdout.write(self.style.NOTICE(
-                        f'⏭️  Fallback "Unknown" category already exists (Cookie: {unknown_category.category_cookie})'))
-                    skipped_count += 1
+            for standard_category_name in standard_categories:
+                try:
+                    # Check if category already exists for this model
+                    category, category_created = Category.objects.get_or_create(
+                        name=standard_category_name,
+                        model_configuration=model_config
+                    )
                     
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(
-                f'❌ Error ensuring "Unknown" category: {e}'))
+                    if category_created:
+                        self.stdout.write(self.style.SUCCESS(
+                            f'✅ Created standard "{standard_category_name}" category (Cookie: {category.category_cookie})'))
+                        created_count += 1
+                    else:
+                        # Verify the cookie exists
+                        if not category.category_cookie:
+                            category.save()  # This will generate the cookie
+                            self.stdout.write(self.style.WARNING(
+                                f'🔧 Fixed standard "{standard_category_name}" category (Cookie: {category.category_cookie})'))
+                            updated_count += 1
+                        else:
+                            self.stdout.write(
+                                f'⏭️  Standard "{standard_category_name}" category already exists (Cookie: {category.category_cookie})')
+                            skipped_count += 1
+                            
+                except Exception as e:
+                    logger.exception(f'Error ensuring standard category "{standard_category_name}" for model {model_config.name}')
+                    self.stdout.write(self.style.ERROR(
+                        f'❌ Error ensuring "{standard_category_name}" category: {e}'))
         
         self.stdout.write(self.style.SUCCESS(
             f'Finished populating categories from model "{target_model.name}". '

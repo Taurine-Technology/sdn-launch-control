@@ -18,9 +18,15 @@
 # For inquiries, contact Keegan White at keeganwhite@taurinetech.com.
 
 from django.utils.timezone import now
-from django.db.models import Q
+from django.db.models import Q, Sum
+from django.utils import timezone
+from datetime import timedelta
 from rest_framework.decorators import api_view
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from knox.auth import TokenAuthentication
 from django.http import JsonResponse
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -29,6 +35,7 @@ import json
 from classifier.classification import create_classification_from_json
 from classifier.meter_flow_rule import MeterFlowRule
 from classifier.model_manager import model_manager
+from classifier.models import ClassificationStats, ModelConfiguration
 from general.models import Controller, Device
 from software_plugin.models import PluginInstallation, Plugin
 from onos.models import Category, Meter
@@ -185,4 +192,191 @@ def classify(request):
         logger.info(f"[CLASSIFIER] Batching {len(flow_entries_to_log)} flow entries")
         create_flow_entries_batch.delay(flow_entries_to_log)
         return JsonResponse(results, safe=False, status=200)
+
+
+class ClassificationStatsView(APIView):
+    """
+    API endpoint to view classification statistics
+    
+    Authentication: Required (Knox Token)
+    
+    Query Parameters:
+        - model_name: Filter by model name (optional, defaults to active model)
+        - hours: Number of hours to look back (default: 24)
+        - summary: Return summary only (default: false)
+    """
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    
+    def get(self, request):
+        try:
+            # Get query parameters
+            model_name = request.query_params.get('model_name', None)
+            hours = int(request.query_params.get('hours', 24))
+            hours = max(1, min(hours, 24 * 30))  # Clamp to [1, 720] (1 hour to 30 days)
+            summary_only = request.query_params.get('summary', 'false').lower() == 'true'
+            
+            # Calculate time range
+            end_time = timezone.now()
+            start_time = end_time - timedelta(hours=hours)
+            
+            # Filter stats
+            stats_query = ClassificationStats.objects.filter(
+                timestamp__gte=start_time,
+                timestamp__lte=end_time
+            )
+            
+            # If no model specified, default to active model
+            if not model_name:
+                active_model_name = model_manager.active_model
+                if active_model_name:
+                    model_name = active_model_name
+            
+            model_info = None
+            if model_name:
+                try:
+                    model_config = ModelConfiguration.objects.get(name=model_name)
+                    stats_query = stats_query.filter(model_configuration=model_config)
+                    model_info = {
+                        'name': model_config.name,
+                        'display_name': model_config.display_name,
+                        'is_active': model_config.is_active
+                    }
+                except ModelConfiguration.DoesNotExist:
+                    return Response({
+                        'status': 'error',
+                        'message': f'Model "{model_name}" not found'
+                    }, status=status.HTTP_404_NOT_FOUND)
+            else:
+                # Show all models if no active model
+                model_info = {'name': 'all', 'display_name': 'All Models', 'is_active': False}
+            
+            # Get stats
+            stats = stats_query.order_by('-timestamp')
+            
+            if not stats.exists():
+                return Response({
+                    'status': 'success',
+                    'message': 'No statistics found for the specified criteria',
+                    'data': {
+                        'time_range': {
+                            'start': start_time.isoformat(),
+                            'end': end_time.isoformat(),
+                            'hours': hours
+                        },
+                        'model': model_info,
+                        'summary': {
+                            'total_classifications': 0
+                        },
+                        'periods': []
+                    }
+                })
+            
+            # Calculate aggregated statistics
+            totals = stats_query.aggregate(
+                total_classifications=Sum('total_classifications'),
+                high_confidence=Sum('high_confidence_count'),
+                low_confidence=Sum('low_confidence_count'),
+                multiple_candidates=Sum('multiple_candidates_count'),
+                uncertain=Sum('uncertain_count'),
+                dns_detections=Sum('dns_detections'),
+                asn_fallback=Sum('asn_fallback_count')
+            )
+            
+            total_count = totals['total_classifications'] or 0
+            
+            # Calculate weighted average for prediction time (weight by classification count)
+            # Use separate query to avoid aggregate-in-aggregate issues
+            weighted_sum = 0
+            if total_count > 0:
+                for stat in stats_query.values('avg_prediction_time_ms', 'total_classifications'):
+                    weighted_sum += (stat['avg_prediction_time_ms'] or 0) * (stat['total_classifications'] or 0)
+                weighted_avg = weighted_sum / total_count
+            else:
+                weighted_avg = 0
+            
+            # Build summary
+            summary = {
+                'total_classifications': total_count,
+                'avg_prediction_time_ms': round(weighted_avg, 2),
+                'confidence_breakdown': {
+                    'high_confidence': {
+                        'count': totals['high_confidence'] or 0,
+                        'percentage': round((totals['high_confidence'] or 0) / total_count * 100, 2) if total_count > 0 else 0
+                    },
+                    'low_confidence': {
+                        'count': totals['low_confidence'] or 0,
+                        'percentage': round((totals['low_confidence'] or 0) / total_count * 100, 2) if total_count > 0 else 0
+                    },
+                    'multiple_candidates': {
+                        'count': totals['multiple_candidates'] or 0,
+                        'percentage': round((totals['multiple_candidates'] or 0) / total_count * 100, 2) if total_count > 0 else 0
+                    },
+                    'uncertain': {
+                        'count': totals['uncertain'] or 0,
+                        'percentage': round((totals['uncertain'] or 0) / total_count * 100, 2) if total_count > 0 else 0
+                    }
+                },
+                'detection_methods': {
+                    'dns_detections': {
+                        'count': totals['dns_detections'] or 0,
+                        'percentage': round((totals['dns_detections'] or 0) / total_count * 100, 2) if total_count > 0 else 0
+                    },
+                    'asn_fallback': {
+                        'count': totals['asn_fallback'] or 0,
+                        'percentage': round((totals['asn_fallback'] or 0) / total_count * 100, 2) if total_count > 0 else 0
+                    }
+                }
+            }
+            
+            response_data = {
+                'status': 'success',
+                'data': {
+                    'time_range': {
+                        'start': start_time.isoformat(),
+                        'end': end_time.isoformat(),
+                        'hours': hours
+                    },
+                    'model': model_info,
+                    'summary': summary
+                }
+            }
+            
+            # Add detailed periods if not summary only
+            if not summary_only:
+                periods = []
+                for stat in stats[:100]:  # Limit to 100 most recent periods
+                    periods.append({
+                        'period_start': stat.period_start.isoformat(),
+                        'period_end': stat.period_end.isoformat(),
+                        'total_classifications': stat.total_classifications,
+                        'high_confidence_count': stat.high_confidence_count,
+                        'high_confidence_percentage': round(stat.high_confidence_percentage, 2),
+                        'low_confidence_count': stat.low_confidence_count,
+                        'low_confidence_percentage': round(stat.low_confidence_percentage, 2),
+                        'multiple_candidates_count': stat.multiple_candidates_count,
+                        'multiple_candidates_percentage': round(stat.multiple_candidates_percentage, 2),
+                        'uncertain_count': stat.uncertain_count,
+                        'uncertain_percentage': round(stat.uncertain_percentage, 2),
+                        'dns_detections': stat.dns_detections,
+                        'asn_fallback_count': stat.asn_fallback_count,
+                        'avg_prediction_time_ms': round(stat.avg_prediction_time_ms, 2)
+                    })
+                
+                response_data['data']['periods'] = periods
+                response_data['data']['total_periods'] = stats.count()
+            
+            return Response(response_data)
+            
+        except ValueError as e:
+            return Response({
+                'status': 'error',
+                'message': f'Invalid parameter: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            logger.exception("Error retrieving classification stats")
+            return Response({
+                'status': 'error',
+                'message': 'Internal server error'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

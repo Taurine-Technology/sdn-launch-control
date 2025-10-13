@@ -1,6 +1,6 @@
 {
   "models": {
-    "Deep Traffic CNN 25.09.1": {
+    "Deep Traffic CNN v25.09.1": {
       "name": "Deep Traffic CNN with Multi-Scale Feature Extraction",
       "model_type": "keras_h5",
       "model_path": "classifier/ml_models/DeepTrafficCNN-25.09.1.h5",
@@ -9,7 +9,7 @@
       "confidence_threshold": 0.7,
       "description": "Deep 1D CNN architecture with dual convolutional layers, max pooling, and dropout regularization. Achieved 82.15% test accuracy on traffic classification with excellent generalization. Features multi-scale feature extraction for robust packet analysis. Trained on 02-09-2025.",
       "version": "25.09.1",
-      "is_active": true,
+      "is_active": false,
       "categories": [
         "Facebook",
         "FbookReelStory",
@@ -25,12 +25,40 @@
         "Xiaomi",
         "YouTube"
       ]
+    },
+    "Deep Traffic CNN v25.10.13": {
+      "name": "Deep Traffic CNN with Multi-Scale Feature Extraction - Enhanced",
+      "model_type": "keras_h5",
+      "model_path": "classifier/ml_models/DeepTrafficCNN-25.10.13.h5",
+      "input_shape": [225, 5],
+      "num_categories": 15,
+      "confidence_threshold": 0.7,
+      "description": "Enhanced Deep 1D CNN architecture with LeakyReLU activation and optimized hyperparameters. Achieved 88.5% test accuracy on traffic classification with improved performance. Trained on 13-10-2025.",
+      "version": "25.10.13",
+      "is_active": true,
+      "categories": [
+        "Facebook",
+        "FbookReelStory",
+        "Google",
+        "GoogleServices",
+        "Instagram",
+        "PlayStore",
+        "QUIC",
+        "SSH",
+        "Snapchat",
+        "TLS",
+        "TikTok",
+        "WhatsApp",
+        "WhatsAppFiles",
+        "Xiaomi",
+        "YouTube"
+      ]
     }
   },
   "metadata": {
     "version": "v1.0.0",
     "description": "Model configurations for traffic classification",
-    "last_updated": "2025-09-02",
+    "last_updated": "2025-10-13",
     "author": "SDN Launch Control Team"
   }
 }

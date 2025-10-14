@@ -142,6 +142,6 @@ def check_device_health():
         return {"success": True, "message": "Device health check completed"}
     
     except Exception as e:
-        logger.exception(f"Error in check_device_health: {e}")
+        logger.exception("Error in check_device_health")
         return {"success": False, "message": str(e)}
 

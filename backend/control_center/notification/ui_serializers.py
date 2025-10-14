@@ -16,8 +16,8 @@ class NetworkNotificationUISerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "type"]
 
     def get_type(self, obj: Notification) -> str:
-        # Default type until categorization is added
-        return "OTHER"
+        # Get type from model, fallback to OTHER if field doesn't exist (pre-migration)
+        return getattr(obj, 'type', 'OTHER')
 
     def get_user(self, obj: Notification):
         # Return the username of the user who owns this notification

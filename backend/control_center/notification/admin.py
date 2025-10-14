@@ -3,9 +3,9 @@ from .models import Notifier, Notification, NetworkSummaryNotification, DataUsag
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ('user', 'message', 'is_read', 'created_at', 'notifier')
+    list_display = ('user', 'type', 'message', 'urgency', 'is_read', 'created_at', 'notifier')
     search_fields = ('user__username', 'message')
-    list_filter = ('is_read', 'created_at')
+    list_filter = ('type', 'urgency', 'is_read', 'created_at')
 
 @admin.register(Notifier)
 class NotifierAdmin(admin.ModelAdmin):

@@ -28,7 +28,7 @@ import json
 import os
 from knox.auth import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
-
+from .models import DeviceStats
 from requests.auth import HTTPBasicAuth
 from rest_framework.decorators import api_view
 from ovs_install.utilities.ansible_tasks import run_playbook
@@ -125,9 +125,21 @@ def install_ovs_qos_monitor(request):
 @api_view(['POST'])
 def post_device_stats(request):
     try:
-
         # Parse the JSON data from the request
         data = json.loads(request.body)
+        
+        # Persist stats to database
+        
+        try:
+            DeviceStats.objects.create(
+                ip_address=data.get('ip_address', ''),
+                cpu=data.get('cpu', 0.0),
+                memory=data.get('memory', 0.0),
+                disk=data.get('disk', 0.0)
+            )
+        except Exception as db_error:
+            logger.error(f"Failed to save device stats to database: {db_error}")
+        
         # Get the channel layer and send the data to the 'device_stats' group
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
@@ -139,7 +151,7 @@ def post_device_stats(request):
         )
         return Response({"status": "success"}, status=status.HTTP_200_OK)
     except Exception as e:
-        print(e)
+        logger.error(f"Error in post_device_stats: {e}")
         return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 

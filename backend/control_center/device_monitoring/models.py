@@ -19,4 +19,37 @@
 
 from django.db import models
 
-# Create your models here.
+
+class DeviceStats(models.Model):
+    """
+    Time-series model for storing device system statistics.
+    Optimized for TimescaleDB hypertable storage.
+    """
+    ip_address = models.GenericIPAddressField(db_index=True)
+    cpu = models.FloatField(help_text="CPU usage percentage")
+    memory = models.FloatField(help_text="Memory usage percentage")
+    disk = models.FloatField(help_text="Disk usage percentage")
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['ip_address', 'timestamp']),
+            models.Index(fields=['timestamp']),
+        ]
+
+    def __str__(self):
+        return f"Stats for {self.ip_address} @ {self.timestamp}"
+
+
+class DeviceHealthAlert(models.Model):
+    """
+    Tracks last notification time per device to prevent notification flooding.
+    """
+    ip_address = models.GenericIPAddressField(unique=True)
+    last_cpu_alert = models.DateTimeField(null=True, blank=True)
+    last_memory_alert = models.DateTimeField(null=True, blank=True)
+    last_disk_alert = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Health alerts for {self.ip_address}"

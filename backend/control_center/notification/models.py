@@ -26,6 +26,14 @@ class Notification(models.Model):
         ("high", "high"),
     ]
     urgency = models.CharField(max_length=10, choices=URGENCY_CHOICES, default="medium")
+    TYPE_CHOICES = [
+        ("DEVICE_RESOURCE", "Device Resource"),
+        ("NETWORK_SUMMARY", "Network Summary"),
+        ("DATA_USAGE", "Data Usage"),
+        ("APPLICATION_USAGE", "Application Usage"),
+        ("OTHER", "Other"),
+    ]
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default="OTHER", db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     notifier = models.ForeignKey(Notifier, on_delete=models.CASCADE, blank=True, null=True)
 

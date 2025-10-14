@@ -88,7 +88,8 @@ INSTALLED_APPS = [
     'ovs_install',
     'network_data',
     'account',
-    'notification'
+    'notification',
+    'device_monitoring'
 
 ]
 

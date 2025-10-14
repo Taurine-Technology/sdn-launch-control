@@ -128,17 +128,22 @@ def post_device_stats(request):
         # Parse the JSON data from the request
         data = json.loads(request.body)
         
-        # Persist stats to database
+        # Validate required fields
+        ip_address = data.get('ip_address')
+        if not ip_address:
+            logger.warning("Received device stats without ip_address")
+            return Response({"status": "error", "message": "ip_address is required"}, status=status.HTTP_400_BAD_REQUEST)
         
+        # Persist stats to database
         try:
             DeviceStats.objects.create(
-                ip_address=data.get('ip_address', ''),
+                ip_address=ip_address,
                 cpu=data.get('cpu', 0.0),
                 memory=data.get('memory', 0.0),
                 disk=data.get('disk', 0.0)
             )
-        except Exception as db_error:
-            logger.error(f"Failed to save device stats to database: {db_error}")
+        except Exception:
+            logger.exception("Failed to save device stats to database")
         
         # Get the channel layer and send the data to the 'device_stats' group
         channel_layer = get_channel_layer()
@@ -151,7 +156,7 @@ def post_device_stats(request):
         )
         return Response({"status": "success"}, status=status.HTTP_200_OK)
     except Exception as e:
-        logger.error(f"Error in post_device_stats: {e}")
+        logger.exception("Error in post_device_stats")
         return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 

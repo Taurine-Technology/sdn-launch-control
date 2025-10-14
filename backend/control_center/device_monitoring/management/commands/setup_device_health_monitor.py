@@ -2,14 +2,14 @@
 Management command to set up device health monitoring periodic task
 """
 from django.core.management.base import BaseCommand
-from django_celery_beat.models import PeriodicTask, IntervalSchedule
+from django_celery_beat.models import PeriodicTask, PeriodicTasks, IntervalSchedule
 import json
 
 
 class Command(BaseCommand):
     help = 'Sets up the device health monitoring periodic task'
 
-    def handle(self, *args, **options):
+    def handle(self, *_args, **_options):
         # Create or get the interval schedule (every 5 seconds)
         schedule, created = IntervalSchedule.objects.get_or_create(
             every=5,
@@ -27,6 +27,7 @@ class Command(BaseCommand):
                 'interval': schedule,
                 'task': 'device_monitoring.tasks.check_device_health',
                 'args': json.dumps([]),
+                'enabled': True,
             }
         )
 
@@ -40,6 +41,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'Updated periodic task: {task_name}'))
         else:
             self.stdout.write(self.style.SUCCESS(f'Created periodic task: {task_name}'))
+
+        # Notify celery-beat to reload the schedule immediately
+        PeriodicTasks.changed(task)
 
         self.stdout.write(self.style.SUCCESS('Device health monitoring is now scheduled to run every 5 seconds'))
 

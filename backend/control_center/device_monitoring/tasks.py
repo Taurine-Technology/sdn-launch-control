@@ -3,7 +3,7 @@ Celery tasks for device health monitoring
 """
 from celery import shared_task
 from django.contrib.auth import get_user_model
-from django.db import connection
+from django.db import connection, transaction
 from django.utils import timezone
 from datetime import timedelta
 import logging
@@ -34,12 +34,13 @@ def check_device_health():
         fifteen_seconds_ago = timezone.now() - timedelta(seconds=15)
         
         # Query for CPU and memory averages over last 15 seconds using TimescaleDB
+        # Use last(disk, timestamp) to get the most recent disk reading, not MAX
         query = """
             SELECT 
                 ip_address,
                 AVG(cpu) as avg_cpu,
                 AVG(memory) as avg_memory,
-                MAX(disk) as latest_disk
+                last(disk, timestamp) as latest_disk
             FROM device_monitoring_devicestats
             WHERE timestamp >= %s
             GROUP BY ip_address
@@ -58,56 +59,59 @@ def check_device_health():
         for ip_address, avg_cpu, avg_memory, latest_disk in device_stats:
             logger.debug(f"Device {ip_address}: CPU={avg_cpu:.2f}%, Memory={avg_memory:.2f}%, Disk={latest_disk:.2f}%")
             
-            # Get or create DeviceHealthAlert record
-            alert_record, created = DeviceHealthAlert.objects.get_or_create(
-                ip_address=ip_address
-            )
-            
             alerts_to_send = []
+            now = timezone.now()
             
-            # Check CPU threshold - Throttled to once per 60 seconds
-            if avg_cpu > 90:
-                logger.info(f"Device {ip_address}: CPU threshold exceeded - {avg_cpu:.2f}%")
-                if not alert_record.last_cpu_alert or alert_record.last_cpu_alert < sixty_seconds_ago:
-                    alerts_to_send.append({
-                        'type': 'cpu',
-                        'message': f"Device {ip_address}: CPU usage averaged {avg_cpu:.2f}% over last 15 seconds"
-                    })
-                    alert_record.last_cpu_alert = timezone.now()
-                else:
-                    logger.debug(f"Device {ip_address}: CPU alert throttled (last sent: {alert_record.last_cpu_alert})")
-            
-            # Check Memory threshold - Throttled to once per 60 seconds
-            if avg_memory > 90:
-                logger.info(f"Device {ip_address}: Memory threshold exceeded - {avg_memory:.2f}%")
-                if not alert_record.last_memory_alert or alert_record.last_memory_alert < sixty_seconds_ago:
-                    alerts_to_send.append({
-                        'type': 'memory',
-                        'message': f"Device {ip_address}: Memory usage averaged {avg_memory:.2f}% over last 15 seconds"
-                    })
-                    alert_record.last_memory_alert = timezone.now()
-                else:
-                    logger.debug(f"Device {ip_address}: Memory alert throttled (last sent: {alert_record.last_memory_alert})")
-            
-            # Check Disk threshold
-            if latest_disk > 95:
-                logger.info(f"Device {ip_address}: Disk threshold exceeded - {latest_disk:.2f}%")
-                # Check if we can send notification (not sent in last hour)
-                if not alert_record.last_disk_alert or alert_record.last_disk_alert < one_hour_ago:
-                    alerts_to_send.append({
-                        'type': 'disk',
-                        'message': f"Device {ip_address}: Disk usage is {latest_disk:.2f}%"
-                    })
-                    alert_record.last_disk_alert = timezone.now()
-                else:
-                    logger.debug(f"Device {ip_address}: Disk alert throttled (last sent: {alert_record.last_disk_alert})")
-            
-            # Create notifications for all users if there are alerts
-            if alerts_to_send:
-                logger.info(f"Device {ip_address}: {len(alerts_to_send)} alert(s) to send")
-                # Save updated alert timestamps
-                alert_record.save()
+            # Lock and atomically update throttle timestamps to avoid race conditions
+            with transaction.atomic():
+                # Acquire row-level lock to prevent concurrent task runs from creating duplicates
+                alert_record, _ = DeviceHealthAlert.objects.select_for_update().get_or_create(
+                    ip_address=ip_address
+                )
                 
+                # Check CPU threshold - Throttled to once per 60 seconds
+                if avg_cpu > 90:
+                    logger.info(f"Device {ip_address}: CPU threshold exceeded - {avg_cpu:.2f}%")
+                    if not alert_record.last_cpu_alert or alert_record.last_cpu_alert < sixty_seconds_ago:
+                        alerts_to_send.append({
+                            'type': 'cpu',
+                            'message': f"Device {ip_address}: CPU usage averaged {avg_cpu:.2f}% over last 15 seconds"
+                        })
+                        alert_record.last_cpu_alert = now
+                    else:
+                        logger.debug(f"Device {ip_address}: CPU alert throttled (last sent: {alert_record.last_cpu_alert})")
+                
+                # Check Memory threshold - Throttled to once per 60 seconds
+                if avg_memory > 90:
+                    logger.info(f"Device {ip_address}: Memory threshold exceeded - {avg_memory:.2f}%")
+                    if not alert_record.last_memory_alert or alert_record.last_memory_alert < sixty_seconds_ago:
+                        alerts_to_send.append({
+                            'type': 'memory',
+                            'message': f"Device {ip_address}: Memory usage averaged {avg_memory:.2f}% over last 15 seconds"
+                        })
+                        alert_record.last_memory_alert = now
+                    else:
+                        logger.debug(f"Device {ip_address}: Memory alert throttled (last sent: {alert_record.last_memory_alert})")
+                
+                # Check Disk threshold - Throttled to once per hour
+                if latest_disk > 95:
+                    logger.info(f"Device {ip_address}: Disk threshold exceeded - {latest_disk:.2f}%")
+                    if not alert_record.last_disk_alert or alert_record.last_disk_alert < one_hour_ago:
+                        alerts_to_send.append({
+                            'type': 'disk',
+                            'message': f"Device {ip_address}: Disk usage is {latest_disk:.2f}%"
+                        })
+                        alert_record.last_disk_alert = now
+                    else:
+                        logger.debug(f"Device {ip_address}: Disk alert throttled (last sent: {alert_record.last_disk_alert})")
+                
+                # Persist throttle timestamps atomically only if alerts will be sent
+                if alerts_to_send:
+                    logger.info(f"Device {ip_address}: {len(alerts_to_send)} alert(s) to send")
+                    alert_record.save()
+            
+            # Create notifications outside the transaction to minimize lock duration
+            if alerts_to_send:
                 users = User.objects.all()
                 user_count = users.count()
                 logger.info(f"Found {user_count} user(s) to notify")

@@ -195,7 +195,7 @@ export function NotificationPanel() {
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-96 p-0">
+      <SheetContent side="left" className="w-96 p-0 gap-0">
         {/* A11y title for Radix Dialog base */}
         <SheetHeader className="sr-only">
           <SheetTitle>
@@ -247,7 +247,7 @@ export function NotificationPanel() {
             </Button>
           </div>
         </div>
-        <ScrollArea className="h-[calc(100%-112px)]">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="divide-y divide-border">
             {(data?.results || []).map((n) => (
               <Card key={n.id} className="rounded-none shadow-none border-0">

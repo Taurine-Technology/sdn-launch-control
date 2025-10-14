@@ -56,6 +56,14 @@ def check_device_health():
         
         logger.info(f"Checking health for {len(device_stats)} device(s)")
         
+        # Fetch users once for all devices to avoid redundant queries
+        users = User.objects.all()
+        user_count = users.count()
+        if user_count == 0:
+            logger.warning("No users in system to notify!")
+            return {"success": True, "message": "Device health check completed - no users to notify"}
+        logger.info(f"Found {user_count} user(s) to notify")
+        
         for ip_address, avg_cpu, avg_memory, latest_disk in device_stats:
             logger.debug(f"Device {ip_address}: CPU={avg_cpu:.2f}%, Memory={avg_memory:.2f}%, Disk={latest_disk:.2f}%")
             
@@ -112,14 +120,6 @@ def check_device_health():
             
             # Create notifications outside the transaction to minimize lock duration
             if alerts_to_send:
-                users = User.objects.all()
-                user_count = users.count()
-                logger.info(f"Found {user_count} user(s) to notify")
-                
-                if user_count == 0:
-                    logger.warning("No users in system to notify!")
-                    continue
-                
                 notifications_to_create = []
                 
                 for user in users:

@@ -21,6 +21,7 @@ from .database import get_database_config
 from .connection_pool_setup import setup_connection_pool, setup_dev_connection_pool
 import environ
 import os
+import logging.handlers
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -213,6 +214,18 @@ SPECTACULAR_SETTINGS = {
 
 LOG_LEVEL = os.environ.get('DJANGO_LOG_LEVEL', 'INFO')
 
+# Logging configuration with environment variable support for file paths:
+# - DJANGO_LOG_FILE: Path for main application log (default: /usr/app/api.log)
+# - DJANGO_ERROR_LOG_FILE: Path for error-only log (default: /usr/app/error.log)
+# Log rotation: 10MB max file size with 5 backup files
+
+# Define apps that need identical logging config
+APP_LOGGERS = [
+    'controller', 'general', 'ovs_install', 'ovs_management',
+    'software_plugin', 'utils', 'network_device', 'odl', 'onos',
+    'account', 'notification', 'device_monitoring', 'network_data', 'classifier'
+]
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -232,15 +245,19 @@ LOGGING = {
             'formatter': 'verbose',
         },
         'file': {
-            'class': 'logging.FileHandler',
-            'filename': '/usr/app/api.log',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.environ.get('DJANGO_LOG_FILE', '/usr/app/api.log'),
             'formatter': 'verbose',
+            'maxBytes': 10485760,  # 10MB
+            'backupCount': 5,
         },
         'error_file': {
-            'class': 'logging.FileHandler',
-            'filename': '/usr/app/error.log',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.environ.get('DJANGO_ERROR_LOG_FILE', '/usr/app/error.log'),
             'formatter': 'verbose',
             'level': 'ERROR',
+            'maxBytes': 10485760,  # 10MB
+            'backupCount': 5,
         },
     },
     'root': {
@@ -254,76 +271,14 @@ LOGGING = {
             'level': 'WARNING',  # Only show warnings/errors from Django internals
             'propagate': False,
         },
-        'network_data': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
+        # Generate identical configs for app loggers
+        **{
+            app: {
+                'handlers': ['console', 'file', 'error_file'],
+                'level': LOG_LEVEL,
+                'propagate': False,
+            }
+            for app in APP_LOGGERS
         },
-        'classifier': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'controller': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'general': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'ovs_install': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'ovs_management': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'software_plugin': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'utils': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'network_device': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'odl': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'onos': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'account': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'notification': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        'device_monitoring': {
-            'handlers': ['console', 'file', 'error_file'],
-            'level': LOG_LEVEL,
-            'propagate': False,
-        },
-        # Add other app loggers as needed
     },
 }

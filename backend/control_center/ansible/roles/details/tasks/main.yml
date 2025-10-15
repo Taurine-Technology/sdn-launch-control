@@ -2,6 +2,6 @@
 - name: Get Ports
   import_tasks: ports.yml
 - name: Get Port Speeds
-  import_tasks: get-speeds.yml
+  import_tasks: ../../common/tasks/get-speeds.yml
 - name: Get OS and Distribution
   import_tasks: os-distribution.yml

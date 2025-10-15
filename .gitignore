@@ -20,5 +20,6 @@ __pycache__
 .env.development
 .env.test
 .env.production
-*.log
+*.log.*
 /env
+*.log

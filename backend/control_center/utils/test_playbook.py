@@ -221,7 +221,6 @@ def test_custom_playbook(ip, user, password, playbook_dir, playbook_name, extra_
 
 
 def main():
-    # Load .env file from the same directory as this script
     """
     Load credentials from a .env file, validate required variables, run a selected Ansible playbook test, and print the results.
     
@@ -280,3 +279,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

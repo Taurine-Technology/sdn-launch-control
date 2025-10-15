@@ -20,7 +20,7 @@
 import os
 import time
 
-from utils.ansible_formtter import get_interfaces_from_results, get_filtered_interfaces, extract_ovs_port_map
+from utils.ansible_formtter import get_interfaces_from_results, get_filtered_interfaces, extract_ovs_port_map, get_interface_speeds_from_results
 from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, create_inv_data
 from django.shortcuts import render
 from rest_framework import status
@@ -62,10 +62,15 @@ install_qos_monitor = "run-ovs-qos-monitor"
 class GetDevicePorts(APIView):
     def get(self, request, lan_ip_address):
         """
-        Returns all ports (assigned and unassigned) without the bridge ports
-        :param request: type of request
-        :param lan_ip_address: ip address of device
-        :return: interfaces on the device without the bridges
+        Return the list of interface names on a switch that are not bridge ports.
+        
+        Discovers interfaces on the device identified by lan_ip_address, ensures newly discovered interfaces exist as Port records (populating link_speed when available), and returns the names of ports that are not associated with any Bridge and are not 'ovs-system'.
+        
+        Parameters:
+            lan_ip_address (str): IPv4 address of the target switch.
+        
+        Returns:
+            dict: Response payload containing a "status" key and an "interfaces" key where "interfaces" is a list of interface name strings not associated with bridges.
         """
         try:
             validate_ipv4_address(lan_ip_address)
@@ -74,7 +79,9 @@ class GetDevicePorts(APIView):
 
             result = run_playbook(get_ports, playbook_dir_path, inventory_path)  # Ensure these variables are defined
             interfaces = check_system_details(result)
-            print(f'Interfaces {interfaces}')
+            interface_speeds = get_interface_speeds_from_results(result)
+            logger.info(f'Interfaces discovered: {interfaces}')
+            logger.info(f'Interface speeds: {interface_speeds}')
 
             existing_ports = device.ports.all()  # Get all ports currently associated with the device
             existing_port_names = [port.name for port in existing_ports]
@@ -83,11 +90,11 @@ class GetDevicePorts(APIView):
             for interface_name in interfaces:
                 if interface_name not in existing_port_names:
                     # Interface not in DB, create and add it
-                    new_port = Port(device=device, name=interface_name)
+                    new_port = Port(device=device, name=interface_name, link_speed=interface_speeds.get(interface_name))
                     new_port.save()
                     new_ports.append(new_port.name)
             if new_ports:
-                print(f'New ports added: {new_ports}')
+                logger.info(f'New ports added: {new_ports}')
             # remove bridges from port list returned
             bridges = device.bridges.all()
             bridge_names = [bridge.name for bridge in bridges]
@@ -96,25 +103,31 @@ class GetDevicePorts(APIView):
             all_ports = [port for port in ports if port.name not in bridge_names and port.name != 'ovs-system']
             # Extracting interface names for the response
             all_interface_names = [port.name for port in all_ports]
-            print(f'All ports: {all_ports}')
+            logger.debug(f'All ports for device {device.name}: {all_ports}')
             return Response({"status": "success", "interfaces": all_interface_names}, status=status.HTTP_200_OK)
 
         except ValidationError:
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(e, exc_info=True)
-            print('ERROR HERE')
+            logger.error(f'Error in GetDeviceInterfaces: {str(e)}', exc_info=True)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GetUnassignedDevicePorts(APIView):
     def get(self, request, lan_ip_address):
         """
-        Returns unassigned ports for a device without the bridge ports
-        :param request: type of request
-        :param lan_ip_address: ip address of device
-        :return: interfaces on the device without the bridges
+        Return the names of interfaces on a switch that are not assigned to any bridge.
+        
+        Creates Port records for any newly discovered interfaces (populating their link_speed when available) and returns the list of interface names that are unassigned to bridges (excluding the 'ovs-system' interface).
+        
+        Parameters:
+            request: The HTTP request object.
+            lan_ip_address (str): IPv4 address of the target switch.
+        
+        Returns:
+            Response: JSON with "status": "success" and "interfaces": a list of unassigned interface names.
+            On invalid IP format returns a 400 response; on other failures returns a 500 response.
         """
         try:
             validate_ipv4_address(lan_ip_address)
@@ -128,6 +141,7 @@ class GetUnassignedDevicePorts(APIView):
             # print(result_ip_link)
 
             interfaces = get_filtered_interfaces(result_ip_link)
+            interface_speeds = get_interface_speeds_from_results(result_ip_link)
 
             existing_ports = device.ports.all()  # Get all ports currently associated with the device
             existing_port_names = [port.name for port in existing_ports]
@@ -137,7 +151,7 @@ class GetUnassignedDevicePorts(APIView):
                 for interface_name in interfaces:
                     if interface_name not in existing_port_names:
                         # Interface not in DB, create and add it
-                        new_port = Port(device=device, name=interface_name)
+                        new_port = Port(device=device, name=interface_name, link_speed=interface_speeds.get(interface_name))
                         new_port.save()
                         new_ports.append(new_port.name)
                 # if new_ports:
@@ -152,26 +166,33 @@ class GetUnassignedDevicePorts(APIView):
                                 port.bridge is None and port.name not in bridge_names and port.name != 'ovs-system']
             # Extracting interface names for the response
             unassigned_interface_names = [port.name for port in unassigned_ports]
-            # print(f'Unassigned ports: {unassigned_ports}')
+            logger.debug(f'Unassigned ports for device {device.name}: {unassigned_ports}')
             return Response({"status": "success", "interfaces": unassigned_interface_names}, status=status.HTTP_200_OK)
 
         except ValidationError:
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(e, exc_info=True)
-            print('ERROR HERE')
+            logger.error(f'Error in GetUnassignedDevicePorts: {str(e)}', exc_info=True)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class AssignPorts(APIView):
     def post(self, request):
+        """
+        Parse an assign-ports request payload and extract the "ports" field.
+        
+        Attempts to read request.data and retrieve the 'ports' key. If parsing fails or an unexpected error occurs, returns an HTTP 400 Response containing an error message.
+        
+        Returns:
+            Response: HTTP 400 Response with {"status": "error", "message": <error>} on parsing failure, `None` if parsing succeeds (no response is produced by this implementation).
+        """
         try:
             data = request.data
-            print(data)
+            logger.debug(f'AssignPorts request data: {data}')
             ports = data.get('ports')
         except Exception as e:
-            print(e)
+            logger.error(f'Error parsing AssignPorts request: {str(e)}', exc_info=True)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class GetBridgePortsView(APIView):
@@ -216,6 +237,18 @@ class GetDeviceBridges(APIView):
     """
 
     def get(self, request, lan_ip_address):
+        """
+        Synchronizes Open vSwitch bridges and ports from the switch at the given LAN IP and returns the discovered bridge information.
+        
+        Parameters:
+        	lan_ip_address (str): IPv4 address of the target switch to query and synchronize.
+        
+        Returns:
+        	Response: HTTP response with JSON payload:
+        		- On success (200): {'status': 'success', 'bridges': <dict>} where <dict> maps bridge names to their details.
+        		- On client error (400): {'status': 'error', 'message': <validation error message>} when the LAN IP is invalid.
+        		- On server error (500): {'status': 'error', 'message': <error message>} for unexpected failures during playbook execution or DB operations.
+        """
         try:
             # Validate the IP address
             validate_ipv4_address(lan_ip_address)
@@ -227,7 +260,7 @@ class GetDeviceBridges(APIView):
             # Sync the device with the inventory and run the playbook
 
             # write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
-            print('*** running OVS show ***')
+            logger.info(f'Running OVS show for device {lan_ip_address}')
             result = run_playbook_with_extravars(ovs_show, playbook_dir_path, inv_path)
 
             if result['status'] == 'failed':
@@ -239,7 +272,7 @@ class GetDeviceBridges(APIView):
             # Format the result into bridges
             bridges = format_ovs_show(result['results'])
             new_ports = []
-            print('we found', bridges)
+            logger.info(f'Found {len(bridges)} bridges: {list(bridges.keys())}')
             for bridge in bridges:
                 # save_bridge_name_to_config(bridge, config_path)
                 get_bridge_details = run_playbook_with_extravars(
@@ -347,8 +380,27 @@ class EditBridge(APIView):
     @transaction.atomic # Ensure atomicity for the edit operation
     def put(self, request):
         """
-        Edit an existing bridge: ports, controller, api_url.
-        Manages OVS port number assignment/clearing.
+        Edit an existing bridge's configuration (ports, controller, and api_url) on a specified switch device.
+        
+        Updates the bridge record in the database and applies the corresponding changes on the device via Ansible playbooks. Supported request fields:
+        - lan_ip_address (str): IP of the target switch (required).
+        - name (str): Bridge name to edit (required).
+        - api_url (str or null): New API URL for the bridge; setting to null/empty clears it.
+        - ports (list of str): Desired list of interface names for the bridge; interfaces not currently present will be added, and interfaces omitted will be removed.
+        - controller (dict or null): If provided, should contain `lan_ip_address` of the controller device to assign; setting to null removes the controller.
+        
+        Behavioral notes:
+        - Adds/removes ports on the device and updates Port records with bridge assignment, OVS port numbers, and link speeds when available.
+        - Changes to controller will remove the old controller and assign the new one on both device and DB relations.
+        - If the api_url or ports change and an api_url is set, flow and QoS monitors are (re)installed or updated.
+        - All device-side operations are performed via playbooks; failures from playbooks cause the operation to abort and return an error response.
+        
+        Returns:
+            Response indicating result:
+            - 200 OK on successful update.
+            - 400 Bad Request for validation errors or malformed input.
+            - 404 Not Found if the specified device or bridge does not exist.
+            - 500 Internal Server Error for unexpected failures during the update.
         """
         try:
             data = request.data
@@ -474,16 +526,40 @@ class EditBridge(APIView):
                         logger.info(f"Bridge {bridge_name} has no ports after edit, skipping OVS number retrieval.")
                         ovs_port_map = {} # Ensure it's empty
 
+                # --- 2c2. Get Interface Speeds (after ports are UP) ---
+                interface_speeds = {}
+                if ports_to_add:
+                    logger.info(f"Gathering interface speeds for newly added ports on {lan_ip_address}")
+                    speed_result = run_playbook_with_extravars('get-ports-ip-link', playbook_dir_path, inv_path)
+                    if speed_result.get('status') == 'success':
+                        interface_speeds = get_interface_speeds_from_results(speed_result)
+                        logger.info(f"Interface speeds after adding ports: {interface_speeds}")
+                    else:
+                        logger.warning(f"Failed to gather interface speeds for {lan_ip_address} during edit")
+
                 # --- 2d. Update DB for Added Ports (and potentially existing ones) ---
                 for port_name in ports_to_add:
-                    port_obj, created = Port.objects.get_or_create(name=port_name, device=device)
+                    port_obj, created = Port.objects.get_or_create(
+                        name=port_name,
+                        device=device,
+                        defaults={
+                            'link_speed': interface_speeds.get(port_name)
+                        }
+                    )
                     port_obj.bridge = original_bridge
                     port_obj.ovs_port_number = ovs_port_map.get(port_name) # Assign number
-                    port_obj.save(update_fields=['bridge', 'ovs_port_number'])
+                    # Update link_speed if we got new data (port was just brought UP)
+                    if port_name in interface_speeds:
+                        port_obj.link_speed = interface_speeds.get(port_name)
+                    port_obj.save(update_fields=['bridge', 'ovs_port_number', 'link_speed'])
                     if created:
                         logger.info(f"Created new port entry for {port_name} on device {device.name} during edit.")
                     if port_obj.ovs_port_number is None:
                         logger.warning(f"Port {port_name} added to bridge {bridge_name} during edit, but OVS port number was not found/assigned.")
+                    if port_obj.link_speed:
+                        logger.info(f"Port {port_name} link speed set to {port_obj.link_speed} Mb/s")
+                    else:
+                        logger.info(f"Port {port_name} link speed not available (interface may be down)")
 
                 # Optional: Refresh OVS numbers for ports that remained on the bridge
                 if ports_changed: # Only if adds/removes happened
@@ -627,6 +703,34 @@ class CreateBridge(APIView):
 
     @transaction.atomic # Ensure all DB operations succeed or fail together
     def post(self, request):
+        """
+        Create a new OVS bridge on a specified switch, optionally add ports, connect to a controller, and install monitoring.
+        
+        Expects request.data to contain:
+        - lan_ip_address: IPv4 address of the target switch (required).
+        - name: Bridge name to create (required).
+        - api_url: Monitoring API URL (optional; triggers monitor installation when provided).
+        - ports: List of interface names to add to the bridge (optional).
+        - controller_ip: IP of a controller to attach (optional; requires controller_port when present).
+        - controller_port: Port on the controller to connect to (required if controller_ip provided).
+        
+        Behavior:
+        - Validates the provided IP and device existence.
+        - Creates the bridge on the device via Ansible, optionally adds interfaces, and retrieves the bridge DPID.
+        - Attempts to compute an ODL node ID from the DPID when possible.
+        - If a controller is specified, validates its presence in the DB and connects the bridge to it via Ansible.
+        - Persists a Bridge record and updates or creates Port records for any added interfaces, including assigning ovs_port_number and link_speed when available.
+        - Installs flow monitoring if api_url is provided.
+        - Runs best-effort playbooks to gather OVS port numbers and interface speeds; proceeds with creation even if those secondary steps fail, logging warnings.
+        - Raises validation errors for malformed input and returns appropriate HTTP responses for failure modes.
+        
+        Returns:
+        Response object containing a JSON status and message:
+        - 201: Bridge created successfully.
+        - 400: Validation error (missing fields, invalid controller spec, or input validation).
+        - 404: Device not found.
+        - 500: Internal error (Ansible failures or database errors).
+        """
         try:
             data = request.data
             lan_ip_address = data.get('lan_ip_address')
@@ -801,6 +905,18 @@ class CreateBridge(APIView):
                          logger.warning(f"Continuing bridge creation without OVS port numbers for {bridge_name}")
                          ovs_port_map = {}  # Ensure it's an empty dict
 
+            # --- 6b. Get Interface Speeds (NOW that ports are UP) ---
+            interface_speeds = {}
+            if ports_to_add:
+                logger.info(f"Gathering interface speeds for ports on {lan_ip_address} (after bringing ports UP)")
+                # Use get-ports-ip-link playbook to get current interface speeds
+                speed_result = run_playbook_with_extravars('get-ports-ip-link', playbook_dir_path, inv_path)
+                if speed_result.get('status') == 'success':
+                    interface_speeds = get_interface_speeds_from_results(speed_result)
+                    logger.info(f"Interface speeds after bringing ports UP: {interface_speeds}")
+                else:
+                    logger.warning(f"Failed to gather interface speeds for {lan_ip_address}, continuing without speeds")
+
             # --- 7. Update Port Models in DB (The *only* place ports are linked) ---
             # Note: If ovs_port_map is empty, ports will be added to the bridge but without OVS port numbers
             # This is not ideal but allows the bridge creation to complete successfully
@@ -809,17 +925,26 @@ class CreateBridge(APIView):
                     # Use get_or_create to handle ports that might not exist in DB yet
                     port_obj, created = Port.objects.get_or_create(
                         name=port_name,
-                        device=device
-                        # Add defaults here if needed for new ports
+                        device=device,
+                        defaults={
+                            'link_speed': interface_speeds.get(port_name)
+                        }
                     )
                     port_obj.bridge = bridge
                     port_obj.ovs_port_number = ovs_port_map.get(port_name) # Get number or None
-                    port_obj.save(update_fields=['bridge', 'ovs_port_number'])
+                    # Update link_speed if we got new data (port was just brought UP)
+                    if port_name in interface_speeds:
+                        port_obj.link_speed = interface_speeds.get(port_name)
+                    port_obj.save(update_fields=['bridge', 'ovs_port_number', 'link_speed'])
 
                     if created:
                         logger.info(f"Created new port entry for {port_name} on device {device.name}.")
                     if port_obj.ovs_port_number is None:
                         logger.warning(f"Port {port_name} added to bridge {bridge_name} but OVS port number was not found/assigned.")
+                    if port_obj.link_speed:
+                        logger.info(f"Port {port_name} link speed set to {port_obj.link_speed} Mb/s")
+                    else:
+                        logger.info(f"Port {port_name} link speed not available (interface may be down)")
 
                 except Exception as e:
                     # Catch specific errors if possible, otherwise log and raise generic

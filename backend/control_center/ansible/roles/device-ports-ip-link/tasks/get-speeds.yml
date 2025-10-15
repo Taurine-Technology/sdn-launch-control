@@ -1,0 +1,15 @@
+---
+- name: Get interface speeds from sysfs
+  shell: |
+    for iface in $(ls /sys/class/net/ | grep -v -E "^(lo|veth|br-|docker0)"); do
+      speed=$(cat /sys/class/net/$iface/speed 2>/dev/null || echo "")
+      if [ -n "$speed" ]; then
+        echo "$iface:$speed"
+      fi
+    done
+  register: interface_speeds
+  changed_when: false
+
+- name: Debug interface speeds
+  debug:
+    var: interface_speeds.stdout_lines

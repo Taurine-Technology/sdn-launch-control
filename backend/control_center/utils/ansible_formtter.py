@@ -42,6 +42,49 @@ def get_filtered_interfaces(results):
     return interfaces
 
 
+def get_interface_speeds_from_results(results):
+    """
+    Extract interface speeds from ansible playbook results.
+    
+    Args:
+        results (dict): Either the full playbook result dict (with 'results' key)
+                       or just the 'results' portion of the playbook output.
+    
+    Returns:
+        dict: {interface_name: speed_in_mbps} or empty dict if not found.
+    """
+    speeds = {}
+    
+    # Handle both calling patterns: 
+    # 1. Full result dict (has 'results' key)
+    # 2. Just the results portion (already extracted)
+    results_data = results.get('results', results) if isinstance(results, dict) else results
+    
+    # Navigate to the relevant results dictionary
+    command_key = "Get interface speeds from sysfs"
+    
+    # Debug: Log available keys to help troubleshooting
+    if isinstance(results_data, dict):
+        logger.debug(f"Available keys in results_data: {list(results_data.keys())}")
+    
+    if command_key in results_data:
+        output_lines = results_data[command_key].get('stdout_lines', [])
+        logger.debug(f"Found {len(output_lines)} lines from speed task")
+        
+        for line in output_lines:
+            if ':' in line:
+                parts = line.split(':')
+                if len(parts) == 2:
+                    iface, speed = parts[0].strip(), parts[1].strip()
+                    try:
+                        speeds[iface] = int(speed)
+                    except ValueError:
+                        logger.warning(f"Invalid speed value for {iface}: {speed}")
+    
+    logger.debug(f"Extracted interface speeds: {speeds}")
+    return speeds
+
+
 def extract_ovs_port_map(playbook_result):
     """
     Extracts the ovs_port_map dictionary {interface_name: ofport_number}

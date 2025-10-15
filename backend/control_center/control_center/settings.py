@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     'controller',
     'general',
     'ovs_install',
+    'ovs_management',
     'network_data',
     'account',
     'notification',
@@ -232,28 +233,94 @@ LOGGING = {
         },
         'file': {
             'class': 'logging.FileHandler',
-            'filename': '/usr/app/api.log',  # Or another path in your Docker volume
+            'filename': '/usr/app/api.log',
             'formatter': 'verbose',
+        },
+        'error_file': {
+            'class': 'logging.FileHandler',
+            'filename': '/usr/app/error.log',
+            'formatter': 'verbose',
+            'level': 'ERROR',
         },
     },
     'root': {
-        'handlers': ['console', 'file'],
+        'handlers': ['console', 'file', 'error_file'],
         'level': LOG_LEVEL,
     },
     'loggers': {
         # Only log your apps at INFO or DEBUG, not all of Django
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console', 'file', 'error_file'],
             'level': 'WARNING',  # Only show warnings/errors from Django internals
             'propagate': False,
         },
         'network_data': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console', 'file', 'error_file'],
             'level': LOG_LEVEL,
             'propagate': False,
         },
         'classifier': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'controller': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'general': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'ovs_install': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'ovs_management': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'software_plugin': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'utils': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'network_device': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'odl': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'onos': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'account': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'notification': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'device_monitoring': {
+            'handlers': ['console', 'file', 'error_file'],
             'level': LOG_LEVEL,
             'propagate': False,
         },

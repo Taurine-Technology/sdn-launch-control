@@ -1,3 +1,5 @@
 ---
 - name: Get Ports
   import_tasks: ports.yml
+- name: Get Port Speeds
+  import_tasks: get-speeds.yml

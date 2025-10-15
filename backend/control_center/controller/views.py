@@ -27,6 +27,7 @@ from rest_framework.response import Response
 from ovs_install.utilities.ansible_tasks import run_playbook
 from general.models import Device, Port, Controller
 from ovs_install.utilities.utils import check_system_details
+from utils.ansible_formtter import get_interface_speeds_from_results
 from django.shortcuts import get_object_or_404
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
@@ -81,12 +82,14 @@ class InstallControllerView(APIView):
                 return Response({"status": "error", "message": "Invalid controller type"}, status=status.HTTP_400_BAD_REQUEST)
 
             if result_install['status'] == 'failed':
-                print(result_install)
+                logger.error(f'Controller installation failed: {result_install}')
                 return Response({"status": "error", "message": result_install['error']}, status=status.HTTP_400_BAD_REQUEST)
-            print(f'Installing {controller_type} on device')
+            logger.info(f'Installing {controller_type} on device')
             result = run_playbook(get_ports, playbook_dir_path, inv_path)
             interfaces = check_system_details(result)
-            print(f'Interfaces: {interfaces}')
+            interface_speeds = get_interface_speeds_from_results(result.get('results', {}))
+            logger.info(f'Interfaces discovered: {interfaces}')
+            logger.info(f'Interface speeds: {interface_speeds}')
             if interfaces is not None:
                 num_ports = len(interfaces)
             else:
@@ -107,11 +110,14 @@ class InstallControllerView(APIView):
             )
             if created:
                 if interfaces is not None:
-                    print('Creating ports')
+                    logger.info(f'Creating {len(interfaces)} ports for device {device.name}')
                     for interface in interfaces:
                         port, created_ports = Port.objects.get_or_create(
                             name=interface,
-                            device=device
+                            device=device,
+                            defaults={
+                                'link_speed': interface_speeds.get(interface)
+                            }
                         )
             controller = Controller.objects.get_or_create(
                 type=controller_type,
@@ -123,5 +129,5 @@ class InstallControllerView(APIView):
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print(e)
+            logger.error(f'Error in InstallControllerView: {str(e)}', exc_info=True)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -38,7 +38,7 @@ class ControllerSerializer(serializers.ModelSerializer):
 class PortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Port
-        fields = ['id', 'name', 'ovs_port_number']
+        fields = ['id', 'name', 'ovs_port_number', 'link_speed']
 
 
 class DeviceSerializer(serializers.ModelSerializer):

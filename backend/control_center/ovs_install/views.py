@@ -27,6 +27,7 @@ from rest_framework.response import Response
 from .utilities.ansible_tasks import run_playbook
 from general.models import Device, Port
 from .utilities.utils import check_system_details
+from utils.ansible_formtter import get_interface_speeds_from_results
 from django.shortcuts import get_object_or_404
 from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, create_inv_data
 from django.core.validators import validate_ipv4_address
@@ -84,7 +85,7 @@ class InstallOvsView(APIView):
 
 
             if result_install['status'] == 'failed':
-                print('install-ovs failed')
+                logger.error('install-ovs failed')
                 return Response({"status": "error", "message": result_install['error']}, status=status.HTTP_400_BAD_REQUEST)
 
             # save_api_url_to_config(data.get('api_url'), config_path)
@@ -100,12 +101,14 @@ class InstallOvsView(APIView):
                 }
             )
             if result_install_monitor['status'] == 'failed':
-                print('install-system_monitor failed')
+                logger.error('install-system_monitor failed')
                 return Response({"status": "error", "message": result_install_monitor['error']}, status=status.HTTP_400_BAD_REQUEST)
            
             result = run_playbook_with_extravars(get_ports, playbook_dir_path, inv_path)
             interfaces = check_system_details(result)
-            print(f'Interfaces: {interfaces}')
+            interface_speeds = get_interface_speeds_from_results(result.get('results', {}))
+            logger.info(f'Interfaces discovered: {interfaces}')
+            logger.info(f'Interface speeds: {interface_speeds}')
             if interfaces is not None:
                 num_ports = len(interfaces)
             else:
@@ -132,13 +135,14 @@ class InstallOvsView(APIView):
                 device.save(update_fields=['ovs_enabled'])
             if created:
                 if interfaces is not None:
-                    print('Creating ports')
+                    logger.info(f'Creating {len(interfaces)} ports for device {device.name}')
                     for interface in interfaces:
                         port, created_ports = Port.objects.get_or_create(
                             name=interface,
                             device=device,
                             defaults={
-                                'device': device
+                                'device': device,
+                                'link_speed': interface_speeds.get(interface)
                             }
                         )
 
@@ -155,5 +159,5 @@ class InstallOvsView(APIView):
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print(e)
+            logger.error(f'Error in InstallOvsView: {str(e)}', exc_info=True)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)

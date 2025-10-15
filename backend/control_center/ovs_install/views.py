@@ -52,6 +52,17 @@ install_system_monitor = "install-stats-monitor"
 class InstallOvsView(APIView):
 
     def post(self, request):
+        """
+        Handle POST requests to install Open vSwitch on a remote device and record its ports.
+        
+        This endpoint validates the provided LAN IP address, runs Ansible playbooks to install OVS and a system monitor on the target device, discovers network interfaces and their speeds, and persists a Device record (creating Port records for discovered interfaces when a new device is created). It also updates an existing device to mark OVS as enabled if necessary and logs execution duration and discovered details.
+        
+        Returns:
+            Response: A Django REST framework Response whose JSON body contains:
+                - "status": "success" or "error"
+                - "message": a human-readable message
+            Uses HTTP 200 for success and HTTP 400 for errors. If the IP address is invalid, the response is HTTP 400 with message "Invalid IP address format." On other failures, the response is HTTP 400 with the exception message.
+        """
         start_time = time.perf_counter()
         try:
 

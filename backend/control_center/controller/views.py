@@ -56,6 +56,30 @@ class InstallControllerView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, controller_type):
+        """
+        Handle POST to install a network controller on a remote device, discover its ports, and persist Device/Port/Controller records.
+        
+        Expects request.data to contain:
+        - lan_ip_address: IPv4 address of the target device (validated).
+        - username: SSH/credential username for the device.
+        - password: SSH/credential password for the device.
+        - device_type: Type/category to store on the Device record.
+        - name: Friendly name for the Device.
+        - os_type: Operating system type for the Device.
+        
+        Parameters:
+            request: DRF request containing the above data in request.data.
+            controller_type (str): Controller to install; supported values are "onos" and "odl".
+        
+        Returns:
+            Response: JSON with keys:
+                - "status": "success" on completion or "error" on failure.
+                - "message": On success, "Controller Installed." if a new Device was created or
+                  "Controller already installed." if the Device existed. On error, a descriptive message.
+            HTTP status codes:
+                - 200 on success
+                - 400 on validation failure, invalid controller_type, installation failure, or other errors.
+        """
         try:
             data = request.data
             validate_ipv4_address(data.get('lan_ip_address'))

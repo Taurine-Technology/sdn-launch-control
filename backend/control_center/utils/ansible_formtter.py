@@ -21,6 +21,15 @@ def get_interfaces_from_results(results):
 
 
 def get_filtered_interfaces(results):
+    """
+    Return a list of network interface names extracted from Ansible playbook results, excluding loopback, veth, bridge, and docker interfaces.
+    
+    Parameters:
+        results (dict): Ansible playbook result dictionary that contains a 'results' mapping with the key "Run ip link show command with shell" whose value provides 'stdout_lines' from an `ip link` command.
+    
+    Returns:
+        list: Interface names (str) parsed from the command output, excluding names that start with "lo", "veth", "br-" or equal "docker0".
+    """
     interfaces = []
     
     # Define interfaces to exclude (e.g., loopback, bridges, virtual interfaces)
@@ -44,14 +53,16 @@ def get_filtered_interfaces(results):
 
 def get_interface_speeds_from_results(results):
     """
-    Extract interface speeds from ansible playbook results.
+    Extracts interface speeds from Ansible playbook results.
     
-    Args:
-        results (dict): Either the full playbook result dict (with 'results' key)
-                       or just the 'results' portion of the playbook output.
+    Parameters:
+        results (dict or mapping): Either the full playbook result dictionary (containing a 'results' key)
+            or the already-extracted results mapping that includes the "Get interface speeds from sysfs"
+            task entry. The function accepts either form and normalizes internally.
     
     Returns:
-        dict: {interface_name: speed_in_mbps} or empty dict if not found.
+        dict: Mapping of interface name to speed in megabits per second (int), e.g. {'eth0': 1000}.
+            Returns an empty dict if no valid speeds are found.
     """
     speeds = {}
     
@@ -87,16 +98,13 @@ def get_interface_speeds_from_results(results):
 
 def extract_ovs_port_map(playbook_result):
     """
-    Extracts the ovs_port_map dictionary {interface_name: ofport_number}
-    from the result of the 'get-ovs-port-numbers' playbook.
-
-    Args:
-        playbook_result (dict): The dictionary returned by run_playbook_with_extravars.
-                                It's expected to have a 'status' and 'results' key.
-
+    Extract the Open vSwitch port map mapping interface names to ofport numbers from a playbook result.
+    
+    Parameters:
+        playbook_result (dict): Result returned by run_playbook_with_extravars; expected to contain a 'status' key and a 'results' dictionary.
+    
     Returns:
-        dict: The extracted ovs_port_map, or an empty dict if not found,
-              if the playbook failed, or if the result format is unexpected.
+        dict: Mapping of interface name (str) to ofport number (int) if found and valid, otherwise an empty dict.
     """
     ovs_map = {}
     if not isinstance(playbook_result, dict):

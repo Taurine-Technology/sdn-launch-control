@@ -62,10 +62,15 @@ install_qos_monitor = "run-ovs-qos-monitor"
 class GetDevicePorts(APIView):
     def get(self, request, lan_ip_address):
         """
-        Returns all ports (assigned and unassigned) without the bridge ports
-        :param request: type of request
-        :param lan_ip_address: ip address of device
-        :return: interfaces on the device without the bridges
+        Return the list of interface names on a switch that are not bridge ports.
+        
+        Discovers interfaces on the device identified by lan_ip_address, ensures newly discovered interfaces exist as Port records (populating link_speed when available), and returns the names of ports that are not associated with any Bridge and are not 'ovs-system'.
+        
+        Parameters:
+            lan_ip_address (str): IPv4 address of the target switch.
+        
+        Returns:
+            dict: Response payload containing a "status" key and an "interfaces" key where "interfaces" is a list of interface name strings not associated with bridges.
         """
         try:
             validate_ipv4_address(lan_ip_address)
@@ -112,10 +117,17 @@ class GetDevicePorts(APIView):
 class GetUnassignedDevicePorts(APIView):
     def get(self, request, lan_ip_address):
         """
-        Returns unassigned ports for a device without the bridge ports
-        :param request: type of request
-        :param lan_ip_address: ip address of device
-        :return: interfaces on the device without the bridges
+        Return the names of interfaces on a switch that are not assigned to any bridge.
+        
+        Creates Port records for any newly discovered interfaces (populating their link_speed when available) and returns the list of interface names that are unassigned to bridges (excluding the 'ovs-system' interface).
+        
+        Parameters:
+            request: The HTTP request object.
+            lan_ip_address (str): IPv4 address of the target switch.
+        
+        Returns:
+            Response: JSON with "status": "success" and "interfaces": a list of unassigned interface names.
+            On invalid IP format returns a 400 response; on other failures returns a 500 response.
         """
         try:
             validate_ipv4_address(lan_ip_address)
@@ -167,6 +179,14 @@ class GetUnassignedDevicePorts(APIView):
 
 class AssignPorts(APIView):
     def post(self, request):
+        """
+        Parse an assign-ports request payload and extract the "ports" field.
+        
+        Attempts to read request.data and retrieve the 'ports' key. If parsing fails or an unexpected error occurs, returns an HTTP 400 Response containing an error message.
+        
+        Returns:
+            Response: HTTP 400 Response with {"status": "error", "message": <error>} on parsing failure, `None` if parsing succeeds (no response is produced by this implementation).
+        """
         try:
             data = request.data
             logger.debug(f'AssignPorts request data: {data}')
@@ -217,6 +237,18 @@ class GetDeviceBridges(APIView):
     """
 
     def get(self, request, lan_ip_address):
+        """
+        Synchronizes Open vSwitch bridges and ports from the switch at the given LAN IP and returns the discovered bridge information.
+        
+        Parameters:
+        	lan_ip_address (str): IPv4 address of the target switch to query and synchronize.
+        
+        Returns:
+        	Response: HTTP response with JSON payload:
+        		- On success (200): {'status': 'success', 'bridges': <dict>} where <dict> maps bridge names to their details.
+        		- On client error (400): {'status': 'error', 'message': <validation error message>} when the LAN IP is invalid.
+        		- On server error (500): {'status': 'error', 'message': <error message>} for unexpected failures during playbook execution or DB operations.
+        """
         try:
             # Validate the IP address
             validate_ipv4_address(lan_ip_address)
@@ -348,8 +380,27 @@ class EditBridge(APIView):
     @transaction.atomic # Ensure atomicity for the edit operation
     def put(self, request):
         """
-        Edit an existing bridge: ports, controller, api_url.
-        Manages OVS port number assignment/clearing.
+        Edit an existing bridge's configuration (ports, controller, and api_url) on a specified switch device.
+        
+        Updates the bridge record in the database and applies the corresponding changes on the device via Ansible playbooks. Supported request fields:
+        - lan_ip_address (str): IP of the target switch (required).
+        - name (str): Bridge name to edit (required).
+        - api_url (str or null): New API URL for the bridge; setting to null/empty clears it.
+        - ports (list of str): Desired list of interface names for the bridge; interfaces not currently present will be added, and interfaces omitted will be removed.
+        - controller (dict or null): If provided, should contain `lan_ip_address` of the controller device to assign; setting to null removes the controller.
+        
+        Behavioral notes:
+        - Adds/removes ports on the device and updates Port records with bridge assignment, OVS port numbers, and link speeds when available.
+        - Changes to controller will remove the old controller and assign the new one on both device and DB relations.
+        - If the api_url or ports change and an api_url is set, flow and QoS monitors are (re)installed or updated.
+        - All device-side operations are performed via playbooks; failures from playbooks cause the operation to abort and return an error response.
+        
+        Returns:
+            Response indicating result:
+            - 200 OK on successful update.
+            - 400 Bad Request for validation errors or malformed input.
+            - 404 Not Found if the specified device or bridge does not exist.
+            - 500 Internal Server Error for unexpected failures during the update.
         """
         try:
             data = request.data
@@ -652,6 +703,34 @@ class CreateBridge(APIView):
 
     @transaction.atomic # Ensure all DB operations succeed or fail together
     def post(self, request):
+        """
+        Create a new OVS bridge on a specified switch, optionally add ports, connect to a controller, and install monitoring.
+        
+        Expects request.data to contain:
+        - lan_ip_address: IPv4 address of the target switch (required).
+        - name: Bridge name to create (required).
+        - api_url: Monitoring API URL (optional; triggers monitor installation when provided).
+        - ports: List of interface names to add to the bridge (optional).
+        - controller_ip: IP of a controller to attach (optional; requires controller_port when present).
+        - controller_port: Port on the controller to connect to (required if controller_ip provided).
+        
+        Behavior:
+        - Validates the provided IP and device existence.
+        - Creates the bridge on the device via Ansible, optionally adds interfaces, and retrieves the bridge DPID.
+        - Attempts to compute an ODL node ID from the DPID when possible.
+        - If a controller is specified, validates its presence in the DB and connects the bridge to it via Ansible.
+        - Persists a Bridge record and updates or creates Port records for any added interfaces, including assigning ovs_port_number and link_speed when available.
+        - Installs flow monitoring if api_url is provided.
+        - Runs best-effort playbooks to gather OVS port numbers and interface speeds; proceeds with creation even if those secondary steps fail, logging warnings.
+        - Raises validation errors for malformed input and returns appropriate HTTP responses for failure modes.
+        
+        Returns:
+        Response object containing a JSON status and message:
+        - 201: Bridge created successfully.
+        - 400: Validation error (missing fields, invalid controller spec, or input validation).
+        - 404: Device not found.
+        - 500: Internal error (Ansible failures or database errors).
+        """
         try:
             data = request.data
             lan_ip_address = data.get('lan_ip_address')

@@ -62,7 +62,14 @@ from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, cr
 
 
 def print_result(title, data, indent=2):
-    """Pretty print results"""
+    """
+    Prints a titled, delimited JSON representation of `data` to stdout.
+    
+    Parameters:
+        title (str): Heading text displayed above the JSON output.
+        data: A JSON-serializable Python object to be printed.
+        indent (int): Number of spaces used for JSON indentation (default: 2).
+    """
     print(f"\n{'='*60}")
     print(f"{title}")
     print(f"{'='*60}")
@@ -71,7 +78,18 @@ def print_result(title, data, indent=2):
 
 
 def test_get_ports(ip, user, password, playbook_dir):
-    """Test the get-ports playbook"""
+    """
+    Run the "get-ports" Ansible playbook using the provided connection credentials and playbook directory.
+    
+    Parameters:
+        ip (str): Target host IP address to include in the temporary inventory.
+        user (str): SSH username for the target host.
+        password (str): SSH password for the target host.
+        playbook_dir (str): Filesystem path to the directory containing the playbook.
+    
+    Returns:
+        dict: Raw playbook execution result as returned by the playbook runner; includes a 'results' key used to extract interfaces.
+    """
     logger.info("Testing get-ports playbook...")
     
     inv_content = create_inv_data(ip, user, password)
@@ -86,7 +104,18 @@ def test_get_ports(ip, user, password, playbook_dir):
 
 
 def test_get_ports_ip_link(ip, user, password, playbook_dir):
-    """Test the get-ports-ip-link playbook"""
+    """
+    Run the `get-ports-ip-link` Ansible playbook against a temporary inventory and log the filtered interfaces and their speeds.
+    
+    Parameters:
+        ip (str): IP address of the target host.
+        user (str): SSH username for the target host.
+        password (str): SSH password for the target host.
+        playbook_dir (str): Filesystem path to the directory containing the playbooks.
+    
+    Returns:
+        result: Raw result object returned by the playbook runner containing playbook execution details.
+    """
     logger.info("Testing get-ports-ip-link playbook...")
     
     inv_content = create_inv_data(ip, user, password)
@@ -104,7 +133,13 @@ def test_get_ports_ip_link(ip, user, password, playbook_dir):
 
 
 def test_ovs_port_numbers(ip, user, password, playbook_dir, bridge_name, ports):
-    """Test the get-ovs-port-numbers playbook"""
+    """
+    Run the `get-ovs-port-numbers` playbook for a given bridge and interfaces and return the raw playbook result.
+    
+    @param bridge_name: Name of the OVS bridge to query.
+    @param ports: Iterable of interface names to map to OVS port numbers.
+    @returns: Raw result object returned by the playbook runner.
+    """
     logger.info(f"Testing get-ovs-port-numbers for bridge {bridge_name}...")
     
     inv_content = create_inv_data(ip, user, password)
@@ -129,7 +164,18 @@ def test_ovs_port_numbers(ip, user, password, playbook_dir, bridge_name, ports):
 
 
 def test_ovs_show(ip, user, password, playbook_dir):
-    """Test the ovs-show playbook"""
+    """
+    Run the 'ovs-show' Ansible playbook using the provided connection credentials and playbook directory.
+    
+    Parameters:
+        ip (str): Target host IP address used to build a temporary inventory.
+        user (str): SSH username for the target host.
+        password (str): SSH password for the target host.
+        playbook_dir (str): Filesystem path to the directory containing the playbook.
+    
+    Returns:
+        result (dict): Raw result object produced by executing the playbook.
+    """
     logger.info("Testing ovs-show playbook...")
     
     inv_content = create_inv_data(ip, user, password)
@@ -141,7 +187,20 @@ def test_ovs_show(ip, user, password, playbook_dir):
 
 
 def test_custom_playbook(ip, user, password, playbook_dir, playbook_name, extra_vars=None):
-    """Test any custom playbook with optional extra variables"""
+    """
+    Run the specified Ansible playbook against a temporary inventory created from the given credentials.
+    
+    Parameters:
+        ip (str): IP address used to build the temporary inventory.
+        user (str): SSH username used to build the temporary inventory.
+        password (str): SSH password used to build the temporary inventory.
+        playbook_dir (str): Path to the directory containing the playbook.
+        playbook_name (str): Playbook filename or relative path within playbook_dir to execute.
+        extra_vars (dict, optional): Extra variables to pass to the playbook; when provided they are included in the execution.
+    
+    Returns:
+        result (dict): The raw execution result returned by the playbook runner, containing task and host-level details.
+    """
     logger.info(f"Testing {playbook_name} playbook...")
     
     inv_content = create_inv_data(ip, user, password)
@@ -162,7 +221,11 @@ def test_custom_playbook(ip, user, password, playbook_dir, playbook_name, extra_
 
 
 def main():
-    # Load .env file from the same directory as this script
+    """
+    Load credentials from a .env file, validate required variables, run a selected Ansible playbook test, and print the results.
+    
+    This function locates a .env file alongside the script, loads environment variables, and ensures IP, USER, and PASSWORD are present. If validation fails, the process exits with status 1. It then sets the playbook directory and executes a chosen test helper (by default the get-ports-ip-link test), printing its output. Modify the marked section to run different playbook tests or supply different arguments.
+    """
     env_path = os.path.join(script_dir, '.env')
     if not os.path.exists(env_path):
         logger.error(f".env file not found at {env_path}")

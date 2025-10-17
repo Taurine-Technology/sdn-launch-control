@@ -20,9 +20,22 @@ interface PluginContextType {
 const PluginContext = createContext<PluginContextType | undefined>(undefined);
 
 export const PluginProvider = ({ children }: { children: ReactNode }) => {
+  // Initialize from localStorage if available
   const [installedPlugins, setInstalledPlugins] = useState<
     PluginInstallation[]
-  >([]);
+  >(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("installed_plugins_cache");
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch {
+        // ignore localStorage errors
+      }
+    }
+    return [];
+  });
   const [loading, setLoading] = useState(true);
   const { token, isAuthenticated } = useAuth();
 
@@ -47,6 +60,13 @@ export const PluginProvider = ({ children }: { children: ReactNode }) => {
         processedInstalledPlugins
       );
       setInstalledPlugins(processedInstalledPlugins);
+      
+      // Cache the result in localStorage
+      try {
+        localStorage.setItem("installed_plugins_cache", JSON.stringify(processedInstalledPlugins));
+      } catch {
+        // ignore localStorage errors
+      }
     } catch (error) {
       console.error("[PluginContext.tsx] loadInstalledPlugins", error);
       setInstalledPlugins([]);
@@ -61,6 +81,12 @@ export const PluginProvider = ({ children }: { children: ReactNode }) => {
     } else if (!isAuthenticated) {
       setInstalledPlugins([]);
       setLoading(false);
+      // Clear cache when not authenticated
+      try {
+        localStorage.removeItem("installed_plugins_cache");
+      } catch {
+        // ignore localStorage errors
+      }
     }
   }, [isAuthenticated, token, loadInstalledPlugins]);
 

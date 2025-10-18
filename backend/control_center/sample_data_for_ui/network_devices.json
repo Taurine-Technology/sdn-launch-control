@@ -1,0 +1,420 @@
+[
+{
+  "model": "network_device.networkdevice",
+  "pk": 1,
+  "fields": {
+    "account": null,
+    "mac_address": "30:de:4b:f2:b8:a8",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.58",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 2,
+  "fields": {
+    "account": null,
+    "mac_address": "f2:5d:c5:d4:ee:ea",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.94",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 3,
+  "fields": {
+    "account": null,
+    "mac_address": "d8:b3:70:ac:50:6f",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.31",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 4,
+  "fields": {
+    "account": null,
+    "mac_address": "00:15:17:b8:e4:8a",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.2",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 5,
+  "fields": {
+    "account": null,
+    "mac_address": "04:42:1a:93:57:52",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.2",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 6,
+  "fields": {
+    "account": null,
+    "mac_address": "24:5a:4c:2c:4b:cb",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.30",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 7,
+  "fields": {
+    "account": null,
+    "mac_address": "4e:76:d3:61:71:25",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.91",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 8,
+  "fields": {
+    "account": null,
+    "mac_address": "b2:2c:b3:80:2d:20",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.93",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 9,
+  "fields": {
+    "account": null,
+    "mac_address": "0a:8f:6d:be:fe:37",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.93",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 10,
+  "fields": {
+    "account": null,
+    "mac_address": "64:62:66:21:42:32",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.1",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 11,
+  "fields": {
+    "account": null,
+    "mac_address": "dc:a6:32:7e:3c:8b",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "0.0.0.0",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 12,
+  "fields": {
+    "account": null,
+    "mac_address": "44:da:30:53:1d:5f",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.96",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 13,
+  "fields": {
+    "account": null,
+    "mac_address": "ae:6d:3f:15:ee:7e",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.92",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 14,
+  "fields": {
+    "account": null,
+    "mac_address": "b0:be:83:6d:96:3f",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.46",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 15,
+  "fields": {
+    "account": null,
+    "mac_address": "de:75:43:43:bb:a9",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.99",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 16,
+  "fields": {
+    "account": null,
+    "mac_address": "64:62:66:21:42:36",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.1",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 17,
+  "fields": {
+    "account": null,
+    "mac_address": "82:bf:ab:e1:d3:3b",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.61",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 18,
+  "fields": {
+    "account": null,
+    "mac_address": "5c:8b:6b:2f:2f:f1",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "0.0.0.0",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 19,
+  "fields": {
+    "account": null,
+    "mac_address": "c8:15:4e:33:03:10",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.101",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 20,
+  "fields": {
+    "account": null,
+    "mac_address": "04:bf:1b:af:b2:97",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.51",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 21,
+  "fields": {
+    "account": null,
+    "mac_address": "da:6f:06:9e:8d:a4",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "0.0.0.0",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+},
+{
+  "model": "network_device.networkdevice",
+  "pk": 22,
+  "fields": {
+    "account": null,
+    "mac_address": "0e:87:8f:31:89:a2",
+    "name": null,
+    "device_type": "end_user",
+    "operating_system": "unknown",
+    "username": null,
+    "password": null,
+    "ip_address": "10.10.10.62",
+    "number_of_ports": null,
+    "openvswitch_enabled": false,
+    "openvswitch_version": null,
+    "openflow_version": null,
+    "verified": false
+  }
+}
+]

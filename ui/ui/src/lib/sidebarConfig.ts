@@ -84,6 +84,10 @@ export function buildSidebarConfig(
                     },
                   ]
                 : []),
+              {
+                title: getT("navigation.advanced"),
+                url: "/ai-services/advanced/classification-confidence",
+              },
             ],
           },
         ]

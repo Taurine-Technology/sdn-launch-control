@@ -81,3 +81,35 @@ export const setActiveModel = async (
   );
   return data;
 };
+
+/**
+ * Fetches classification statistics from the backend.
+ */
+export const getClassificationStats = async (
+  token: string,
+  params: {
+    model_name?: string;
+    hours?: number;
+    summary?: boolean;
+  } = {}
+): Promise<any> => {
+  const axiosInstance = createAxiosInstanceWithToken(token);
+  
+  const queryParams = new URLSearchParams();
+  if (params.model_name) {
+    queryParams.append("model_name", params.model_name);
+  }
+  if (params.hours) {
+    queryParams.append("hours", params.hours.toString());
+  }
+  if (params.summary !== undefined) {
+    queryParams.append("summary", params.summary.toString());
+  }
+
+  const url = queryParams.toString()
+    ? `/classification-stats/?${queryParams.toString()}`
+    : "/classification-stats/";
+    
+  const { data } = await axiosInstance.get(url);
+  return data;
+};

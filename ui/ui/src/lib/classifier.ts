@@ -81,3 +81,56 @@ export const setActiveModel = async (
   );
   return data;
 };
+
+/**
+ * Fetches classification statistics from the backend.
+ */
+export const getClassificationStats = async (
+  token: string,
+  params: {
+    model_name?: string;
+    hours?: number;
+    summary?: boolean;
+  } = {}
+): Promise<{
+  data: {
+    summary?: {
+      confidence_breakdown: {
+        high_confidence: { count: number; percentage: number };
+        low_confidence: { count: number; percentage: number };
+        multiple_candidates: { count: number; percentage: number };
+        uncertain: { count: number; percentage: number };
+      };
+      total_classifications: number;
+      avg_prediction_time_ms: number;
+    };
+    periods?: Array<{
+      high_confidence_count: number;
+      low_confidence_count: number;
+      multiple_candidates_count: number;
+      uncertain_count: number;
+      total_classifications: number;
+      avg_prediction_time_ms: number;
+    }>;
+  };
+}> => {
+  const axiosInstance = createAxiosInstanceWithToken(token);
+  
+  const queryParams = new URLSearchParams();
+  if (params.model_name) {
+    queryParams.append("model_name", params.model_name);
+  }
+  if (params.hours) {
+    queryParams.append("hours", params.hours.toString());
+  }
+  if (params.summary !== undefined) {
+    queryParams.append("summary", params.summary.toString());
+  }
+
+  const url = queryParams.toString()
+    ? `/classification-stats/?${queryParams.toString()}`
+    : "/classification-stats/";
+    
+  const { data } = await axiosInstance.get(url);
+  return data;
+};

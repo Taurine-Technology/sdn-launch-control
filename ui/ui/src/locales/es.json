@@ -967,6 +967,27 @@
     "unknown": "Desconocido",
     "other": "Otro"
   },
+  "aiServices": {
+    "classificationConfidence": {
+      "heading": "Confianza de Clasificación",
+      "description": "Muestra qué tan seguro está el modelo de IA al identificar el tráfico de tu red.",
+      "noDataAvailable": "No hay datos disponibles para el período solicitado.",
+      "totalClassifications": "Total de Clasificaciones",
+      "avgPredictionTime": "Tiempo Promedio de Predicción",
+      "selectModel": "Seleccionar Modelo",
+      "selectPeriod": "Seleccionar Período",
+      "last24Hours": "Últimas 24 Horas",
+      "last48Hours": "Últimas 48 Horas",
+      "last72Hours": "Últimas 72 Horas",
+      "lastWeek": "Última Semana",
+      "last2Weeks": "Últimas 2 Semanas",
+      "last30Days": "Últimos 30 Días",
+      "highConfidence": "Alta Confianza",
+      "lowConfidence": "Baja Confianza",
+      "multipleCandidates": "Múltiples Candidatos",
+      "uncertain": "Incierto"
+    }
+  },
   "navigation": {
     "dashboard": "Panel de Control",
     "devices": "Dispositivos",
@@ -986,6 +1007,7 @@
     "traffic_classification_plugin": "Plugin de Clasificación de Tráfico",
     "model_management": "Gestión de Modelos",
     "sniffer_management": "Gestión de Sniffers",
+    "advanced": "Avanzado",
     "toggle": "Alternar",
     "network_notifications": "Notificaciones de Red"
   },

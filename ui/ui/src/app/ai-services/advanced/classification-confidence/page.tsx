@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/authContext";
 import { useLanguage } from "@/context/languageContext";
 import { getClassificationStats } from "@/lib/classifier";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell } from "recharts";
 import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import {
@@ -32,6 +32,20 @@ interface ClassificationData {
   color: string;
 }
 
+interface Model {
+  name: string;
+  is_active: boolean;
+}
+
+interface PeriodData {
+  high_confidence_count: number;
+  low_confidence_count: number;
+  multiple_candidates_count: number;
+  uncertain_count: number;
+  total_classifications: number;
+  avg_prediction_time_ms: number;
+}
+
 const chartConfig = {
   count: {
     label: "Classifications",
@@ -42,7 +56,7 @@ const chartConfig = {
 export default function ClassificationConfidencePage() {
   const { token } = useAuth();
   const { getT } = useLanguage();
-  const t = (key: string) => getT(`aiServices.classificationConfidence.${key}`);
+  const t = useCallback((key: string) => getT(`aiServices.classificationConfidence.${key}`), [getT]);
 
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [selectedHours, setSelectedHours] = useState<string>("720");
@@ -55,19 +69,7 @@ export default function ClassificationConfidencePage() {
   const [availableModels, setAvailableModels] = useState<Array<{name: string, display_name: string, is_active: boolean}>>([]);
 
 
-  useEffect(() => {
-    if (token) {
-      fetchModels();
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token && selectedModel) {
-      fetchData();
-    }
-  }, [token, selectedModel, selectedHours]);
-
-  const fetchModels = async () => {
+  const fetchModels = useCallback(async () => {
     try {
       const response = await fetch("http://localhost:8000/api/v1/models/", {
         headers: {
@@ -79,7 +81,7 @@ export default function ClassificationConfidencePage() {
       if (data.status === "success" && data.models) {
         setAvailableModels(data.models);
         // Set the active model as default
-        const activeModel = data.models.find((model: any) => model.is_active);
+        const activeModel = data.models.find((model: Model) => model.is_active);
         if (activeModel) {
           setSelectedModel(activeModel.name);
         }
@@ -87,9 +89,9 @@ export default function ClassificationConfidencePage() {
     } catch (err) {
       console.error("Error fetching models:", err);
     }
-  };
+  }, [token]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!token) return;
     
     setChartLoading(true);
@@ -152,7 +154,7 @@ export default function ClassificationConfidencePage() {
         let totalPredictionTime = 0;
         let periodCount = 0;
 
-        stats.data.periods.forEach((period: any) => {
+        stats.data.periods.forEach((period: PeriodData) => {
           totalHigh += period.high_confidence_count || 0;
           totalLow += period.low_confidence_count || 0;
           totalMultiple += period.multiple_candidates_count || 0;
@@ -209,7 +211,19 @@ export default function ClassificationConfidencePage() {
       setLoading(false);
       setChartLoading(false);
     }
-  };
+  }, [token, selectedModel, selectedHours, t]);
+
+  useEffect(() => {
+    if (token) {
+      fetchModels();
+    }
+  }, [token, fetchModels]);
+
+  useEffect(() => {
+    if (token && selectedModel) {
+      fetchData();
+    }
+  }, [token, selectedModel, selectedHours, fetchData]);
 
   const renderContent = () => {
     if (loading) {

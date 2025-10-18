@@ -92,7 +92,28 @@ export const getClassificationStats = async (
     hours?: number;
     summary?: boolean;
   } = {}
-): Promise<any> => {
+): Promise<{
+  data: {
+    summary?: {
+      confidence_breakdown: {
+        high_confidence: { count: number; percentage: number };
+        low_confidence: { count: number; percentage: number };
+        multiple_candidates: { count: number; percentage: number };
+        uncertain: { count: number; percentage: number };
+      };
+      total_classifications: number;
+      avg_prediction_time_ms: number;
+    };
+    periods?: Array<{
+      high_confidence_count: number;
+      low_confidence_count: number;
+      multiple_candidates_count: number;
+      uncertain_count: number;
+      total_classifications: number;
+      avg_prediction_time_ms: number;
+    }>;
+  };
+}> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   
   const queryParams = new URLSearchParams();

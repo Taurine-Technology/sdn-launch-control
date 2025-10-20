@@ -4,11 +4,28 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/authContext";
 import { useLanguage } from "@/context/languageContext";
 import { getClassificationStats } from "@/lib/classifier";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ClassificationModel } from "@/lib/types";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell } from "recharts";
-import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import {
   Breadcrumb,
@@ -32,10 +49,7 @@ interface ClassificationData {
   color: string;
 }
 
-interface Model {
-  name: string;
-  is_active: boolean;
-}
+// Reuse the shared ClassificationModel interface
 
 interface PeriodData {
   high_confidence_count: number;
@@ -56,7 +70,10 @@ const chartConfig = {
 export default function ClassificationConfidencePage() {
   const { token } = useAuth();
   const { getT } = useLanguage();
-  const t = useCallback((key: string) => getT(`aiServices.classificationConfidence.${key}`), [getT]);
+  const t = useCallback(
+    (key: string) => getT(`aiServices.classificationConfidence.${key}`),
+    [getT]
+  );
 
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [selectedHours, setSelectedHours] = useState<string>("720");
@@ -66,14 +83,15 @@ export default function ClassificationConfidencePage() {
   const [chartData, setChartData] = useState<ClassificationData[]>([]);
   const [totalClassifications, setTotalClassifications] = useState<number>(0);
   const [avgPredictionTime, setAvgPredictionTime] = useState<number>(0);
-  const [availableModels, setAvailableModels] = useState<Array<{name: string, display_name: string, is_active: boolean}>>([]);
-
+  const [availableModels, setAvailableModels] = useState<ClassificationModel[]>(
+    []
+  );
 
   const fetchModels = useCallback(async () => {
     try {
       const response = await fetch("http://localhost:8000/api/v1/models/", {
         headers: {
-          "Authorization": `Token ${token}`,
+          Authorization: `Token ${token}`,
           "Content-Type": "application/json",
         },
       });
@@ -81,7 +99,9 @@ export default function ClassificationConfidencePage() {
       if (data.status === "success" && data.models) {
         setAvailableModels(data.models);
         // Set the active model as default
-        const activeModel = data.models.find((model: Model) => model.is_active);
+        const activeModel = data.models.find(
+          (model: ClassificationModel) => model.is_active
+        );
         if (activeModel) {
           setSelectedModel(activeModel.name);
         }
@@ -93,10 +113,10 @@ export default function ClassificationConfidencePage() {
 
   const fetchData = useCallback(async () => {
     if (!token) return;
-    
+
     setChartLoading(true);
     setError(null);
-    
+
     try {
       // Use real API call
       const stats = await getClassificationStats(token, {
@@ -115,29 +135,29 @@ export default function ClassificationConfidencePage() {
         setAvgPredictionTime(avgTime);
 
         const data = [
-          { 
-            name: t("highConfidence"), 
-            count: breakdown.high_confidence?.count || 0, 
+          {
+            name: t("highConfidence"),
+            count: breakdown.high_confidence?.count || 0,
             percentage: breakdown.high_confidence?.percentage || 0,
-            color: "var(--chart-1)"
+            color: "var(--chart-1)",
           },
-          { 
-            name: t("lowConfidence"), 
-            count: breakdown.low_confidence?.count || 0, 
+          {
+            name: t("lowConfidence"),
+            count: breakdown.low_confidence?.count || 0,
             percentage: breakdown.low_confidence?.percentage || 0,
-            color: "var(--chart-2)"
+            color: "var(--chart-2)",
           },
-          { 
-            name: t("multipleCandidates"), 
-            count: breakdown.multiple_candidates?.count || 0, 
+          {
+            name: t("multipleCandidates"),
+            count: breakdown.multiple_candidates?.count || 0,
             percentage: breakdown.multiple_candidates?.percentage || 0,
-            color: "var(--chart-3)"
+            color: "var(--chart-3)",
           },
-          { 
-            name: t("uncertain"), 
-            count: breakdown.uncertain?.count || 0, 
+          {
+            name: t("uncertain"),
+            count: breakdown.uncertain?.count || 0,
             percentage: breakdown.uncertain?.percentage || 0,
-            color: "var(--chart-4)"
+            color: "var(--chart-4)",
           },
         ];
 
@@ -170,29 +190,41 @@ export default function ClassificationConfidencePage() {
         setAvgPredictionTime(avgTime);
 
         const data = [
-          { 
-            name: t("highConfidence"), 
-            count: totalHigh, 
-            percentage: totalClassifications > 0 ? (totalHigh / totalClassifications) * 100 : 0,
-            color: "var(--chart-1)"
+          {
+            name: t("highConfidence"),
+            count: totalHigh,
+            percentage:
+              totalClassifications > 0
+                ? (totalHigh / totalClassifications) * 100
+                : 0,
+            color: "var(--chart-1)",
           },
-          { 
-            name: t("lowConfidence"), 
-            count: totalLow, 
-            percentage: totalClassifications > 0 ? (totalLow / totalClassifications) * 100 : 0,
-            color: "var(--chart-2)"
+          {
+            name: t("lowConfidence"),
+            count: totalLow,
+            percentage:
+              totalClassifications > 0
+                ? (totalLow / totalClassifications) * 100
+                : 0,
+            color: "var(--chart-2)",
           },
-          { 
-            name: t("multipleCandidates"), 
-            count: totalMultiple, 
-            percentage: totalClassifications > 0 ? (totalMultiple / totalClassifications) * 100 : 0,
-            color: "var(--chart-3)"
+          {
+            name: t("multipleCandidates"),
+            count: totalMultiple,
+            percentage:
+              totalClassifications > 0
+                ? (totalMultiple / totalClassifications) * 100
+                : 0,
+            color: "var(--chart-3)",
           },
-          { 
-            name: t("uncertain"), 
-            count: totalUncertain, 
-            percentage: totalClassifications > 0 ? (totalUncertain / totalClassifications) * 100 : 0,
-            color: "var(--chart-4)"
+          {
+            name: t("uncertain"),
+            count: totalUncertain,
+            percentage:
+              totalClassifications > 0
+                ? (totalUncertain / totalClassifications) * 100
+                : 0,
+            color: "var(--chart-4)",
           },
         ];
 
@@ -251,20 +283,20 @@ export default function ClassificationConfidencePage() {
             <h1 className="text-3xl font-bold">{t("heading")}</h1>
             <p className="text-muted-foreground mt-2">{t("description")}</p>
           </div>
-          
+
           <div className="flex gap-4">
-          <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder={t("selectModel")} />
-            </SelectTrigger>
-            <SelectContent>
-              {availableModels.map((model) => (
-                <SelectItem key={model.name} value={model.name}>
-                  {model.display_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder={t("selectModel")} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableModels.map((model) => (
+                  <SelectItem key={model.name} value={model.name}>
+                    {model.display_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Select value={selectedHours} onValueChange={setSelectedHours}>
               <SelectTrigger className="w-48">
@@ -296,7 +328,7 @@ export default function ClassificationConfidencePage() {
           <h1 className="text-3xl font-bold">{t("heading")}</h1>
           <p className="text-muted-foreground mt-2">{t("description")}</p>
         </div>
-        
+
         <div className="flex gap-4">
           <Select value={selectedModel} onValueChange={setSelectedModel}>
             <SelectTrigger className="w-48">
@@ -383,13 +415,17 @@ export default function ClassificationConfidencePage() {
                             <div className="font-medium">{label}</div>
                             <div className="flex items-center gap-2">
                               <div className="h-2.5 w-2.5 rounded-[2px] bg-primary"></div>
-                              <span className="text-muted-foreground">count</span>
+                              <span className="text-muted-foreground">
+                                count
+                              </span>
                               <span className="text-foreground font-mono font-medium tabular-nums">
                                 {data.value?.toLocaleString()}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground">percentage</span>
+                              <span className="text-muted-foreground">
+                                percentage
+                              </span>
                               <span className="text-foreground font-mono font-medium tabular-nums">
                                 {data.payload?.percentage?.toFixed(1)}%
                               </span>
@@ -410,7 +446,10 @@ export default function ClassificationConfidencePage() {
           </CardContent>
           <CardFooter className="flex-col items-start gap-2 text-sm">
             <div className="flex gap-2 leading-none font-medium">
-              <span>{t("totalClassifications")}: {totalClassifications.toLocaleString()}</span>
+              <span>
+                {t("totalClassifications")}:{" "}
+                {totalClassifications.toLocaleString()}
+              </span>
             </div>
             <div className="text-muted-foreground leading-none">
               {t("avgPredictionTime")}: {avgPredictionTime.toFixed(1)} ms
@@ -462,9 +501,7 @@ export default function ClassificationConfidencePage() {
             </div>
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-            <div className="container mx-auto p-6">
-              {renderContent()}
-            </div>
+            <div className="container mx-auto p-6">{renderContent()}</div>
           </div>
         </SidebarInset>
       </SidebarProvider>

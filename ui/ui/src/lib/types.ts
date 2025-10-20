@@ -321,7 +321,11 @@ export interface ApiResponse<T> {
 }
 
 // --- Network Notifications Types ---
-export type NetworkNotificationType = "RESOURCES" | "USAGE" | "ACTIONS" | "OTHER";
+export type NetworkNotificationType =
+  | "RESOURCES"
+  | "USAGE"
+  | "ACTIONS"
+  | "OTHER";
 
 export interface NetworkNotification {
   id: number;
@@ -636,6 +640,43 @@ export interface DataPerClassificationResponse {
 export interface DataPerClassificationDataPoint {
   name: string; // classification name
   megabytes: number;
+}
+
+// --- Classification Stats Types ---
+export interface ConfidenceCountWithPercentage {
+  count: number;
+  percentage: number;
+}
+
+export interface ConfidenceBreakdown {
+  high_confidence: ConfidenceCountWithPercentage;
+  low_confidence: ConfidenceCountWithPercentage;
+  multiple_candidates: ConfidenceCountWithPercentage;
+  uncertain: ConfidenceCountWithPercentage;
+}
+
+export interface ClassificationSummaryStats {
+  confidence_breakdown: ConfidenceBreakdown;
+  total_classifications: number;
+  avg_prediction_time_ms: number;
+}
+
+export interface ClassificationPeriodStats {
+  high_confidence_count: number;
+  low_confidence_count: number;
+  multiple_candidates_count: number;
+  uncertain_count: number;
+  total_classifications: number;
+  avg_prediction_time_ms: number;
+}
+
+export interface ClassificationStatsData {
+  summary?: ClassificationSummaryStats;
+  periods?: ClassificationPeriodStats[];
+}
+
+export interface ClassificationStatsResponse {
+  data: ClassificationStatsData;
 }
 
 export interface NetworkDeviceDetailResponse {

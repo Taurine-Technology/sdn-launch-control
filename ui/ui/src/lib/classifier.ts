@@ -25,6 +25,7 @@ import {
   ModelInfoApiResponse,
   SetActiveModelRequest,
   SetActiveModelResponse,
+  ClassificationStatsResponse,
 } from "./types";
 
 /**
@@ -92,30 +93,9 @@ export const getClassificationStats = async (
     hours?: number;
     summary?: boolean;
   } = {}
-): Promise<{
-  data: {
-    summary?: {
-      confidence_breakdown: {
-        high_confidence: { count: number; percentage: number };
-        low_confidence: { count: number; percentage: number };
-        multiple_candidates: { count: number; percentage: number };
-        uncertain: { count: number; percentage: number };
-      };
-      total_classifications: number;
-      avg_prediction_time_ms: number;
-    };
-    periods?: Array<{
-      high_confidence_count: number;
-      low_confidence_count: number;
-      multiple_candidates_count: number;
-      uncertain_count: number;
-      total_classifications: number;
-      avg_prediction_time_ms: number;
-    }>;
-  };
-}> => {
+): Promise<ClassificationStatsResponse> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
-  
+
   const queryParams = new URLSearchParams();
   if (params.model_name) {
     queryParams.append("model_name", params.model_name);
@@ -130,7 +110,7 @@ export const getClassificationStats = async (
   const url = queryParams.toString()
     ? `/classification-stats/?${queryParams.toString()}`
     : "/classification-stats/";
-    
-  const { data } = await axiosInstance.get(url);
+
+  const { data } = await axiosInstance.get<ClassificationStatsResponse>(url);
   return data;
 };

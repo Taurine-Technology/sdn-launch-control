@@ -190,6 +190,37 @@
       "network_traffic": "Tráfico de Red",
       "system_health": "Salud del Sistema"
     },
+    "PortUtilizationPage": {
+      "page_title": "Utilización de Puertos",
+      "description": "Ver utilización y rendimiento de sus dispositivos de red",
+      "select_device": "Seleccionar Dispositivo",
+      "select_device_placeholder": "Elegir un dispositivo",
+      "all_devices": "Todos los Dispositivos",
+      "all_ports": "Todos los Puertos",
+      "select_ports": "Seleccionar Puertos",
+      "ports_selected": "{count} puertos seleccionados",
+      "time_range": "Rango de Tiempo",
+      "interval": "Intervalo",
+      "loading": "Cargando estadísticas de puertos...",
+      "no_data": "No hay datos de puertos disponibles",
+      "no_devices": "No se encontraron dispositivos",
+      "utilization": "Utilización",
+      "throughput": "Rendimiento (Mbps)",
+      "time_ranges": {
+        "15_minutes": "Últimos 15 minutos",
+        "1_hour": "Última 1 hora",
+        "6_hours": "Últimas 6 horas",
+        "24_hours": "Últimas 24 horas",
+        "7_days": "Últimos 7 días"
+      },
+      "intervals": {
+        "1_minute": "1 minuto",
+        "5_minutes": "5 minutos",
+        "15_minutes": "15 minutos",
+        "1_hour": "1 hora",
+        "1_day": "1 día"
+      }
+    },
     "NotificationsPage": {
       "title": "Notificaciones de Telegram",
       "link_telegram_message": "Por favor, vincula tu cuenta de Telegram para recibir notificaciones",

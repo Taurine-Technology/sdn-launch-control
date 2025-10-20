@@ -23,7 +23,6 @@
 import { createAxiosInstanceWithToken } from "./axiosInstance";
 import {
   AllDevicesPortStatsResponse,
-  ByPortResponse,
   AggregatePortStatsResponse,
 } from "./types";
 

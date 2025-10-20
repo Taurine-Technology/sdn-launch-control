@@ -37,10 +37,7 @@ import {
 import { DevicePortData, AggregateTimeSeriesPoint } from "@/lib/types";
 import { DeviceSelector } from "./port-utilization/DeviceSelector";
 import { PortFilter } from "./port-utilization/PortFilter";
-import {
-  TimeRangeSelector,
-  getIntervalForHours,
-} from "./port-utilization/TimeRangeSelector";
+import { TimeRangeSelector } from "./port-utilization/TimeRangeSelector";
 import { PortUtilizationChart } from "./port-utilization/PortUtilizationChart";
 import { PortUtilizationSkeleton } from "./port-utilization/PortUtilizationSkeleton";
 

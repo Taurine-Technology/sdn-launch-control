@@ -55,6 +55,10 @@ export function buildSidebarConfig(
           title: getT("navigation.traffic_classification"),
           url: "/monitoring/classifications",
         },
+        {
+          title: getT("navigation.port_utilization"),
+          url: "/monitoring/port-stats",
+        },
       ],
     },
     ...(showTrafficPlugin || showSnifferPlugin

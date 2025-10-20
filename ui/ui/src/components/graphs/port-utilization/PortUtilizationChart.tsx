@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/chart";
 import { AggregateTimeSeriesPoint } from "@/lib/types";
 import { useLanguage } from "@/context/languageContext";
-import { CHART_COLORS, STATUS_COLORS, getChartColor } from "@/lib/chartColors";
+import { STATUS_COLORS, getChartColor } from "@/lib/chartColors";
 
 interface PortUtilizationChartProps {
   data: AggregateTimeSeriesPoint[];
@@ -119,7 +119,15 @@ export function PortUtilizationChart({
   };
 
   // Custom tooltip content
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: Array<{
+      payload: Record<string, string | number>;
+    }>;
+  }) => {
     if (!active || !payload || payload.length === 0) return null;
 
     const timeValue = payload[0]?.payload?.time;
@@ -127,7 +135,7 @@ export function PortUtilizationChart({
     return (
       <div className="bg-background border border-border rounded-md shadow-md p-3">
         <p className="text-sm font-medium mb-2">
-          {timeValue ? formatTime(timeValue) : ""}
+          {timeValue ? formatTime(String(timeValue)) : ""}
         </p>
         <div className="space-y-1">
           {displayPortKeys.map((portKey, index) => {

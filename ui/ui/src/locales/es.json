@@ -1035,6 +1035,7 @@
     "devices_overview": "Vista General de Dispositivos",
     "ai_services": "Servicios de IA",
     "traffic_classification": "Clasificación de Tráfico",
+    "port_utilization": "Utilización de Puertos",
     "traffic_classification_plugin": "Plugin de Clasificación de Tráfico",
     "model_management": "Gestión de Modelos",
     "sniffer_management": "Gestión de Sniffers",

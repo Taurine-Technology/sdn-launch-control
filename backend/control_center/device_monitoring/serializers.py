@@ -31,25 +31,15 @@ class PortUtilizationStatsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = PortUtilizationStats
-        fields = [
-            'id', 
-            'ip_address', 
-            'port_name', 
-            'throughput_mbps', 
-            'utilization_percent', 
-            'rx_bytes_diff', 
-            'tx_bytes_diff', 
-            'duration_diff', 
-            'timestamp'
-        ]
-        read_only_fields = [
-            'id', 
-            'ip_address', 
-            'port_name', 
-            'throughput_mbps', 
-            'utilization_percent', 
-            'rx_bytes_diff', 
-            'tx_bytes_diff', 
-            'duration_diff', 
-            'timestamp'
-        ]
+        fields = (
+            'id',
+            'ip_address',
+            'port_name',
+            'throughput_mbps',
+            'utilization_percent',
+            'rx_bytes_diff',
+            'tx_bytes_diff',
+            'duration_diff',
+            'timestamp',
+        )
+        read_only_fields = fields

@@ -81,7 +81,8 @@ class PortUtilizationStats(models.Model):
         ]
 
     def __str__(self):
-        return f"Port {self.port_name} on {self.ip_address}: {self.utilization_percent:.2f}% utilized @ {self.timestamp}"
+        utilization = f"{self.utilization_percent:.2f}" if self.utilization_percent is not None else "N/A"
+        return f"Port {self.port_name} on {self.ip_address}: {utilization}% utilized @ {self.timestamp}"
 
 
 class PortUtilizationAlert(models.Model):

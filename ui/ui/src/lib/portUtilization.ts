@@ -58,13 +58,15 @@ export const fetchAllDevicesPortStats = async (
  * @param ipAddress - Device IP address (optional - omit for all devices)
  * @param hours - Number of hours to fetch
  * @param interval - Time bucket interval (e.g., "10 seconds", "1 minute", "5 minutes")
+ * @param signal - Optional AbortSignal for request cancellation
  * @returns Aggregated time series data
  */
 export const fetchPortStatsAggregate = async (
   token: string,
   ipAddress: string | null,
   hours: number,
-  interval: string
+  interval: string,
+  signal?: AbortSignal
 ): Promise<AggregatePortStatsResponse> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
 
@@ -80,7 +82,9 @@ export const fetchPortStatsAggregate = async (
 
   const url = `/port-utilization-stats/aggregate/?${params.toString()}`;
 
-  const { data } = await axiosInstance.get<AggregatePortStatsResponse>(url);
+  const { data } = await axiosInstance.get<AggregatePortStatsResponse>(url, {
+    signal,
+  });
   console.log(
     `[portUtilization] Aggregate stats${
       ipAddress ? ` for ${ipAddress}` : " for all devices"

@@ -26,8 +26,3 @@ __pycache__
 
 # cursor
 .cursor
-
-# node 
-node_modules
-./package-lock.json
-./package.json

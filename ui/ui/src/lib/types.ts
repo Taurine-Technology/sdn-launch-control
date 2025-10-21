@@ -1056,10 +1056,10 @@ export interface AggregateTimeSeriesPoint {
   bucket_time: string;
   ip_address: string;
   port_name: string;
-  avg_utilization: number;
-  max_utilization: number;
-  avg_throughput: number;
-  max_throughput: number;
+  avg_utilization: number | null;
+  max_utilization: number | null;
+  avg_throughput: number | null;
+  max_throughput: number | null;
 }
 
 // Aggregate endpoint response

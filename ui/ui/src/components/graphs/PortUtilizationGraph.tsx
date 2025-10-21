@@ -88,54 +88,77 @@ export default function PortUtilizationGraph() {
   }, [token, getT]);
 
   // Fetch port data when device or time range changes
-  const loadPortData = useCallback(async () => {
-    if (!token || !selectedDevice) return;
+  const loadPortData = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!token || !selectedDevice) return;
 
-    try {
-      setIsLoading(true);
-      setError(null);
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      // Determine IP address to query (null for all devices)
-      const ipAddress = selectedDevice === "all" ? null : selectedDevice;
+        // Determine IP address to query (null for all devices)
+        const ipAddress = selectedDevice === "all" ? null : selectedDevice;
 
-      // Fetch aggregate data using the new endpoint
-      const response = await fetchPortStatsAggregate(
-        token,
-        ipAddress,
-        selectedHours,
-        selectedInterval
-      );
+        // Fetch aggregate data using the new endpoint
+        const response = await fetchPortStatsAggregate(
+          token,
+          ipAddress,
+          selectedHours,
+          selectedInterval,
+          signal
+        );
 
-      setAggregateData(response.aggregated_data);
+        // Guard against updating state on unmounted/aborted component
+        if (signal?.aborted) return;
 
-      // Extract unique port names from the data
-      const portKeys = new Set<string>();
-      response.aggregated_data.forEach((point) => {
-        const portKey = `${point.ip_address} - ${point.port_name}`;
-        portKeys.add(portKey);
-      });
+        setAggregateData(response.aggregated_data);
 
-      setAvailablePorts(Array.from(portKeys));
+        // Extract unique port names from the data
+        const portKeys = new Set<string>();
+        response.aggregated_data.forEach((point) => {
+          const portKey = `${point.ip_address} - ${point.port_name}`;
+          portKeys.add(portKey);
+        });
 
-      // Reset port filter to "all" when device changes
-      setSelectedPorts([]);
-    } catch (err) {
-      console.error("Error fetching port data:", err);
-      setError(
-        getT("page.PortUtilizationPage.no_data", "No port data available")
-      );
-      setAggregateData([]);
-      setAvailablePorts([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [token, selectedDevice, selectedHours, selectedInterval, getT]);
+        setAvailablePorts(Array.from(portKeys));
+      } catch (err) {
+        // Don't update state if request was aborted
+        if (signal?.aborted) return;
+
+        console.error("Error fetching port data:", err);
+        setError(
+          getT("page.PortUtilizationPage.no_data", "No port data available")
+        );
+        setAggregateData([]);
+        setAvailablePorts([]);
+      } finally {
+        // Don't update state if request was aborted
+        if (!signal?.aborted) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [token, selectedDevice, selectedHours, selectedInterval, getT]
+  );
+
+  // Reset port filter when device changes (but not when time range/interval changes)
+  useEffect(() => {
+    setSelectedPorts([]);
+  }, [selectedDevice]);
 
   // Load port data when dependencies change
   useEffect(() => {
-    if (selectedDevice) {
-      loadPortData();
-    }
+    if (!selectedDevice) return;
+
+    // Create AbortController to cancel in-flight requests on cleanup
+    const abortController = new AbortController();
+
+    loadPortData(abortController.signal);
+
+    // Cleanup: abort request when dependencies change or component unmounts
+    return () => {
+      abortController.abort();
+    };
   }, [selectedDevice, selectedHours, selectedInterval, loadPortData]);
 
   // Show skeleton on initial load

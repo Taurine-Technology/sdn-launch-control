@@ -38,6 +38,15 @@ interface PortFilterProps {
   onChange: (ports: string[]) => void;
 }
 
+/**
+ * PortFilter component for selecting ports to display.
+ * 
+ * @param ports - Array of available port names
+ * @param selectedPorts - Array of selected port names. 
+ *                        Empty array ([]) means "all ports selected".
+ *                        Non-empty array means specific ports are selected.
+ * @param onChange - Callback when port selection changes
+ */
 export function PortFilter({
   ports,
   selectedPorts,
@@ -106,7 +115,12 @@ export function PortFilter({
                 "flex items-center space-x-2 rounded-sm px-2 py-1.5 cursor-pointer hover:bg-accent",
                 isAllSelected && "bg-accent"
               )}
-              onClick={handleSelectAll}
+              onClick={(e) => {
+                // Only trigger if clicking the container, not the checkbox
+                if (e.target === e.currentTarget) {
+                  handleSelectAll();
+                }
+              }}
             >
               <Checkbox
                 checked={isAllSelected}
@@ -127,7 +141,12 @@ export function PortFilter({
                     "flex items-center space-x-2 rounded-sm px-2 py-1.5 cursor-pointer hover:bg-accent",
                     isPortSelected(port) && "bg-accent"
                   )}
-                  onClick={() => handleTogglePort(port)}
+                  onClick={(e) => {
+                    // Only trigger if clicking the container, not the checkbox
+                    if (e.target === e.currentTarget) {
+                      handleTogglePort(port);
+                    }
+                  }}
                 >
                   <Checkbox
                     checked={isPortSelected(port)}

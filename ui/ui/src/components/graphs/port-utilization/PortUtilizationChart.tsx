@@ -84,13 +84,15 @@ export function PortUtilizationChart({
     const dataPoint = timeMap.get(time)!;
     // Cap at 100% to handle API edge cases (backend already returns percentages)
     // Handle null values from backend (when link_speed is unknown)
-    dataPoint[`${portKey}_utilization`] = point.avg_utilization !== null 
-      ? Math.min(point.avg_utilization, 100) 
-      : null;
+    dataPoint[`${portKey}_utilization`] =
+      point.avg_utilization !== null
+        ? Math.min(point.avg_utilization, 100)
+        : null;
     dataPoint[`${portKey}_throughput`] = point.avg_throughput ?? null;
-    dataPoint[`${portKey}_max_utilization`] = point.max_utilization !== null
-      ? Math.min(point.max_utilization, 100)
-      : null;
+    dataPoint[`${portKey}_max_utilization`] =
+      point.max_utilization !== null
+        ? Math.min(point.max_utilization, 100)
+        : null;
   });
 
   const chartData = Array.from(timeMap.values()).sort(

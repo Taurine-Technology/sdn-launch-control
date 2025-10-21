@@ -40,9 +40,9 @@ interface PortFilterProps {
 
 /**
  * PortFilter component for selecting ports to display.
- * 
+ *
  * @param ports - Array of available port names
- * @param selectedPorts - Array of selected port names. 
+ * @param selectedPorts - Array of selected port names.
  *                        Empty array ([]) means "all ports selected".
  *                        Non-empty array means specific ports are selected.
  * @param onChange - Callback when port selection changes

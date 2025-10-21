@@ -967,6 +967,109 @@ export type WebSocketMessage =
 // WebSocket connection types
 export type WebSocketChannel = "deviceStats" | "openflow" | "classifications";
 
+// --- Port Utilization Types ---
+
+// Port statistics (summary only, no time series)
+export interface PortStatistics {
+  port_name: string;
+  average: {
+    utilization: number;
+    throughput: number;
+  };
+  peak: {
+    utilization: number;
+    throughput: number;
+  };
+  data_points: number;
+}
+
+// Device port data from all-devices endpoint
+export interface DevicePortData {
+  ip_address: string;
+  total_ports: number;
+  active_ports: number;
+  busiest_port: string;
+  total_throughput: number;
+  avg_utilization: number;
+  ports: Record<string, PortStatistics>;
+}
+
+// All devices response
+export interface AllDevicesPortStatsResponse {
+  devices: Record<string, DevicePortData>;
+  time_range: {
+    start: string;
+    end: string;
+  };
+  interval: string;
+  summary: {
+    total_devices: number;
+    total_ports: number;
+    total_active_ports: number;
+    busiest_device: string;
+    total_network_throughput: number;
+    timestamp: string;
+  };
+}
+
+// Time series data point
+export interface PortTimeSeriesPoint {
+  time: string;
+  utilization: number;
+  throughput: number;
+}
+
+// Port with time series data
+export interface PortWithTimeSeries {
+  port_name: string;
+  data_points: number;
+  current: {
+    utilization: number;
+    throughput: number;
+    timestamp: string;
+  };
+  average: {
+    utilization: number;
+    throughput: number;
+  };
+  peak: {
+    utilization: number;
+    throughput: number;
+  };
+  time_series: PortTimeSeriesPoint[];
+}
+
+// By-port endpoint response
+export interface ByPortResponse {
+  ip_address: string;
+  interval: string;
+  ports: Record<string, PortWithTimeSeries>;
+  summary: {
+    total_ports: number;
+    busiest_port: string;
+    total_throughput: number;
+  };
+}
+
+// Aggregate endpoint time series point
+export interface AggregateTimeSeriesPoint {
+  bucket_time: string;
+  ip_address: string;
+  port_name: string;
+  avg_utilization: number | null;
+  max_utilization: number | null;
+  avg_throughput: number | null;
+  max_throughput: number | null;
+}
+
+// Aggregate endpoint response
+export interface AggregatePortStatsResponse {
+  aggregated_data: AggregateTimeSeriesPoint[];
+  interval: string;
+  count: number;
+  bucketed: boolean;
+}
+
 // Helper function for type-safe translation access with fallback
 export function getTranslation<T extends DeepNestedRecord>(
   translations: T,

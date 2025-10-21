@@ -190,6 +190,37 @@
       "network_traffic": "Network Traffic",
       "system_health": "System Health"
     },
+    "PortUtilizationPage": {
+      "page_title": "Port Utilization",
+      "description": "View utilization and throughput for your network devices",
+      "select_device": "Select Device",
+      "select_device_placeholder": "Choose a device",
+      "all_devices": "All Devices",
+      "all_ports": "All Ports",
+      "select_ports": "Select Ports",
+      "ports_selected": "{count} ports selected",
+      "time_range": "Time Range",
+      "interval": "Interval",
+      "loading": "Loading port statistics...",
+      "no_data": "No port data available",
+      "no_devices": "No devices found",
+      "utilization": "Utilization",
+      "throughput": "Throughput (Mbps)",
+      "time_ranges": {
+        "15_minutes": "Last 15 minutes",
+        "1_hour": "Last 1 hour",
+        "6_hours": "Last 6 hours",
+        "24_hours": "Last 24 hours",
+        "7_days": "Last 7 days"
+      },
+      "intervals": {
+        "1_minute": "1 minute",
+        "5_minutes": "5 minutes",
+        "15_minutes": "15 minutes",
+        "1_hour": "1 hour",
+        "1_day": "1 day"
+      }
+    },
     "NotificationsPage": {
       "title": "Telegram Notifications",
       "link_telegram_message": "Please link your Telegram account to receive notifications",
@@ -1004,6 +1035,7 @@
     "devices_overview": "Devices Overview",
     "ai_services": "AI Services",
     "traffic_classification": "Traffic Classification",
+    "port_utilization": "Port Utilization",
     "traffic_classification_plugin": "Traffic Classification Plugin",
     "model_management": "Model Management",
     "sniffer_management": "Sniffer Management",

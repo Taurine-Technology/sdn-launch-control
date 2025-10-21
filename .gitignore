@@ -23,3 +23,6 @@ __pycache__
 *.log.*
 /env
 *.log
+
+# cursor
+.cursor

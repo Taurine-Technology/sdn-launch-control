@@ -72,6 +72,8 @@ urlpatterns = [
     )),
     path('api/v1/', include('network_data.urls', namespace='network_data')),
 
+    path('api/v1/', include('device_monitoring.urls', namespace='device_monitoring')),
+
     # ---- Notification ----
     path('api/v1/', include('notification.urls', namespace='notification')),
 

@@ -8,6 +8,8 @@ DEVICE_TYPES = (
     ('server', 'Server'),
     ('controller', 'Controller'),
     ('vm', 'Virtual Machine'),
+    ('client', 'Client'),
+    ('dns', 'DNS Server'),
     ('end_user', 'End User'),
 )
 
@@ -52,6 +54,7 @@ class NetworkDevice(models.Model):
     password = models.CharField(max_length=100, blank=True, null=True)
     ip_address = models.GenericIPAddressField(blank=True, null=True)
     number_of_ports = models.IntegerField(blank=True, null=True)
+    is_ping_target = models.BooleanField(default=False, db_index=True)
     openvswitch_enabled = models.BooleanField(default=False)
     openvswitch_version = models.CharField(max_length=50, blank=True, null=True)
     openflow_version = models.CharField(max_length=50, blank=True, null=True)

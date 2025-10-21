@@ -98,3 +98,38 @@ class PortUtilizationAlert(models.Model):
 
     def __str__(self):
         return f"Port utilization alerts for {self.port_name} on {self.ip_address}"
+
+
+class DevicePingStats(models.Model):
+    """
+    Time-series model for storing ping results.
+    This will be converted to a TimescaleDB hypertable.
+    """
+    device = models.ForeignKey(
+        'network_device.NetworkDevice',
+        on_delete=models.CASCADE,
+        related_name='ping_stats',
+        db_index=True
+    )
+    is_alive = models.BooleanField(
+        default=False,
+        help_text="Device is online if 3+ out of 5 pings succeeded"
+    )
+    successful_pings = models.IntegerField(
+        help_text="Number of successful pings out of 5"
+    )
+    timestamp = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True
+    )
+
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['device', 'timestamp']),
+            models.Index(fields=['timestamp']),
+        ]
+
+    def __str__(self):
+        status = "Alive" if self.is_alive else "Down"
+        return f"{self.device} at {self.timestamp}: {status} ({self.successful_pings}/5)"

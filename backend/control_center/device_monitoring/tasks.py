@@ -8,8 +8,10 @@ from django.utils import timezone
 from datetime import timedelta
 import logging
 
-from .models import DeviceStats, DeviceHealthAlert, PortUtilizationStats, PortUtilizationAlert
+from .models import DeviceStats, DeviceHealthAlert, PortUtilizationStats, PortUtilizationAlert, DevicePingStats
+from .utils import ping_device
 from notification.models import Notification
+from network_device.models import NetworkDevice
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -288,4 +290,48 @@ def check_port_utilization():
     except Exception as e:
         logger.exception("Error in check_port_utilization")
         return {"success": False, "message": str(e)}
+
+
+@shared_task
+def ping_all_monitored_devices():
+    """
+    Ping all devices marked with is_ping_target=True.
+    Runs every minute via Celery Beat.
+    
+    Sends 5 pings using fping. Device is considered alive if 3+ pings succeed.
+    """
+    try:
+        devices = NetworkDevice.objects.filter(
+            is_ping_target=True,
+            ip_address__isnull=False
+        )
+        
+        logger.info(f"Pinging {devices.count()} monitored devices")
+        
+        for device in devices:
+            is_alive, successful_pings = ping_device(device.ip_address)
+            
+            DevicePingStats.objects.create(
+                device=device,
+                is_alive=is_alive,
+                successful_pings=successful_pings
+            )
+            
+            logger.debug(
+                f"Pinged {device.ip_address}: "
+                f"{successful_pings}/5 successful, "
+                f"{'alive' if is_alive else 'down'}"
+            )
+        
+        return {
+            'success': True,
+            'devices_pinged': devices.count()
+        }
+        
+    except Exception as e:
+        logger.exception("Error in ping_all_monitored_devices")
+        return {
+            'success': False,
+            'message': str(e)
+        }
 

@@ -121,9 +121,6 @@ export default function PortUtilizationGraph() {
         });
 
         setAvailablePorts(Array.from(portKeys));
-
-        // Reset port filter to "all" when device changes
-        setSelectedPorts([]);
       } catch (err) {
         // Don't update state if request was aborted
         if (signal?.aborted) return;
@@ -143,6 +140,11 @@ export default function PortUtilizationGraph() {
     },
     [token, selectedDevice, selectedHours, selectedInterval, getT]
   );
+
+  // Reset port filter when device changes (but not when time range/interval changes)
+  useEffect(() => {
+    setSelectedPorts([]);
+  }, [selectedDevice]);
 
   // Load port data when dependencies change
   useEffect(() => {

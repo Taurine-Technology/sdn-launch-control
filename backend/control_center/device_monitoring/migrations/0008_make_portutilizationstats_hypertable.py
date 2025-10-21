@@ -19,13 +19,18 @@ class Migration(migrations.Migration):
             reverse_sql=migrations.RunSQL.noop
         ),
         # Convert table to TimescaleDB hypertable
+        # Note: create_default_indexes => FALSE prevents duplicate timestamp index
+        # (migration 0006 already created all needed indexes including timestamp)
+        # chunk_time_interval => '1 day' chosen for high-frequency data (stats every few seconds)
         migrations.RunSQL(
             sql="""
                 SELECT create_hypertable(
                     'device_monitoring_portutilizationstats',
                     'timestamp',
                     migrate_data => true,
-                    if_not_exists => TRUE
+                    if_not_exists => TRUE,
+                    create_default_indexes => FALSE,
+                    chunk_time_interval => INTERVAL '1 day'
                 );
             """,
             reverse_sql="""

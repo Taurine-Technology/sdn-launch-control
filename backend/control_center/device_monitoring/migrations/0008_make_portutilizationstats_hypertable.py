@@ -11,6 +11,14 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Ensure TimescaleDB extension exists before attempting hypertable operations
+        migrations.RunSQL(
+            sql="""
+                CREATE EXTENSION IF NOT EXISTS timescaledb;
+            """,
+            reverse_sql=migrations.RunSQL.noop
+        ),
+        # Convert table to TimescaleDB hypertable
         migrations.RunSQL(
             sql="""
                 SELECT create_hypertable(
@@ -21,7 +29,16 @@ class Migration(migrations.Migration):
                 );
             """,
             reverse_sql="""
-                SELECT drop_hypertable('device_monitoring_portutilizationstats'::regclass);
+                -- Safely drop hypertable only if it exists and is actually a hypertable
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM timescaledb_information.hypertables
+                        WHERE hypertable_name = 'device_monitoring_portutilizationstats'
+                    ) THEN
+                        PERFORM drop_hypertable('device_monitoring_portutilizationstats', IF_EXISTS => TRUE);
+                    END IF;
+                END $$;
             """
         ),
     ]

@@ -35,30 +35,32 @@ interface TimeRangeSelectorProps {
 }
 
 const timeRangeOptions = [
-  { hours: 15 / 60, label: "15_minutes", interval: "10 seconds" }, // < 1 hour: 10 seconds
-  { hours: 1, label: "1_hour", interval: "10 seconds" }, // < 1 hour: 10 seconds
-  { hours: 6, label: "6_hours", interval: "1 minute" }, // 6 hours: 1 minute
-  { hours: 24, label: "24_hours", interval: "5 minutes" }, // 24 hours: 5 minutes
-  { hours: 168, label: "7_days", interval: "15 minutes" }, // 7 days: 15 minutes
+  { hours: 15 / 60, label: "15_minutes" },
+  { hours: 1, label: "1_hour" },
+  { hours: 6, label: "6_hours" },
+  { hours: 24, label: "24_hours" },
+  { hours: 168, label: "7_days" },
 ];
 
 /**
- * Determines the appropriate interval based on the time range
- * User requested:
- * - < 1 hour: 10 seconds (default)
- * - 6 hours: 1 minute
- * - > 6 hours: 5 minutes
- * - 24 hours: 10 minutes (using 5 minutes since 10 is not available)
+ * Determines the appropriate interval based on the time range.
+ * Single source of truth for interval selection.
+ *
+ * Mapping:
+ * - <= 1 hour: 10 seconds (high granularity for short-term analysis)
+ * - <= 6 hours: 1 minute (balanced granularity)
+ * - <= 24 hours: 5 minutes (reduced data points for daily view)
+ * - > 24 hours: 15 minutes (weekly view, broader trends)
  */
 export function getIntervalForHours(hours: number): string {
-  if (hours < 1) {
-    return "10 seconds"; // Default for < 1 hour
+  if (hours <= 1) {
+    return "10 seconds";
   } else if (hours <= 6) {
-    return "1 minute"; // 1-6 hours
+    return "1 minute";
   } else if (hours <= 24) {
-    return "5 minutes"; // 6-24 hours
+    return "5 minutes";
   } else {
-    return "15 minutes"; // > 24 hours (e.g., 7 days)
+    return "15 minutes";
   }
 }
 

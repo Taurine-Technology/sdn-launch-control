@@ -82,14 +82,11 @@ export function PortUtilizationChart({
     }
 
     const dataPoint = timeMap.get(time)!;
-    // Convert to percentage and cap at 100% to handle API edge cases
-    dataPoint[`${portKey}_utilization`] = Math.min(
-      point.avg_utilization * 100,
-      100
-    );
+    // Cap at 100% to handle API edge cases (backend already returns percentages)
+    dataPoint[`${portKey}_utilization`] = Math.min(point.avg_utilization, 100);
     dataPoint[`${portKey}_throughput`] = point.avg_throughput;
     dataPoint[`${portKey}_max_utilization`] = Math.min(
-      point.max_utilization * 100,
+      point.max_utilization,
       100
     );
   });

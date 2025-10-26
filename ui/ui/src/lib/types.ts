@@ -1039,6 +1039,66 @@ export interface PortWithTimeSeries {
   time_series: PortTimeSeriesPoint[];
 }
 
+// Device Monitoring Types
+export interface DevicePingStats {
+  id: number;
+  device: number;
+  is_alive: boolean;
+  successful_pings: number;
+  timestamp: string;
+}
+
+export interface DeviceUptimeData {
+  bucket: string;
+  uptime_percentage: number;
+  total_pings: number;
+}
+
+export interface DeviceAggregationData {
+  device_id: number;
+  uptime_percentage: number;
+  total_pings: number;
+  device_name?: string;
+  is_monitored?: boolean;
+  ip_address?: string;
+  mac_address?: string;
+}
+
+export interface DeviceUptimeStatus {
+  device_id: number;
+  device_name: string;
+  ip_address?: string;
+  mac_address?: string;
+  uptime_percentage: number;
+  total_pings: number;
+  is_monitored: boolean;
+}
+
+export interface ToggleMonitoringRequest {
+  device_id: number;
+  is_ping_target: boolean;
+}
+
+export interface IngestUptimeDataRequest {
+  device_id: number;
+  is_alive: boolean;
+  successful_pings: number;
+  timestamp?: string;
+}
+
+export interface ChartDataPoint {
+  name: string;
+  "Uptime": number;
+  total_pings: number;
+  device_id: number;
+  fill?: string;
+}
+
+export interface TimePeriodOption {
+  label: string;
+  value: string;
+}
+
 // By-port endpoint response
 export interface ByPortResponse {
   ip_address: string;
@@ -1088,4 +1148,47 @@ export function getTranslation<T extends DeepNestedRecord>(
   }
 
   return typeof current === "string" ? current : fallback;
+}
+
+// Device Monitoring Types
+export interface DeviceUptime {
+  bucket: string;
+  uptime_percentage: number;
+  total_pings: number;
+}
+
+
+export interface DevicePingStats {
+  id: number;
+  device: number;
+  is_alive: boolean;
+  successful_pings: number;
+  timestamp: string;
+}
+
+export interface ToggleMonitoringRequest {
+  device_id: number;
+  is_ping_target: boolean;
+}
+
+export interface IngestUptimeDataRequest {
+  data: Array<{
+    device_id: number;
+    is_alive: boolean;
+    successful_pings: number;
+    timestamp?: string;
+  }>;
+}
+
+export interface ChartDataPoint {
+  name: string;
+  "Uptime": number;
+  total_pings: number;
+  device_id: number;
+  fill?: string;
+}
+
+export interface TimePeriodOption {
+  label: string;
+  value: string;
 }

@@ -10,6 +10,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import {
@@ -141,17 +142,21 @@ export default function DevicesOverviewPage() {
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem className="hidden md:block">
-                    <BreadcrumbLink href="/dashboard">
-                      {getT("navigation.dashboard", "Dashboard")}
+                    <BreadcrumbLink asChild>
+                      <Link href="/dashboard">
+                        {getT("navigation.dashboard", "Dashboard")}
+                      </Link>
                     </BreadcrumbLink>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem>
-                    <BreadcrumbLink href="/devices/overview">
-                      {getT(
-                        "page.DevicesOverviewPage.page_title",
-                        "Devices Overview"
-                      )}
+                    <BreadcrumbLink asChild>
+                      <Link href="/devices/overview">
+                        {getT(
+                          "page.DevicesOverviewPage.page_title",
+                          "Devices Overview"
+                        )}
+                      </Link>
                     </BreadcrumbLink>
                   </BreadcrumbItem>
                 </BreadcrumbList>

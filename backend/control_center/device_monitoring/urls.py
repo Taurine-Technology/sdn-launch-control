@@ -19,7 +19,16 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PortUtilizationStatsViewSet
+from .views import (
+    PortUtilizationStatsViewSet,
+    toggle_device_monitoring,
+    aggregate_device_uptime_status,
+    device_uptime_timeseries,
+    ingest_uptime_data,
+    aggregate_ping_view,
+    aggregate_uptime_view,
+    device_uptime_line_view,
+)
 
 app_name = 'device_monitoring'
 
@@ -28,4 +37,41 @@ router.register(r"port-utilization-stats", PortUtilizationStatsViewSet, basename
 
 urlpatterns = [
     path('', include(router.urls)),
+    
+    # Custom function-based view endpoints
+    path(
+        'toggle-monitoring/',
+        toggle_device_monitoring,
+        name='toggle-device-monitoring'
+    ),
+    path(
+        'uptime-status/',
+        aggregate_device_uptime_status,
+        name='device-uptime-status'
+    ),
+        path(
+            'uptime-timeseries/',
+            device_uptime_timeseries,
+            name='device-uptime-timeseries'
+        ),
+        path(
+            'ingest-uptime-data/',
+            ingest_uptime_data,
+            name='ingest-uptime-data'
+        ),
+        path(
+            'ping-aggregates/',
+            aggregate_ping_view,
+            name='ping-aggregates'
+        ),
+        path(
+            'uptime-aggregates/',
+            aggregate_uptime_view,
+            name='uptime-aggregates'
+        ),
+        path(
+            'uptime-line/',
+            device_uptime_line_view,
+            name='uptime-line'
+        ),
 ]

@@ -30,8 +30,10 @@ from knox.auth import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from .models import DeviceStats, PortUtilizationStats
 from .serializers import PortUtilizationStatsSerializer
+from network_device.models import NetworkDevice
+from network_device.serializers import NetworkDeviceSerializer
 from requests.auth import HTTPBasicAuth
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from ovs_install.utilities.ansible_tasks import run_playbook
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
@@ -49,6 +51,9 @@ from rest_framework.decorators import action
 from django.db import connection
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
+import re
+from datetime import datetime, timedelta
+import pytz
 from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, create_inv_data
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -855,3 +860,871 @@ class PortUtilizationStatsViewSet(viewsets.ReadOnlyModelViewSet):
                 {"error": f"Database error: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def toggle_device_monitoring(request):
+    """
+    Enable or disable ping monitoring for a network device.
+    
+    This endpoint allows you to control which devices are actively monitored
+    by the ping system. Devices with is_ping_target=True will be pinged
+    every 60 seconds by the Celery task.
+    
+    Payload:
+    {
+        "device_id": <int>,           # Required: ID of the device
+        "is_ping_target": <bool>      # Required: true to enable, false to disable
+    }
+    
+    Returns:
+    - 200: Updated device object
+    - 400: Missing or invalid parameters
+    - 404: Device not found
+    
+    Example:
+        POST /api/device-monitoring/toggle-monitoring/
+        {"device_id": 1, "is_ping_target": true}
+    """
+    device_id = request.data.get('device_id')
+    is_ping_target = request.data.get('is_ping_target')
+    
+    # Validate required parameters
+    if device_id is None:
+        return Response(
+            {"error": "device_id is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if is_ping_target is None:
+        return Response(
+            {"error": "is_ping_target is required (true or false)"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate device_id is an integer
+    try:
+        device_id = int(device_id)
+    except (ValueError, TypeError):
+        return Response(
+            {"error": "device_id must be an integer"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate is_ping_target is a boolean
+    if not isinstance(is_ping_target, bool):
+        return Response(
+            {"error": "is_ping_target must be true or false"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Fetch the device
+    try:
+        device = NetworkDevice.objects.get(id=device_id)
+    except NetworkDevice.DoesNotExist:
+        return Response(
+            {"error": f"Device with id {device_id} not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Validate device has an IP address (required for ping monitoring)
+    if is_ping_target and not device.ip_address:
+        return Response(
+            {
+                "error": "Cannot enable monitoring for device without IP address",
+                "device_id": device_id,
+                "device_name": device.name or "Unnamed"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Update the monitoring flag
+    device.is_ping_target = is_ping_target
+    device.save(update_fields=['is_ping_target'])
+    
+    logger.info(
+        f"Device {device_id} monitoring {'enabled' if is_ping_target else 'disabled'} "
+        f"by user {request.user.username}"
+    )
+    
+    # Return the updated device
+    serializer = NetworkDeviceSerializer(device)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+def parse_period_to_minutes(period):
+    """
+    Parse period strings like '15 minutes', '24 hours', '7 days' to minutes.
+    
+    Args:
+        period (str): Time period string (e.g., "15 minutes", "2 hours", "7 days")
+        
+    Returns:
+        int: Number of minutes
+        
+    Examples:
+        >>> parse_period_to_minutes("15 minutes")
+        15
+        >>> parse_period_to_minutes("2 hours")
+        120
+        >>> parse_period_to_minutes("7 days")
+        10080
+    """
+    period = period.strip().lower()
+    
+    # Try to match minutes
+    match = re.match(r"(\d+)\s*minutes?", period)
+    if match:
+        return int(match.group(1))
+    
+    # Try to match hours
+    match = re.match(r"(\d+)\s*hours?", period)
+    if match:
+        return int(match.group(1)) * 60
+    
+    # Try to match days
+    match = re.match(r"(\d+)\s*days?", period)
+    if match:
+        return int(match.group(1)) * 60 * 24
+    
+    # Try to match weeks
+    match = re.match(r"(\d+)\s*weeks?", period)
+    if match:
+        return int(match.group(1)) * 60 * 24 * 7
+    
+    # Default to 15 minutes if parsing fails
+    logger.warning(f"Could not parse period '{period}', defaulting to 15 minutes")
+    return 15
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def aggregate_device_uptime_status(request):
+    """
+    Returns current uptime percentage for monitored devices over a time period.
+    
+    This endpoint provides a snapshot of device health, calculating the percentage
+    of successful pings for each device within the specified time window.
+    
+    Query Parameters:
+        - period: Look-back time period (default: '15 minutes')
+                  Formats: 'X minutes', 'X hours', 'X days', 'X weeks'
+                  Examples: '15 minutes', '1 hour', '24 hours', '7 days'
+        
+        - min_pings: Minimum number of ping records required to include a device
+                     in results (default: 1). Devices with fewer pings are excluded.
+        
+        - device_ids: Optional comma-separated list of device IDs to filter
+                      Example: '1,2,3'
+    
+    Calculation:
+        - Devices with no ping records in the period show as 0% uptime
+        - Uptime % = (successful pings / expected pings) × 100
+        - Expected pings = period in minutes (1 ping per minute)
+        - If we've only collected partial data, uptime is adjusted proportionally
+    
+    Examples:
+        GET /api/device-monitoring/uptime-status/
+        GET /api/device-monitoring/uptime-status/?period=1 hour
+        GET /api/device-monitoring/uptime-status/?period=24 hours&device_ids=1,2,3
+    
+    Returns:
+        [
+            {
+                "device_id": 1,
+                "uptime_percentage": 98.5,
+                "total_pings": 60
+            },
+            ...
+        ]
+    """
+    period = request.query_params.get('period', '15 minutes')
+    min_pings = int(request.query_params.get('min_pings', 1))
+    device_ids_param = request.query_params.get('device_ids')
+    
+    # Parse device_ids if provided
+    device_ids = []
+    if device_ids_param:
+        try:
+            device_ids = [
+                int(x.strip()) for x in device_ids_param.split(',') if x.strip()
+            ]
+        except ValueError:
+            return Response(
+                {"error": "device_ids must be comma-separated integers"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    # Build the SQL query
+    sql = """
+        SELECT
+            device_id,
+            AVG(CASE WHEN is_alive THEN 1.0 ELSE 0 END) * 100 AS uptime_percentage,
+            COUNT(*) AS total_pings
+        FROM device_monitoring_devicepingstats
+        WHERE timestamp >= now() - interval %s
+    """
+    params = [period]
+    
+    # Optionally filter by device_ids
+    if device_ids:
+        placeholders = ','.join(['%s'] * len(device_ids))
+        sql += f" AND device_id IN ({placeholders})"
+        params.extend(device_ids)
+    
+    sql += """
+        GROUP BY device_id
+        HAVING COUNT(*) >= %s
+        ORDER BY device_id;
+    """
+    params.append(min_pings)
+    
+    # Execute the query
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            columns = [col[0] for col in cursor.description]
+            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    except Exception as e:
+        logger.exception("Error in aggregate_device_uptime_status query")
+        return Response(
+            {"error": f"Database query error: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    # --- Add missing devices as offline (0% uptime) ---
+    # Determine which devices should be in the results
+    if device_ids:
+        # Use the provided device IDs
+        all_device_ids = set(device_ids)
+    else:
+        # Get all monitored devices
+        all_device_ids = set(
+            NetworkDevice.objects.filter(is_ping_target=True)
+            .values_list('id', flat=True)
+        )
+    
+    # Find devices missing from results (no ping records in period)
+    result_device_ids = set(r['device_id'] for r in results)
+    missing_device_ids = all_device_ids - result_device_ids
+    
+    # Add missing devices with 0% uptime
+    for device_id in missing_device_ids:
+        results.append({
+            'device_id': device_id,
+            'uptime_percentage': 0.0,
+            'total_pings': 0
+        })
+    
+    # --- Adjust for incomplete data ---
+    # Calculate expected number of pings based on period
+    period_minutes = parse_period_to_minutes(period)
+    expected_pings = period_minutes  # 1 ping per minute
+    
+    # For each result, if we have fewer pings than expected, adjust the percentage
+    # Example: If we want 60 pings but only have 30, and 25 were successful:
+    #   Raw percentage: 25/30 = 83.3%
+    #   Adjusted: 25/60 = 41.7% (accounts for missing data as downtime)
+    for r in results:
+        if r['total_pings'] < expected_pings:
+            # Calculate actual successful pings
+            alive_pings = float(r['uptime_percentage']) * float(r['total_pings']) / 100.0
+            
+            # Recalculate percentage using expected total
+            r['uptime_percentage'] = (
+                (alive_pings / expected_pings) * 100 if expected_pings > 0 else 0.0
+            )
+            r['total_pings'] = expected_pings
+    
+    # Sort by device_id for consistent ordering
+    results.sort(key=lambda r: r['device_id'])
+    
+    # Enrich results with device information (name, is_monitored, ip_address, mac_address)
+    device_ids_in_results = [r['device_id'] for r in results]
+    devices = NetworkDevice.objects.filter(id__in=device_ids_in_results).values(
+        'id', 'name', 'is_ping_target', 'ip_address', 'mac_address'
+    )
+    device_lookup = {d['id']: d for d in devices}
+    
+    # Add device info to each result
+    for r in results:
+        device_info = device_lookup.get(r['device_id'], {})
+        r['device_name'] = device_info.get('name') or f"Device {r['device_id']}"
+        r['is_monitored'] = device_info.get('is_ping_target', False)
+        r['ip_address'] = device_info.get('ip_address')
+        r['mac_address'] = device_info.get('mac_address')
+    
+    logger.info(
+        f"Returned uptime status for {len(results)} devices "
+        f"(period: {period}, requested by {request.user.username})"
+    )
+    
+    return Response(results, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def device_uptime_timeseries(request):
+    """
+    Returns time-bucketed uptime data for a specific device (for line graphs).
+    
+    This endpoint aggregates ping data into time buckets, making it perfect for
+    visualizing device health over time. Instead of thousands of individual pings,
+    you get aggregated statistics per time interval.
+    
+    Query Parameters:
+        - device_id: Required - ID of the device to query
+        
+        - period: Look-back time period (default: '30 minutes')
+                  Minimum allowed: 30 minutes
+                  Examples: '30 minutes', '1 hour', '6 hours', '24 hours', '7 days'
+        
+        - bucket_interval: Time bucket size (default: '5 minutes')
+                          Examples: '1 minute', '5 minutes', '15 minutes', '1 hour'
+    
+    How Buckets Work:
+        If period='1 hour' and bucket_interval='5 minutes':
+        - Returns 12 data points (60 minutes / 5 minutes = 12 buckets)
+        - Each bucket shows average uptime for that 5-minute window
+        - Missing buckets (no data) are filled with 0% uptime
+    
+    Examples:
+        GET /api/device-monitoring/uptime-timeseries/?device_id=1
+        GET /api/device-monitoring/uptime-timeseries/?device_id=1&period=1 hour
+        GET /api/device-monitoring/uptime-timeseries/?device_id=1&period=24 hours&bucket_interval=15 minutes
+    
+    Returns:
+        [
+            {
+                "bucket": "2025-10-21T10:00:00Z",
+                "uptime_percentage": 100.0,
+                "total_pings": 5
+            },
+            {
+                "bucket": "2025-10-21T10:05:00Z",
+                "uptime_percentage": 80.0,
+                "total_pings": 5
+            },
+            ...
+        ]
+    """
+    device_id = request.query_params.get('device_id')
+    period = request.query_params.get('period', '30 minutes')
+    bucket_interval = request.query_params.get('bucket_interval', '5 minutes')
+    
+    # Validate device_id is provided
+    if not device_id:
+        return Response(
+            {"error": "device_id is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate and fetch the device
+    try:
+        device_id = int(device_id)
+        device = NetworkDevice.objects.get(id=device_id)
+    except ValueError:
+        return Response(
+            {"error": "device_id must be an integer"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except NetworkDevice.DoesNotExist:
+        return Response(
+            {"error": f"Device with id {device_id} not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Enforce minimum period of 30 minutes
+    period_minutes = parse_period_to_minutes(period)
+    if period_minutes < 30:
+        return Response(
+            {"error": "Minimum period is 30 minutes"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Build the SQL query using TimescaleDB's time_bucket function
+    sql = f"""
+        SELECT
+            time_bucket('{bucket_interval}', timestamp) AS bucket,
+            AVG(CASE WHEN is_alive THEN 1.0 ELSE 0 END) * 100 AS uptime_percentage,
+            COUNT(*) AS total_pings
+        FROM device_monitoring_devicepingstats
+        WHERE device_id = %s
+          AND timestamp >= now() - interval %s
+        GROUP BY bucket
+        ORDER BY bucket;
+    """
+    params = [device_id, period]
+    
+    # Execute the query
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            columns = [col[0] for col in cursor.description]
+            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    except Exception as e:
+        logger.exception("Error in device_uptime_timeseries query")
+        return Response(
+            {"error": f"Database query error: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    # --- Fill in missing time buckets with 0% uptime ---
+    # This ensures the graph has no gaps and shows offline periods clearly
+    
+    # Calculate the time range
+    now = datetime.utcnow().replace(second=0, microsecond=0, tzinfo=pytz.UTC)
+    start_time = now - timedelta(minutes=period_minutes)
+    
+    # Parse bucket interval to minutes
+    bucket_minutes = parse_period_to_minutes(bucket_interval)
+    bucket_delta = timedelta(minutes=bucket_minutes)
+    
+    # Generate all expected bucket timestamps
+    expected_buckets = []
+    t = start_time.replace(second=0, microsecond=0)
+    
+    # Align t to the next bucket boundary
+    # Example: If bucket is 5 minutes and t is 10:03, align to 10:05
+    minutes_to_add = (bucket_minutes - t.minute % bucket_minutes) if t.minute % bucket_minutes != 0 else 0
+    t = t + timedelta(minutes=minutes_to_add)
+    
+    # Generate all buckets from start to now
+    while t <= now:
+        expected_buckets.append(t)
+        t += bucket_delta
+    
+    # Build a dictionary of existing results by bucket timestamp
+    result_by_bucket = {}
+    for r in results:
+        bucket_dt = r['bucket']
+        
+        # Convert string timestamps to datetime if needed
+        if isinstance(bucket_dt, str):
+            bucket_dt = datetime.fromisoformat(bucket_dt.replace('Z', '+00:00'))
+        
+        result_by_bucket[bucket_dt] = r
+    
+    # Fill in missing buckets
+    filled_results = []
+    for bucket_time in expected_buckets:
+        r = result_by_bucket.get(bucket_time)
+        
+        if r:
+            # Result exists for this bucket
+            bucket_val = r['bucket']
+            
+            # Ensure bucket is formatted as ISO string
+            if isinstance(bucket_val, datetime):
+                bucket_val = bucket_val.isoformat().replace('+00:00', 'Z')
+            elif isinstance(bucket_val, str) and bucket_val.endswith('+00:00'):
+                bucket_val = bucket_val.replace('+00:00', 'Z')
+            
+            r = dict(r)  # Create a copy to avoid mutating original
+            r['bucket'] = bucket_val
+            filled_results.append(r)
+        else:
+            # No data for this bucket - device was offline
+            filled_results.append({
+                'bucket': bucket_time.isoformat().replace('+00:00', 'Z'),
+                'uptime_percentage': 0.0,
+                'total_pings': 0
+            })
+    
+    # Sort by bucket time (should already be sorted, but just to be safe)
+    filled_results.sort(key=lambda r: r['bucket'])
+    
+    logger.info(
+        f"Returned {len(filled_results)} time buckets for device {device_id} "
+        f"(period: {period}, interval: {bucket_interval})"
+    )
+    
+    return Response(filled_results, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def ingest_uptime_data(request):
+    """
+    Ingest uptime (ping) data from an external source.
+
+    Expected payload:
+    {
+      "data": [
+         { "device_id": <device_id>, "is_alive": <bool>, "successful_pings": <int>, "timestamp": <ISO8601 timestamp> },
+         ...
+      ]
+    }
+    """
+    payload = request.data
+    data = payload.get('data')
+
+    if not data:
+        return Response(
+            {"error": "Missing required field: data"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    created = []
+    errors = []
+    
+    for record in data:
+        device_id = record.get('device_id')
+        is_alive = record.get('is_alive')
+        successful_pings = record.get('successful_pings', 0)
+        timestamp = record.get('timestamp')
+        
+        if device_id is None or is_alive is None:
+            errors.append(f"Missing device_id or is_alive in record: {record}")
+            continue
+
+        try:
+            device = NetworkDevice.objects.get(id=device_id)
+        except NetworkDevice.DoesNotExist:
+            errors.append(f"Device with id {device_id} not found")
+            continue
+
+        # Create the DevicePingStats record
+        try:
+            ping_stats = DevicePingStats.objects.create(
+                device=device,
+                is_alive=is_alive,
+                successful_pings=successful_pings,
+                timestamp=timestamp if timestamp else None
+            )
+            created.append(ping_stats.id)
+        except Exception as e:
+            errors.append(f"Error creating ping record for device {device_id}: {str(e)}")
+
+    return Response(
+        {"created": created, "errors": errors},
+        status=status.HTTP_201_CREATED
+    )
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def aggregate_ping_view(request):
+    """
+    Returns aggregated ping data from materialized views.
+
+    Query Parameters:
+      - device_ids (optional): Comma-separated list of device IDs (integers).
+      - aggregation (optional): One of "15m", "60m", "6h", "12h", "24h",
+          "7d", "30d", "90d", "365d". Defaults to "15m".
+      - time_range (optional): Time range filter (e.g., "24 hours", "7 days").
+          Defaults to "24 hours".
+
+    Example URLs:
+      /api/device-monitoring/ping-aggregates/?aggregation=15m
+      /api/device-monitoring/ping-aggregates/?device_ids=1,2,3&aggregation=60m&time_range=7 days
+    """
+    # Get query parameters from DRF's request.query_params.
+    device_ids_param = request.query_params.get('device_ids')
+    aggregation_param = request.query_params.get('aggregation', '15m')
+    time_range = request.query_params.get('time_range', '24 hours')
+
+    # Map allowed aggregation values to materialized view names
+    valid_aggregations = {
+        '15m': 'device_ping_aggregate_15m',
+        '60m': 'device_ping_aggregate_60m',
+        '6h': 'device_ping_aggregate_6h',
+        '12h': 'device_ping_aggregate_12h',
+        '24h': 'device_ping_aggregate_24h',
+        '7d': 'device_ping_aggregate_7d',
+        '30d': 'device_ping_aggregate_30d',
+        '90d': 'device_ping_aggregate_90d',
+        '365d': 'device_ping_aggregate_365d',
+    }
+    if aggregation_param not in valid_aggregations:
+        return Response(
+            {"error": "Invalid aggregation value. Allowed values are: " +
+                      ", ".join(valid_aggregations.keys())},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    table_name = valid_aggregations[aggregation_param]
+
+    # Validate and parse device_ids, if provided.
+    device_ids = []
+    if device_ids_param:
+        try:
+            device_ids = [
+                int(x.strip()) for x in device_ids_param.split(',') if x.strip()
+            ]
+        except ValueError:
+            return Response(
+                {"error": "device_ids must be a comma-separated list of integers."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    # Build the optimized SQL query with time range filtering
+    base_query = f"""
+        SELECT bucket, device_id, uptime_percentage, total_pings
+        FROM {table_name}
+        WHERE bucket >= now() - interval %s
+    """
+    params = [time_range]
+
+    if device_ids:
+        # Create a list of placeholders for each device id.
+        placeholders = ','.join(['%s'] * len(device_ids))
+        base_query += f" AND device_id IN ({placeholders})"
+        params.extend(device_ids)
+
+    base_query += " ORDER BY bucket DESC, device_id;"
+
+    # Execute the query using Django's database connection.
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(base_query, params)
+            columns = [col[0] for col in cursor.description]
+            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    except Exception as e:
+        return Response(
+            {
+                "error":
+                    f"An error occurred while executing the query: {str(e)}"
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+    return Response(results, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def aggregate_uptime_view(request):
+    """
+    Returns aggregated uptime data for each device over a specified time period.
+    Query Parameters:
+      - period (optional): Look-back period (e.g., '15 minutes', '24 hours').
+      - min_pings (optional): Minimum number of pings required to include a
+      device.
+      - device_ids (optional): Comma-separated list of device IDs to filter on.
+    """
+    # Default values
+    period = request.query_params.get('period', '15 minutes')
+    min_pings = int(request.query_params.get('min_pings', 1))
+    device_ids_param = request.query_params.get('device_ids')
+
+    # Validate device_ids if provided.
+    device_ids = []
+    if device_ids_param:
+        try:
+            device_ids = [int(x.strip()) for x in device_ids_param.split(',') if x.strip()]
+        except ValueError:
+            return Response(
+                {"error": "device_ids must be a comma-separated list of integers."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    # Build the optimized SQL query using TimescaleDB time_bucket for better performance
+    sql = """
+        SELECT
+          device_id,
+          AVG(CASE WHEN is_alive THEN 1.0 ELSE 0 END) * 100
+          AS uptime_percentage,
+          COUNT(*) AS total_pings
+        FROM device_monitoring_devicepingstats
+        WHERE timestamp >= now() - interval %s
+    """
+    params = [period]
+
+    # Optionally filter by device_ids if provided.
+    if device_ids:
+        placeholders = ','.join(['%s'] * len(device_ids))
+        sql += f" AND device_id IN ({placeholders})"
+        params.extend(device_ids)
+
+    sql += """
+        GROUP BY device_id
+        HAVING COUNT(*) >= %s
+        ORDER BY device_id;
+    """
+    params.append(min_pings)
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            columns = [col[0] for col in cursor.description]
+            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    except Exception as e:
+        return Response(
+            {"error": f"Error executing query: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+    # --- Add missing devices as offline (uptime 0%) ---
+    # Build set of all expected device_ids
+    if device_ids:
+        all_device_ids = set(device_ids)
+    else:
+        all_device_ids = set(NetworkDevice.objects.filter(is_ping_target=True).values_list('id', flat=True))
+
+    # Find which devices are missing from results
+    result_device_ids = set(r['device_id'] for r in results)
+    missing_device_ids = all_device_ids - result_device_ids
+    for did in missing_device_ids:
+        results.append({
+            'device_id': did,
+            'uptime_percentage': 0.0,
+            'total_pings': 0
+        })
+
+    # --- Recalculate uptime for incomplete data ---
+    # Parse period to get expected number of minutes
+    period_minutes = parse_period_to_minutes(period)
+    expected_pings = period_minutes
+
+    # For each result, if total_pings < expected_pings, treat missing as offline
+    for r in results:
+        if r['total_pings'] < expected_pings:
+            alive_pings = float(r['uptime_percentage']) * float(r['total_pings']) / 100.0
+            r['uptime_percentage'] = (
+                (alive_pings / expected_pings) * 100 if expected_pings > 0 else 0.0
+            )
+            r['total_pings'] = expected_pings
+
+    # Sort by device_id for consistency
+    results.sort(key=lambda r: r['device_id'])
+    
+    # Enrich results with device information (name, is_monitored, ip_address, mac_address)
+    device_ids_in_results = [r['device_id'] for r in results]
+    devices = NetworkDevice.objects.filter(id__in=device_ids_in_results).values(
+        'id', 'name', 'is_ping_target', 'ip_address', 'mac_address'
+    )
+    device_lookup = {d['id']: d for d in devices}
+    
+    # Add device info to each result
+    for r in results:
+        device_info = device_lookup.get(r['device_id'], {})
+        r['device_name'] = device_info.get('name') or f"Device {r['device_id']}"
+        r['is_monitored'] = device_info.get('is_ping_target', False)
+        r['ip_address'] = device_info.get('ip_address')
+        r['mac_address'] = device_info.get('mac_address')
+
+    return Response(results, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def device_uptime_line_view(request):
+    """
+    Returns uptime data for a specific device over a selected period,
+    aggregated on 5-minute intervals.
+
+    Query Parameters:
+      - device_id (required): The device ID.
+      - period (optional): The look-back period
+      (e.g., "30 minutes", "1 hour", etc.).
+          Minimum allowed is 30 minutes. Defaults to "30 minutes".
+    """
+    device_id = request.query_params.get('device_id')
+    period = request.query_params.get('period', '30 minutes')
+
+    if not device_id:
+        return Response(
+            {"error": "device_id is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    try:
+        device_id = int(device_id)
+    except ValueError:
+        return Response(
+            {"error": "device_id must be an integer"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # If period is provided in minutes, enforce a minimum of 30 minutes.
+    match = re.match(r"(\d+)\s*minutes", period)
+    if match:
+        minutes_val = int(match.group(1))
+        if minutes_val < 30:
+            return Response(
+                {"error": "Minimum period is 30 minutes"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    bucket_param = '5 minutes'
+    sql = f"""
+        SELECT
+            time_bucket('{bucket_param}', timestamp) AS bucket,
+            AVG(CASE WHEN is_alive THEN 1.0 ELSE 0 END) * 100
+            AS uptime_percentage,
+            COUNT(*) AS total_pings
+        FROM device_monitoring_devicepingstats
+        WHERE device_id = %s
+          AND timestamp >= now() - interval %s
+        GROUP BY bucket
+        ORDER BY bucket;
+    """
+    params = [device_id, period]
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            columns = [col[0] for col in cursor.description]
+            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    except Exception as e:
+        return Response({"error": f"Error executing query: {str(e)}"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # --- Fill in missing buckets as offline ---
+    # Determine the time range
+    now = datetime.utcnow().replace(second=0, microsecond=0, tzinfo=pytz.UTC)
+    # Parse period to minutes
+    period_minutes = parse_period_to_minutes(period)
+    start_time = now - timedelta(minutes=period_minutes)
+
+    # Generate all expected 5-minute buckets
+    bucket_interval = timedelta(minutes=5)
+    expected_buckets = []
+    t = start_time.replace(second=0, microsecond=0)
+    # Align t to the next 5-minute mark
+    t = t + timedelta(minutes=(5 - t.minute % 5) if t.minute % 5 != 0 else 0)
+    while t <= now:
+        expected_buckets.append(t)
+        t += bucket_interval
+
+    # Build a dict of results by bucket (as datetime)
+    result_by_bucket = {}
+    for r in results:
+        # Parse bucket as datetime
+        bucket_dt = r['bucket']
+        if isinstance(bucket_dt, str):
+            bucket_dt = datetime.fromisoformat(bucket_dt.replace('Z', '+00:00'))
+        result_by_bucket[bucket_dt] = r
+
+    # Fill in missing buckets
+    filled_results = []
+    for b in expected_buckets:
+        r = result_by_bucket.get(b)
+        if r:
+            # Ensure bucket is a string
+            bucket_val = r['bucket']
+            if isinstance(bucket_val, datetime):
+                bucket_val = bucket_val.isoformat().replace('+00:00', 'Z')
+            elif isinstance(bucket_val, str) and bucket_val.endswith('+00:00'):
+                bucket_val = bucket_val.replace('+00:00', 'Z')
+            r = dict(r)  # copy to avoid mutating original
+            r['bucket'] = bucket_val
+            filled_results.append(r)
+        else:
+            filled_results.append({
+                'bucket': b.isoformat().replace('+00:00', 'Z'),
+                'uptime_percentage': 0.0,
+                'total_pings': 0
+            })
+
+    # Sort by bucket just in case
+    filled_results.sort(key=lambda r: r['bucket'])
+
+    return Response(filled_results, status=status.HTTP_200_OK)

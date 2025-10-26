@@ -18,6 +18,7 @@
 # For inquiries, contact Keegan White at keeganwhite@taurinetech.com.
 
 from django.db import models
+from django.utils import timezone
 
 
 class DeviceStats(models.Model):
@@ -120,8 +121,9 @@ class DevicePingStats(models.Model):
         help_text="Number of successful pings out of 5"
     )
     timestamp = models.DateTimeField(
-        auto_now_add=True,
-        db_index=True
+        default=timezone.now,
+        db_index=True,
+        help_text="Timestamp of the ping check"
     )
 
     class Meta:

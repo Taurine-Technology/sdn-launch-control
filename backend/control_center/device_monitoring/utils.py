@@ -49,10 +49,13 @@ def ping_device(ip_address):
         # Parse stderr for results (fping outputs to stderr)
         stderr = result.stderr.decode('utf-8')
         
-        # Example stderr: "192.168.1.1 : xmt/rcv/%loss = 5/5/0%"
-        if '/' in stderr:
-            parts = stderr.split('=')[-1].strip().split('/')
-            logger.info(f"Parts: {parts}")
+        # Example stderr: "8.8.8.8 : xmt/rcv/%loss = 5/5/0%, min/avg/max = 23.3/119/152"
+        # We need the first part: xmt/rcv/%loss
+        if 'xmt/rcv/%loss' in stderr and '=' in stderr:
+            # Get the part between first = and next comma (or end)
+            stats_part = stderr.split('xmt/rcv/%loss =')[1].split(',')[0].strip()
+            parts = stats_part.split('/')
+            logger.info(f"Ping stats for {ip_address}: {stats_part}")
             if len(parts) >= 2:
                 sent = int(parts[0])
                 received = int(parts[1])

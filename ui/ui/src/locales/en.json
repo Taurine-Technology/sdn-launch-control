@@ -1041,11 +1041,58 @@
     "sniffer_management": "Sniffer Management",
     "advanced": "Advanced",
     "toggle": "Toggle",
-    "network_notifications": "Network Notifications"
+    "network_notifications": "Network Notifications",
+    "device_monitoring": "Device Monitoring"
   },
   "sidebar": {
     "company_name": "Taurine Tech",
     "product_name": "Launch Control",
     "default_user": "User"
+  },
+  "deviceMonitoring": {
+    "title": "Device Monitoring",
+    "description": "Monitor device uptime and health status across your network",
+    "refresh": "Refresh",
+    "totalDevices": "Total Devices",
+    "devicesTracked": "devices tracked",
+    "monitoredDevices": "Monitored",
+    "activeMonitoring": "active monitoring",
+    "avgUptime": "Average Uptime",
+    "overallHealth": "overall health",
+    "healthyDevices": "Healthy Devices",
+    "excellentHealth": "excellent health (≥95%)",
+    "overviewTab": "Overview",
+    "chartsTab": "Timeline Charts",
+    "managementTab": "Device Management",
+    "noDataAvailable": "No data available",
+    "overview": {
+      "title": "Device Uptime Overview",
+      "description": "Uptime percentage for all devices in the selected period"
+    },
+    "management": {
+      "title": "Device Management",
+      "description": "Manage device monitoring settings and view device status",
+      "searchDevices": "Search devices...",
+      "deviceName": "Device Name",
+      "uptime": "Uptime",
+      "totalPings": "Total Pings",
+      "status": "Status",
+      "monitoring": "Monitoring",
+      "actions": "Actions",
+      "online": "Online",
+      "offline": "Offline",
+      "monitored": "Monitored",
+      "notMonitored": "Not Monitored",
+      "toggleMonitoring": "Toggle monitoring for this device",
+      "viewDetails": "View Details",
+      "noDevices": "No devices found",
+      "loading": "Loading devices...",
+      "refresh": "Refresh",
+      "enable": "Enable",
+      "disable": "Disable",
+      "editDevice": "Edit device name",
+      "monitoringOn": "ON",
+      "monitoringOff": "OFF"
+    }
   }
 }

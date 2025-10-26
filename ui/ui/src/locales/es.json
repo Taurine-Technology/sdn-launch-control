@@ -1019,6 +1019,54 @@
       "uncertain": "Incierto"
     }
   },
+  "deviceMonitoring": {
+    "title": "Monitoreo de Dispositivos",
+    "description": "Monitorear el tiempo de actividad y la conectividad de red de los dispositivos",
+    "refresh": "Actualizar",
+    "totalDevices": "Dispositivos Totales",
+    "devicesTracked": "dispositivos rastreados",
+    "monitoredDevices": "Dispositivos Monitoreados",
+    "activeMonitoring": "monitoreo activo",
+    "avgUptime": "Tiempo de Actividad Promedio",
+    "overallHealth": "salud general",
+    "healthyDevices": "Dispositivos Saludables",
+    "excellentHealth": "salud excelente",
+    "overview": "Resumen",
+    "charts": "Gráficos",
+    "management": "Gestión",
+    "overview": {
+      "title": "Resumen de Tiempo de Actividad de Dispositivos",
+      "description": "Porcentaje de tiempo de actividad para todos los dispositivos en la red seleccionada",
+      "loading": "Cargando...",
+      "noDevices": "No se encontraron dispositivos en esta red",
+      "noData": "No hay datos disponibles"
+    },
+    "chart": {
+      "title": "Línea de Tiempo de Tiempo de Actividad de Dispositivos",
+      "description": "Porcentaje de tiempo de actividad a lo largo del tiempo para el dispositivo seleccionado",
+      "loading": "Cargando...",
+      "noDevices": "No se encontraron dispositivos en esta red",
+      "noData": "No hay datos disponibles"
+    },
+    "management": {
+      "title": "Gestión de Dispositivos",
+      "description": "Gestionar configuraciones de monitoreo de dispositivos y ver el estado de los dispositivos",
+      "searchDevices": "Buscar dispositivos...",
+      "refresh": "Actualizar",
+      "deviceName": "Nombre del Dispositivo",
+      "uptime": "Tiempo de Actividad",
+      "totalPings": "Pings Totales",
+      "status": "Estado",
+      "monitoring": "Monitoreo",
+      "actions": "Acciones",
+      "noDevicesFound": "No se encontraron dispositivos que coincidan con su búsqueda",
+      "noDevices": "No hay dispositivos disponibles",
+      "monitored": "Monitoreado",
+      "notMonitored": "No Monitoreado",
+      "enable": "Habilitar",
+      "disable": "Deshabilitar"
+    }
+  },
   "navigation": {
     "dashboard": "Panel de Control",
     "devices": "Dispositivos",
@@ -1041,11 +1089,58 @@
     "sniffer_management": "Gestión de Sniffers",
     "advanced": "Avanzado",
     "toggle": "Alternar",
-    "network_notifications": "Notificaciones de Red"
+    "network_notifications": "Notificaciones de Red",
+    "device_monitoring": "Monitoreo de Dispositivos"
   },
   "sidebar": {
     "company_name": "Taurine Tech",
     "product_name": "Control de Lanzamiento",
     "default_user": "Usuario"
+  },
+  "deviceMonitoring": {
+    "title": "Monitoreo de Dispositivos",
+    "description": "Monitorear el tiempo de actividad y el estado de salud de los dispositivos en su red",
+    "refresh": "Actualizar",
+    "totalDevices": "Total de Dispositivos",
+    "devicesTracked": "dispositivos rastreados",
+    "monitoredDevices": "Monitoreados",
+    "activeMonitoring": "monitoreo activo",
+    "avgUptime": "Tiempo de Actividad Promedio",
+    "overallHealth": "salud general",
+    "healthyDevices": "Dispositivos Saludables",
+    "excellentHealth": "salud excelente (≥95%)",
+    "overviewTab": "Resumen",
+    "chartsTab": "Gráficos de Línea de Tiempo",
+    "managementTab": "Gestión de Dispositivos",
+    "noDataAvailable": "No hay datos disponibles",
+    "overview": {
+      "title": "Resumen de Tiempo de Actividad del Dispositivo",
+      "description": "Porcentaje de tiempo de actividad para todos los dispositivos en el período seleccionado"
+    },
+    "management": {
+      "title": "Gestión de Dispositivos",
+      "description": "Administrar la configuración de monitoreo de dispositivos y ver el estado del dispositivo",
+      "searchDevices": "Buscar dispositivos...",
+      "deviceName": "Nombre del Dispositivo",
+      "uptime": "Tiempo de Actividad",
+      "totalPings": "Pings Totales",
+      "status": "Estado",
+      "monitoring": "Monitoreo",
+      "actions": "Acciones",
+      "online": "En línea",
+      "offline": "Fuera de línea",
+      "monitored": "Monitoreado",
+      "notMonitored": "No Monitoreado",
+      "toggleMonitoring": "Alternar monitoreo para este dispositivo",
+      "viewDetails": "Ver Detalles",
+      "noDevices": "No se encontraron dispositivos",
+      "loading": "Cargando dispositivos...",
+      "refresh": "Actualizar",
+      "enable": "Habilitar",
+      "disable": "Deshabilitar",
+      "editDevice": "Editar nombre del dispositivo",
+      "monitoringOn": "ENCENDIDO",
+      "monitoringOff": "APAGADO"
+    }
   }
 }

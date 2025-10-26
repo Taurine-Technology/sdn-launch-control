@@ -44,6 +44,10 @@ export function buildSidebarConfig(
           title: getT("navigation.network_notifications"),
           url: "/network-notifications",
         },
+        {
+          title: getT("navigation.device_monitoring"),
+          url: "/devices/monitoring",
+        },
       ],
     },
     {

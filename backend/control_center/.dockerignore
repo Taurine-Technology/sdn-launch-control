@@ -18,11 +18,13 @@ __pycache__/
 env
 
 # Exclude Ansible artifacts
+artifacts/
 artifacts
 
 # Exclude docker files
 docker-compose.yml
 Dockerfile
+docker-compose.dev.yml
 
 # Exclude bash
 run.sh

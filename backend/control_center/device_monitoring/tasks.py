@@ -8,8 +8,10 @@ from django.utils import timezone
 from datetime import timedelta
 import logging
 
-from .models import DeviceStats, DeviceHealthAlert, PortUtilizationStats, PortUtilizationAlert
+from .models import DeviceStats, DeviceHealthAlert, PortUtilizationStats, PortUtilizationAlert, DevicePingStats
+from .utils import ping_device, ping_devices_with_fallback
 from notification.models import Notification
+from network_device.models import NetworkDevice
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -288,4 +290,107 @@ def check_port_utilization():
     except Exception as e:
         logger.exception("Error in check_port_utilization")
         return {"success": False, "message": str(e)}
+
+
+@shared_task
+def ping_all_monitored_devices():
+    """
+    Ping all monitored devices using optimized batch processing.
+    
+    Uses fping's multi-host mode to ping multiple devices simultaneously,
+    with fallback to individual pings if batch fails. Processes devices in
+    batches of 10 for optimal performance.
+    
+    Runs every minute via Celery Beat.
+    
+    Sends 5 pings using fping. Device is considered alive if 3+ pings succeed.
+    """
+    try:
+        devices = NetworkDevice.objects.filter(
+            is_ping_target=True,
+            ip_address__isnull=False
+        )
+        
+        device_list = list(devices)
+        logger.info(f"Pinging {len(device_list)} monitored devices using batch mode")
+        
+        if not device_list:
+            logger.info("No devices to ping")
+            return {
+                'success': True,
+                'devices_pinged': 0,
+                'message': 'No devices to ping'
+            }
+        
+        # Extract IP addresses and create device mapping
+        ip_to_device = {}
+        ip_addresses = []
+        
+        for device in device_list:
+            if device.ip_address:
+                ip_to_device[device.ip_address] = device
+                ip_addresses.append(device.ip_address)
+        
+        if not ip_addresses:
+            logger.warning("No valid IP addresses found")
+            return {
+                'success': True,
+                'devices_pinged': 0,
+                'message': 'No valid IP addresses found'
+            }
+        
+        # Ping all devices using batch mode with fallback
+        ping_results = ping_devices_with_fallback(ip_addresses, batch_size=10)
+        
+        # Create DevicePingStats records
+        stats_to_create = []
+        successful_pings = 0
+        failed_pings = 0
+        
+        for ip_address, (is_alive, successful_count) in ping_results.items():
+            if ip_address in ip_to_device:
+                device = ip_to_device[ip_address]
+                
+                stats_to_create.append(
+                    DevicePingStats(
+                        device=device,
+                        is_alive=is_alive,
+                        successful_pings=successful_count
+                    )
+                )
+                
+                if is_alive:
+                    successful_pings += 1
+                else:
+                    failed_pings += 1
+                
+                logger.debug(
+                    f"Pinged {ip_address}: "
+                    f"{successful_count}/5 successful, "
+                    f"{'alive' if is_alive else 'down'}"
+                )
+            else:
+                logger.warning(f"No device found for IP {ip_address}")
+        
+        # Bulk create all stats records
+        if stats_to_create:
+            DevicePingStats.objects.bulk_create(stats_to_create)
+            logger.info(
+                f"Created {len(stats_to_create)} ping stats records: "
+                f"{successful_pings} alive, {failed_pings} down"
+            )
+        
+        return {
+            'success': True,
+            'devices_pinged': len(device_list),
+            'alive_devices': successful_pings,
+            'down_devices': failed_pings
+        }
+        
+    except Exception as e:
+        logger.exception("Error in ping_all_monitored_devices")
+        return {
+            'success': False,
+            'message': str(e)
+        }
 

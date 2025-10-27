@@ -1,6 +1,6 @@
 /*
  * File: types.ts
- * Copyright (C) 2025 Keegan White
+ * Copyright (C) 2025 Taurine Technology
  *
  * This file is part of the SDN Launch Control project.
  *
@@ -8,7 +8,7 @@
  * available at: https://www.gnu.org/licenses/gpl-3.0.en.html#license-text
  *
  * Contributions to this project are governed by a Contributor License Agreement (CLA).
- * By submitting a contribution, contributors grant Keegan White exclusive rights to
+ * By submitting a contribution, contributors grant Taurine Technology exclusive rights to
  * the contribution, including the right to relicense it under a different license
  * at the copyright owner's discretion.
  *
@@ -1038,6 +1038,95 @@ export interface PortWithTimeSeries {
   };
   time_series: PortTimeSeriesPoint[];
 }
+
+// Device Monitoring Types
+export interface DevicePingStats {
+  id: number;
+  device: number;
+  is_alive: boolean;
+  successful_pings: number;
+  timestamp: string;
+}
+
+export interface DeviceUptimeData {
+  bucket: string;
+  uptime_percentage: number;
+  total_pings: number;
+}
+
+export interface DeviceAggregationData {
+  device_id: number;
+  uptime_percentage: number;
+  total_pings: number;
+  device_name?: string;
+  is_monitored?: boolean;
+  ip_address?: string;
+  mac_address?: string;
+}
+
+export interface DeviceUptimeStatus {
+  device_id: number;
+  device_name: string;
+  ip_address?: string;
+  mac_address?: string;
+  uptime_percentage: number;
+  total_pings: number;
+  is_monitored: boolean;
+}
+
+export interface ToggleMonitoringRequest {
+  device_id: number;
+  is_ping_target: boolean;
+}
+
+export interface IngestUptimeDataRequest {
+  device_id: number;
+  is_alive: boolean;
+  successful_pings: number;
+  timestamp?: string;
+}
+
+export interface ChartDataPoint {
+  name: string;
+  Uptime: number;
+  total_pings: number;
+  device_id: number;
+  fill?: string;
+}
+
+export interface TimePeriodOption {
+  label: string;
+  value: string;
+}
+
+export const DEVICE_TYPES = [
+  { value: "switch", label: "Switch" },
+  { value: "access_point", label: "Access Point" },
+  { value: "server", label: "Server" },
+  { value: "controller", label: "Controller" },
+  { value: "vm", label: "Virtual Machine" },
+  { value: "client", label: "Client" },
+  { value: "dns", label: "DNS Server" },
+  { value: "end_user", label: "End User" },
+] as const;
+
+export const OS_TYPES = [
+  { value: "ubuntu_20_server", label: "Ubuntu 20 Server" },
+  { value: "ubuntu_22_server", label: "Ubuntu 22 Server" },
+  { value: "ubuntu_24_server", label: "Ubuntu 24 Server" },
+  { value: "ubuntu_20_desktop", label: "Ubuntu 20 Desktop" },
+  { value: "ubuntu_22_desktop", label: "Ubuntu 22 Desktop" },
+  { value: "ubuntu_24_desktop", label: "Ubuntu 24 Desktop" },
+  { value: "unknown", label: "Unknown" },
+  { value: "windows", label: "Windows" },
+  { value: "macos", label: "macOS" },
+  { value: "linux", label: "Linux" },
+  { value: "android", label: "Android" },
+  { value: "ios", label: "iOS" },
+  { value: "chromeos", label: "ChromeOS" },
+  { value: "chromebook", label: "Chromebook" },
+  { value: "other", label: "Other" },
+] as const;
 
 // By-port endpoint response
 export interface ByPortResponse {

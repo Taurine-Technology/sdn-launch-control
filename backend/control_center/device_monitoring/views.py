@@ -30,8 +30,10 @@ from knox.auth import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from .models import DeviceStats, PortUtilizationStats
 from .serializers import PortUtilizationStatsSerializer
+from network_device.models import NetworkDevice
+from network_device.serializers import NetworkDeviceSerializer
 from requests.auth import HTTPBasicAuth
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes
 from ovs_install.utilities.ansible_tasks import run_playbook
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
@@ -49,6 +51,9 @@ from rest_framework.decorators import action
 from django.db import connection
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
+import re
+from datetime import datetime, timedelta
+import pytz
 from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, create_inv_data
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -855,3 +860,411 @@ class PortUtilizationStatsViewSet(viewsets.ReadOnlyModelViewSet):
                 {"error": f"Database error: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+# toggle_device_monitoring function removed - use NetworkDeviceViewSet instead
+# Example usage:
+# PATCH /api/v1/network-devices/{device_id}/
+# {"is_ping_target": true}
+
+
+class DeviceUptimeViewSet(viewsets.ViewSet):
+    """
+    Unified ViewSet for device uptime data with multiple aggregation methods.
+    
+    This replaces the individual function-based views with a more maintainable
+    approach using Django REST Framework's built-in capabilities.
+    
+    Endpoints:
+    - GET /api/device-monitoring/uptime/ - List uptime status for all devices
+    - GET /api/device-monitoring/uptime/{device_id}/timeseries/ - Time series data for specific device
+    - GET /api/device-monitoring/uptime/aggregates/ - Aggregated data from materialized views
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def list(self, request):
+        """
+        Returns current uptime percentage for monitored devices over a time period.
+        
+        Query Parameters:
+            - period: Look-back time period (default: '15 minutes')
+            - min_pings: Minimum number of pings required (default: 1)
+            - device_ids: Comma-separated list of device IDs to filter
+        """
+        return self._get_uptime_status(request)
+    
+    @action(detail=True, methods=['get'], url_path='timeseries')
+    def timeseries(self, request, pk=None):
+        """
+        Returns time-bucketed uptime data for a specific device.
+        
+        Query Parameters:
+            - period: Look-back time period (default: '30 minutes')
+            - bucket_interval: Time bucket size (default: '5 minutes')
+        """
+        return self._get_device_timeseries(request, pk)
+    
+    @action(detail=False, methods=['get'], url_path='aggregates')
+    def aggregates(self, request):
+        """
+        Returns aggregated ping data from materialized views.
+        
+        Query Parameters:
+            - device_ids: Comma-separated list of device IDs
+            - aggregation: One of "15m", "60m", "6h", "12h", "24h", "7d", "30d", "90d", "365d"
+            - time_range: Time range filter (default: "24 hours")
+        """
+        return self._get_ping_aggregates(request)
+    
+    def _get_uptime_status(self, request):
+        """Consolidated uptime status logic."""
+        period = request.query_params.get('period', '15 minutes')
+        min_pings = int(request.query_params.get('min_pings', 1))
+        device_ids_param = request.query_params.get('device_ids')
+        
+        # Parse device_ids
+        device_ids = self._parse_device_ids(device_ids_param)
+        if isinstance(device_ids, Response):
+            return device_ids
+        
+        # Build SQL query
+        sql, params = self._build_uptime_query(period, device_ids, min_pings)
+        
+        # Execute query
+        results = self._execute_query(sql, params)
+        if isinstance(results, Response):
+            return results
+        
+        # Process results
+        return self._process_uptime_results(results, period, device_ids)
+    
+    def _get_device_timeseries(self, request, device_id):
+        """Consolidated timeseries logic."""
+        period = request.query_params.get('period', '30 minutes')
+        bucket_interval = request.query_params.get('bucket_interval', '5 minutes')
+        valid_intervals = ['1 minute', '5 minutes', '15 minutes', '1 hour', '1 day']
+        if bucket_interval not in valid_intervals:
+            return Response(
+                {"error": f"Invalid bucket_interval. Must be one of: {valid_intervals}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate device exists
+        if not NetworkDevice.objects.filter(id=device_id).exists():
+            return Response(
+                {"error": f"Device with id {device_id} not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Validate period
+        period_minutes = parse_period_to_minutes(period)
+        if period_minutes < 30:
+            return Response(
+                {"error": "Minimum period is 30 minutes"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+        # Build optimized TimescaleDB query with advanced features
+        sql = """
+            SELECT
+                time_bucket(%s::interval, timestamp) AS bucket,
+                AVG(CASE WHEN is_alive THEN 1.0 ELSE 0 END) * 100 AS uptime_percentage,
+                COUNT(*) AS total_pings,
+                MIN(CASE WHEN is_alive THEN timestamp END) AS first_alive,
+                MAX(CASE WHEN is_alive THEN timestamp END) AS last_alive,
+                COUNT(CASE WHEN is_alive THEN 1 END) AS alive_count
+            FROM device_monitoring_devicepingstats
+            WHERE device_id = %s 
+              AND timestamp >= now() - interval %s
+            GROUP BY bucket
+            ORDER BY bucket;
+        """
+        params = [bucket_interval, device_id, period]
+        
+        results = self._execute_query(sql, params)
+        if isinstance(results, Response):
+            return results
+        
+        # Fill missing buckets
+        return self._fill_time_buckets(results, period_minutes, bucket_interval)
+    
+    def _get_ping_aggregates(self, request):
+        """Consolidated ping aggregates logic with fallback to direct queries."""
+        device_ids_param = request.query_params.get('device_ids')
+        aggregation_param = request.query_params.get('aggregation', '15m')
+        time_range = request.query_params.get('time_range', '24 hours')
+        
+        # Parse device_ids
+        device_ids = self._parse_device_ids(device_ids_param)
+        if isinstance(device_ids, Response):
+            return device_ids
+        
+        # Map aggregation to time intervals for direct queries
+        aggregation_intervals = {
+            '15m': '15 minutes',
+            '60m': '1 hour', 
+            '6h': '6 hours',
+            '12h': '12 hours',
+            '24h': '24 hours',
+            '7d': '7 days',
+            '30d': '30 days',
+            '90d': '90 days',
+            '365d': '365 days',
+        }
+        
+        if aggregation_param not in aggregation_intervals:
+            return Response(
+                {"error": f"Invalid aggregation value. Allowed values are: {', '.join(aggregation_intervals.keys())}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Use direct TimescaleDB query instead of materialized views
+        bucket_interval = aggregation_intervals[aggregation_param]
+        
+        # Build direct query using time_bucket
+        sql = """
+            SELECT 
+                time_bucket(%s::interval, timestamp) AS bucket,
+                device_id,
+                AVG(CASE WHEN is_alive THEN 1.0 ELSE 0 END) * 100 AS uptime_percentage,
+                COUNT(*) AS total_pings
+            FROM device_monitoring_devicepingstats
+            WHERE timestamp >= now() - interval %s
+        """
+        params = [bucket_interval, time_range]
+        
+        if device_ids:
+            placeholders = ','.join(['%s'] * len(device_ids))
+            sql += f" AND device_id IN ({placeholders})"
+            params.extend(device_ids)
+        
+        sql += """
+            GROUP BY bucket, device_id
+            ORDER BY bucket DESC, device_id;
+        """
+        
+        # Execute query
+        results = self._execute_query(sql, params)
+        if isinstance(results, Response):
+            return results
+        
+        return Response(results, status=status.HTTP_200_OK)
+    
+    def _parse_device_ids(self, device_ids_param):
+        """Parse comma-separated device IDs."""
+        if not device_ids_param:
+            return []
+        
+        try:
+            return [int(x.strip()) for x in device_ids_param.split(',') if x.strip()]
+        except ValueError:
+            return Response(
+                {"error": "device_ids must be a comma-separated list of integers."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    def _build_uptime_query(self, period, device_ids, min_pings):
+        """Build optimized TimescaleDB query for uptime status."""
+        # Use TimescaleDB's time_bucket for efficient aggregation
+        # Leverage compression and chunk exclusion for fast lookups
+        sql = """
+            SELECT
+                device_id,
+                AVG(CASE WHEN is_alive THEN 1.0 ELSE 0 END) * 100 AS uptime_percentage,
+                COUNT(*) AS total_pings,
+                MIN(timestamp) AS first_ping,
+                MAX(timestamp) AS last_ping
+            FROM device_monitoring_devicepingstats
+            WHERE timestamp >= now() - interval %s
+        """
+        params = [period]
+        
+        if device_ids:
+            placeholders = ','.join(['%s'] * len(device_ids))
+            sql += f" AND device_id IN ({placeholders})"
+            params.extend(device_ids)
+        
+        sql += """
+            GROUP BY device_id
+            HAVING COUNT(*) >= %s
+            ORDER BY device_id;
+        """
+        params.append(min_pings)
+        
+        return sql, params
+    
+# _build_aggregates_query method removed - using direct TimescaleDB queries instead
+    
+    def _execute_query(self, sql, params):
+        """Execute TimescaleDB query."""
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(sql, params)
+                columns = [col[0] for col in cursor.description]
+                return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.exception("Error executing uptime query")
+            return Response(
+                {"error": f"Database query error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _process_uptime_results(self, results, period, device_ids):
+        """Process uptime results with missing device handling and enrichment."""
+        # Add missing devices as offline
+        if device_ids:
+            all_device_ids = set(device_ids)
+        else:
+            all_device_ids = set(
+                NetworkDevice.objects.filter(is_ping_target=True)
+                .values_list('id', flat=True)
+            )
+        
+        result_device_ids = set(r['device_id'] for r in results)
+        missing_device_ids = all_device_ids - result_device_ids
+        
+        for device_id in missing_device_ids:
+            results.append({
+                'device_id': device_id,
+                'uptime_percentage': 0.0,
+                'total_pings': 0
+            })
+        
+        # Adjust for incomplete data
+        period_minutes = parse_period_to_minutes(period)
+        expected_pings = period_minutes
+        
+        for r in results:
+            if r['total_pings'] < expected_pings:
+                alive_pings = float(r['uptime_percentage']) * float(r['total_pings']) / 100.0
+                r['uptime_percentage'] = (
+                    (alive_pings / expected_pings) * 100 if expected_pings > 0 else 0.0
+                )
+                r['total_pings'] = expected_pings
+        
+        # Sort and enrich with device info
+        results.sort(key=lambda r: r['device_id'])
+        self._enrich_with_device_info(results)
+        
+        return Response(results, status=status.HTTP_200_OK)
+
+    def _fill_time_buckets(self, results, period_minutes, bucket_interval):
+        """Fill missing time buckets with 0% uptime."""
+        now = datetime.utcnow().replace(second=0, microsecond=0, tzinfo=pytz.UTC)
+        start_time = now - timedelta(minutes=period_minutes)
+        
+        bucket_minutes = parse_period_to_minutes(bucket_interval)
+        bucket_delta = timedelta(minutes=bucket_minutes)
+        
+        # Generate expected buckets
+        expected_buckets = []
+        t = start_time.replace(second=0, microsecond=0)
+        minutes_to_add = (bucket_minutes - t.minute % bucket_minutes) if t.minute % bucket_minutes != 0 else 0
+        t = t + timedelta(minutes=minutes_to_add)
+        
+        while t <= now:
+            expected_buckets.append(t)
+            t += bucket_delta
+        
+        # Build result lookup
+        result_by_bucket = {}
+        for r in results:
+            bucket_dt = r['bucket']
+            if isinstance(bucket_dt, str):
+                bucket_dt = datetime.fromisoformat(bucket_dt.replace('Z', '+00:00'))
+            result_by_bucket[bucket_dt] = r
+        
+        # Fill missing buckets
+        filled_results = []
+        for bucket_time in expected_buckets:
+            r = result_by_bucket.get(bucket_time)
+            
+            if r:
+                bucket_val = r['bucket']
+                if isinstance(bucket_val, datetime):
+                    bucket_val = bucket_val.isoformat().replace('+00:00', 'Z')
+                elif isinstance(bucket_val, str) and bucket_val.endswith('+00:00'):
+                    bucket_val = bucket_val.replace('+00:00', 'Z')
+                
+                r = dict(r)
+                r['bucket'] = bucket_val
+                filled_results.append(r)
+            else:
+                filled_results.append({
+                    'bucket': bucket_time.isoformat().replace('+00:00', 'Z'),
+                    'uptime_percentage': 0.0,
+                    'total_pings': 0
+                })
+        
+        filled_results.sort(key=lambda r: r['bucket'])
+        return Response(filled_results, status=status.HTTP_200_OK)
+
+    def _enrich_with_device_info(self, results):
+        """Enrich results with device information."""
+        device_ids_in_results = [r['device_id'] for r in results]
+        devices = NetworkDevice.objects.filter(id__in=device_ids_in_results).values(
+            'id', 'name', 'is_ping_target', 'ip_address', 'mac_address'
+        )
+        device_lookup = {d['id']: d for d in devices}
+        
+        for r in results:
+            device_info = device_lookup.get(r['device_id'], {})
+            r['device_name'] = device_info.get('name') or f"Device {r['device_id']}"
+            r['is_monitored'] = device_info.get('is_ping_target', False)
+            r['ip_address'] = device_info.get('ip_address')
+            r['mac_address'] = device_info.get('mac_address')
+
+
+def parse_period_to_minutes(period):
+    """
+    Parse period strings like '15 minutes', '24 hours', '7 days' to minutes.
+    
+    Args:
+        period (str): Time period string (e.g., "15 minutes", "2 hours", "7 days")
+        
+    Returns:
+        int: Number of minutes
+        
+    Examples:
+        >>> parse_period_to_minutes("15 minutes")
+        15
+        >>> parse_period_to_minutes("2 hours")
+        120
+        >>> parse_period_to_minutes("7 days")
+        10080
+    """
+    period = period.strip().lower()
+    
+    # Try to match minutes
+    match = re.match(r"(\d+)\s*minutes?", period)
+    if match:
+        return int(match.group(1))
+    
+    # Try to match hours
+    match = re.match(r"(\d+)\s*hours?", period)
+    if match:
+        return int(match.group(1)) * 60
+    
+    # Try to match days
+    match = re.match(r"(\d+)\s*days?", period)
+    if match:
+        return int(match.group(1)) * 60 * 24
+    
+    # Try to match weeks
+    match = re.match(r"(\d+)\s*weeks?", period)
+    if match:
+        return int(match.group(1)) * 60 * 24 * 7
+    
+    # Default to 15 minutes if parsing fails
+    logger.warning(f"Could not parse period '{period}', defaulting to 15 minutes")
+    return 15
+
+
+# aggregate_device_uptime_status function removed - use DeviceUptimeViewSet instead
+# GET /api/device-monitoring/uptime/
+
+
+# All old uptime functions removed - use DeviceUptimeViewSet instead
+# GET /api/device-monitoring/uptime/ - List uptime status
+# GET /api/device-monitoring/uptime/{device_id}/timeseries/ - Time series data
+# GET /api/device-monitoring/uptime/aggregates/ - Materialized view aggregates

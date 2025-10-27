@@ -8,13 +8,26 @@ DEVICE_TYPES = (
     ('server', 'Server'),
     ('controller', 'Controller'),
     ('vm', 'Virtual Machine'),
+    ('client', 'Client'),
+    ('dns', 'DNS Server'),
     ('end_user', 'End User'),
 )
 
 OS_TYPES = (
     ('ubuntu_20_server', 'Ubuntu 20 Server'),
     ('ubuntu_22_server', 'Ubuntu 22 Server'),
+    ('ubuntu_24_server', 'Ubuntu 24 Server'),
+    ('ubuntu_20_desktop', 'Ubuntu 20 Desktop'),
+    ('ubuntu_22_desktop', 'Ubuntu 22 Desktop'),
+    ('ubuntu_24_desktop', 'Ubuntu 24 Desktop'),
     ('unknown', 'Unknown'),
+    ('windows', 'Windows'),
+    ('macos', 'macOS'),
+    ('linux', 'Linux'),
+    ('android', 'Android'),
+    ('ios', 'iOS'),
+    ('chromeos', 'ChromeOS'),
+    ('chromebook', 'Chromebook'),
     ('other', 'Other'),
 )
 
@@ -32,7 +45,7 @@ class NetworkDevice(models.Model):
         related_name="network_devices"
     )
 
-    mac_address = models.CharField(max_length=17, unique=True, validators=[mac_address_validator])
+    mac_address = models.CharField(max_length=17, unique=True, blank=True, null=True, validators=[mac_address_validator])
     name = models.CharField(max_length=100, blank=True, null=True)
     device_type = models.CharField(
         max_length=20,
@@ -52,10 +65,16 @@ class NetworkDevice(models.Model):
     password = models.CharField(max_length=100, blank=True, null=True)
     ip_address = models.GenericIPAddressField(blank=True, null=True)
     number_of_ports = models.IntegerField(blank=True, null=True)
+    is_ping_target = models.BooleanField(default=False, db_index=True)
     openvswitch_enabled = models.BooleanField(default=False)
     openvswitch_version = models.CharField(max_length=50, blank=True, null=True)
     openflow_version = models.CharField(max_length=50, blank=True, null=True)
     verified = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.mac_address
+        if self.mac_address:
+            return f"{self.name or 'Unnamed'} ({self.mac_address})"
+        elif self.ip_address:
+            return f"{self.name or 'Unnamed'} ({self.ip_address})"
+        else:
+            return f"{self.name or 'Unnamed'} (ID: {self.id})"

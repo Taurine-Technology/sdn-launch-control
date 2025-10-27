@@ -19,13 +19,22 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PortUtilizationStatsViewSet
+from .views import (
+    PortUtilizationStatsViewSet,
+    DeviceUptimeViewSet,
+)
 
 app_name = 'device_monitoring'
 
 router = DefaultRouter()
 router.register(r"port-utilization-stats", PortUtilizationStatsViewSet, basename="port-utilization-stats")
+router.register(r"uptime", DeviceUptimeViewSet, basename="device-uptime")
 
 urlpatterns = [
     path('', include(router.urls)),
+    
+    # Note: All old uptime endpoints removed - use DeviceUptimeViewSet instead
+    # GET /api/device-monitoring/uptime/ - List uptime status
+    # GET /api/device-monitoring/uptime/{device_id}/timeseries/ - Time series data  
+    # GET /api/device-monitoring/uptime/aggregates/ - Materialized view aggregates
 ]

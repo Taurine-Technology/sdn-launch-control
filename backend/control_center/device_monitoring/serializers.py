@@ -18,7 +18,10 @@
 # For inquiries, contact Keegan White at keeganwhite@taurinetech.com.
 
 from rest_framework import serializers
-from .models import PortUtilizationStats
+from .models import (
+    PortUtilizationStats,
+    DevicePingStats,
+)
 
 
 class PortUtilizationStatsSerializer(serializers.ModelSerializer):
@@ -40,6 +43,23 @@ class PortUtilizationStatsSerializer(serializers.ModelSerializer):
             'rx_bytes_diff',
             'tx_bytes_diff',
             'duration_diff',
+            'timestamp',
+        )
+        read_only_fields = fields
+
+
+class DevicePingStatsSerializer(serializers.ModelSerializer):
+    """
+    Serializer for DevicePingStats model.
+    Returns ping check results for monitored network devices.
+    """
+    class Meta:
+        model = DevicePingStats
+        fields = (
+            'id',
+            'device',
+            'is_alive',
+            'successful_pings',
             'timestamp',
         )
         read_only_fields = fields

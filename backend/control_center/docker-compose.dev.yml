@@ -2,7 +2,7 @@ services:
   pgdatabase:
     container_name: launch-control-pg-db-dev
     image: timescale/timescaledb:latest-pg17
-    restart: no
+    restart: "no"
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
@@ -13,14 +13,14 @@ services:
   redis:
     container_name: launch-control-redis-dev
     image: redis:alpine
-    restart: no
+    restart: "no"
     ports:
       - "10000:6379"
 
   django:
     container_name: launch-control-api-dev
     build: .
-    restart: no
+    restart: "no"
     ports:
       - "8000:8000"
     env_file: .env
@@ -41,6 +41,7 @@ services:
                python manage.py create_default_user &&
                python manage.py setup_device_health_monitor &&
                python manage.py setup_port_utilization_monitor &&
+               python manage.py setup_device_ping_monitor &&
                python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/usr/app/
@@ -52,7 +53,7 @@ services:
     container_name: launch-control-celery-dev
     build:
       context: .
-    restart: no
+    restart: "no"
     command: celery -A control_center worker -l INFO
     environment:
       - TF_CPP_MIN_LOG_LEVEL=2
@@ -68,7 +69,7 @@ services:
     container_name: launch-control-celery-beat-dev
     build:
       context: .
-    restart: no
+    restart: "no"
     command: celery -A control_center beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
     environment:
       - TF_CPP_MIN_LOG_LEVEL=2

@@ -18,6 +18,7 @@
 # For inquiries, contact Keegan White at keeganwhite@taurinetech.com.
 
 from django.db import models
+from django.utils import timezone
 
 
 class DeviceStats(models.Model):
@@ -99,3 +100,51 @@ class PortUtilizationAlert(models.Model):
 
     def __str__(self):
         return f"Port utilization alerts for {self.port_name} on {self.ip_address}"
+
+
+class DevicePingStats(models.Model):
+    """
+    Time-series model for storing ping results.
+    
+    This model is already converted to a TimescaleDB hypertable with:
+    - Chunk interval: 7 days
+    - Partition key: timestamp
+    - Optimized for fast time-series queries and compression
+    """
+    device = models.ForeignKey(
+        'network_device.NetworkDevice',
+        on_delete=models.CASCADE,
+        related_name='ping_stats',
+        db_index=True
+    )
+    is_alive = models.BooleanField(
+        default=False,
+        help_text="Device is online if 3+ out of 5 pings succeeded"
+    )
+    successful_pings = models.IntegerField(
+        help_text="Number of successful pings out of 5"
+    )
+    timestamp = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="Timestamp of the ping check"
+    )
+
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            # TimescaleDB-optimized indexes for hypertable
+            models.Index(fields=['device', 'timestamp']),  # Composite index for device-specific queries
+            models.Index(fields=['timestamp']),            # Time-based queries
+            models.Index(fields=['timestamp', 'is_alive'], name='device_moni_timesta_3e408d_idx'), # Status-based queries with time (timestamp first for better selectivity)
+        ]
+        constraints = [
+            models.CheckConstraint(
+                name='successful_pings_range_0_5',
+                check=models.Q(successful_pings__gte=0, successful_pings__lte=5),
+            ),
+        ]
+
+    def __str__(self):
+        status = "Alive" if self.is_alive else "Down"
+        return f"{self.device} at {self.timestamp}: {status} ({self.successful_pings}/5)"

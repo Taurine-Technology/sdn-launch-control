@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCcw, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   listNetworkNotifications,
   markAllNotificationsRead,
@@ -248,58 +249,61 @@ export function NotificationPanel() {
           </div>
         </div>
         <ScrollArea className="flex-1 min-h-0">
-          <div className="divide-y divide-border">
-            {(data?.results || []).map((n) => (
-              <Card key={n.id} className="rounded-none shadow-none border-0">
-                <CardContent className="p-4 border-b last:border-b-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <div
-                      className="flex-1 cursor-pointer"
-                      onClick={() => openNotification(n)}
-                    >
-                      <p className="font-medium flex items-center gap-2">
-                        <span>{n.type}</span>
-                        {n.urgency && (
-                          <span
-                            className={
-                              `inline-flex items-center px-1.5 h-5 rounded text-[10px] ` +
-                              (n.urgency === "high"
-                                ? "bg-red-500 text-white"
-                                : n.urgency === "medium"
-                                ? "bg-amber-500 text-white"
-                                : "bg-emerald-500 text-white")
-                            }
-                          >
-                            {n.urgency}
-                          </span>
-                        )}
-                        {!n.read && (
-                          <span className="ml-1 inline-block h-2 w-2 rounded-full bg-primary align-middle" />
-                        )}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {n.description}
-                      </p>
-                      <span className="text-[11px] text-muted-foreground">
-                        {formatTime(n.created_at)}
-                      </span>
-                    </div>
-                    {!n.read && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={getT(
-                          "components.notifications.notification_panel.mark_as_read",
-                          "Mark as read"
-                        )}
-                        onClick={() => onMarkRead(n)}
+          <div className="flex flex-col">
+            {(data?.results || []).map((n, index) => (
+              <React.Fragment key={n.id}>
+                <Card className="rounded-none shadow-none border-0">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => openNotification(n)}
                       >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                        <p className="font-medium flex items-center gap-2">
+                          <span>{n.type}</span>
+                          {n.urgency && (
+                            <span
+                              className={
+                                `inline-flex items-center px-1.5 h-5 rounded text-[10px] ` +
+                                (n.urgency === "high"
+                                  ? "bg-red-500 text-white"
+                                  : n.urgency === "medium"
+                                  ? "bg-amber-500 text-white"
+                                  : "bg-emerald-500 text-white")
+                              }
+                            >
+                              {n.urgency}
+                            </span>
+                          )}
+                          {!n.read && (
+                            <span className="ml-1 inline-block h-2 w-2 rounded-full bg-primary align-middle" />
+                          )}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {n.description}
+                        </p>
+                        <span className="text-[11px] text-muted-foreground">
+                          {formatTime(n.created_at)}
+                        </span>
+                      </div>
+                      {!n.read && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={getT(
+                            "components.notifications.notification_panel.mark_as_read",
+                            "Mark as read"
+                          )}
+                          onClick={() => onMarkRead(n)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+                {index < (data?.results || []).length - 1 && <Separator />}
+              </React.Fragment>
             ))}
             {!loading && data && data.count === 0 && (
               <div className="p-4 text-sm text-muted-foreground">

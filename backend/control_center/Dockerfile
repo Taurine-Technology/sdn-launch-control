@@ -16,6 +16,7 @@ RUN apt-get update  \
     && apt-get install -y gcc  \
     && apt-get install -y build-essential  \
     && apt-get install -y libpq-dev  \
+    && apt-get install -y fping  \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file and install Python dependencies

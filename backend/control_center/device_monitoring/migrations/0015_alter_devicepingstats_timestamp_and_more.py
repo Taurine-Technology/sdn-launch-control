@@ -18,6 +18,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='devicepingstats',
-            index=models.Index(fields=['is_alive', 'timestamp'], name='device_moni_is_aliv_71a46c_idx'),
+            index=models.Index(fields=['timestamp', 'is_alive'], name='device_moni_timestamp_is_alive_idx'),
         ),
     ]

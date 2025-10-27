@@ -25,6 +25,7 @@ def reverse_hypertable(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    atomic = False
 
     dependencies = [
         ('device_monitoring', '0012_alter_devicepingstats_primary_key'),

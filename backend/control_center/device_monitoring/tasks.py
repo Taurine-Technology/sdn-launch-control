@@ -309,19 +309,26 @@ def ping_all_monitored_devices():
         logger.info(f"Pinging {devices.count()} monitored devices")
         
         for device in devices:
-            is_alive, successful_pings = ping_device(device.ip_address)
-            
-            DevicePingStats.objects.create(
-                device=device,
-                is_alive=is_alive,
-                successful_pings=successful_pings
-            )
-            
-            logger.debug(
-                f"Pinged {device.ip_address}: "
-                f"{successful_pings}/5 successful, "
-                f"{'alive' if is_alive else 'down'}"
-            )
+            try:
+                is_alive, successful_pings = ping_device(device.ip_address)
+                
+                DevicePingStats.objects.create(
+                    device=device,
+                    is_alive=is_alive,
+                    successful_pings=successful_pings
+                )
+                
+                logger.debug(
+                    f"Pinged {device.ip_address}: "
+                    f"{successful_pings}/5 successful, "
+                    f"{'alive' if is_alive else 'down'}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to ping device {device.ip_address} (ID: {device.id}): {str(e)}",
+                    exc_info=True
+                )
+                continue
         
         return {
             'success': True,

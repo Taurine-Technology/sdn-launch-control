@@ -33,7 +33,7 @@ from .serializers import PortUtilizationStatsSerializer
 from network_device.models import NetworkDevice
 from network_device.serializers import NetworkDeviceSerializer
 from requests.auth import HTTPBasicAuth
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import api_view, authentication_classes
 from ovs_install.utilities.ansible_tasks import run_playbook
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
@@ -942,6 +942,12 @@ class DeviceUptimeViewSet(viewsets.ViewSet):
         """Consolidated timeseries logic."""
         period = request.query_params.get('period', '30 minutes')
         bucket_interval = request.query_params.get('bucket_interval', '5 minutes')
+        valid_intervals = ['1 minute', '5 minutes', '15 minutes', '1 hour', '1 day']
+        if bucket_interval not in valid_intervals:
+            return Response(
+                {"error": f"Invalid bucket_interval. Must be one of: {valid_intervals}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         # Validate device exists
         try:
@@ -961,21 +967,21 @@ class DeviceUptimeViewSet(viewsets.ViewSet):
             )
     
         # Build optimized TimescaleDB query with advanced features
-        sql = f"""
+        sql = """
             SELECT
-                time_bucket('{bucket_interval}', timestamp) AS bucket,
+                time_bucket(%s::interval, timestamp) AS bucket,
                 AVG(CASE WHEN is_alive THEN 1.0 ELSE 0 END) * 100 AS uptime_percentage,
                 COUNT(*) AS total_pings,
                 MIN(CASE WHEN is_alive THEN timestamp END) AS first_alive,
                 MAX(CASE WHEN is_alive THEN timestamp END) AS last_alive,
-                COUNT(CASE WHEN is_alive THEN 1 END) AS successful_pings
+                COUNT(CASE WHEN is_alive THEN 1 END) AS alive_count
             FROM device_monitoring_devicepingstats
             WHERE device_id = %s 
               AND timestamp >= now() - interval %s
             GROUP BY bucket
             ORDER BY bucket;
         """
-        params = [device_id, period]
+        params = [bucket_interval, device_id, period]
         
         results = self._execute_query(sql, params)
         if isinstance(results, Response):
@@ -1018,16 +1024,16 @@ class DeviceUptimeViewSet(viewsets.ViewSet):
         bucket_interval = aggregation_intervals[aggregation_param]
         
         # Build direct query using time_bucket
-        sql = f"""
+        sql = """
             SELECT 
-                time_bucket('{bucket_interval}', timestamp) AS bucket,
+                time_bucket(%s::interval, timestamp) AS bucket,
                 device_id,
                 AVG(CASE WHEN is_alive THEN 1.0 ELSE 0 END) * 100 AS uptime_percentage,
                 COUNT(*) AS total_pings
             FROM device_monitoring_devicepingstats
             WHERE timestamp >= now() - interval %s
         """
-        params = [time_range]
+        params = [bucket_interval, time_range]
         
         if device_ids:
             placeholders = ','.join(['%s'] * len(device_ids))

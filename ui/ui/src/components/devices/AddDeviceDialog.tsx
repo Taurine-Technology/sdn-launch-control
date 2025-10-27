@@ -23,7 +23,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { createNetworkDevice } from "@/lib/deviceMonitoring";
 import { DEVICE_TYPES, OS_TYPES } from "@/lib/types";
-import { useLanguage } from "@/context/languageContext";
 import RingLoader from "react-spinners/RingLoader";
 
 interface AddDeviceDialogProps {
@@ -39,7 +38,6 @@ const AddDeviceDialog: React.FC<AddDeviceDialogProps> = ({
   onDeviceAdded,
   token,
 }) => {
-  const { getT } = useLanguage();
   const [formData, setFormData] = React.useState({
     name: "",
     device_type: "",
@@ -129,14 +127,24 @@ const AddDeviceDialog: React.FC<AddDeviceDialogProps> = ({
         is_ping_target: true,
       });
       setErrors({});
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating device:", error);
 
-      if (error.response?.status === 400 || error.response?.status === 409) {
-        toast.error(
-          error.response?.data?.message ||
-            "Device already exists or invalid data"
-        );
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { status?: number; data?: { message?: string } };
+        };
+        if (
+          axiosError.response?.status === 400 ||
+          axiosError.response?.status === 409
+        ) {
+          toast.error(
+            axiosError.response?.data?.message ||
+              "Device already exists or invalid data"
+          );
+        } else {
+          toast.error("Failed to add device. Please try again.");
+        }
       } else {
         toast.error("Failed to add device. Please try again.");
       }

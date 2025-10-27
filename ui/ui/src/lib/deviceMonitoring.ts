@@ -1,6 +1,6 @@
 /*
  * File: deviceMonitoring.ts
- * Copyright (C) 2025 Keegan White
+ * Copyright (C) 2025 Taurine Technology
  *
  * This file is part of the SDN Launch Control project.
  *
@@ -8,7 +8,7 @@
  * available at: https://www.gnu.org/licenses/gpl-3.0.en.html#license-text
  *
  * Contributions to this project are governed by a Contributor License Agreement (CLA).
- * By submitting a contribution, contributors grant Keegan White exclusive rights to
+ * By submitting a contribution, contributors grant Taurine Technology exclusive rights to
  * the contribution, including the right to relicense it under a different license
  * at the copyright owner's discretion.
  *
@@ -20,51 +20,16 @@
  */
 
 import { createAxiosInstanceWithToken } from "./axiosInstance";
+import {
+  DeviceUptimeStatus,
+  DevicePingStats,
+  DeviceUptimeData,
+  DeviceAggregationData,
+  ToggleMonitoringRequest,
+  IngestUptimeDataRequest,
+} from "./types";
 
-// Types for device monitoring
-export interface DevicePingStats {
-  id: number;
-  device: number;
-  is_alive: boolean;
-  successful_pings: number;
-  timestamp: string;
-}
-
-export interface DeviceUptimeData {
-  bucket: string;
-  uptime_percentage: number;
-  total_pings: number;
-}
-
-export interface DeviceAggregationData {
-  device_id: number;
-  uptime_percentage: number;
-  total_pings: number;
-  device_name?: string;
-  is_monitored?: boolean;
-  ip_address?: string;
-  mac_address?: string;
-}
-
-export interface DeviceUptimeStatus {
-  device_id: number;
-  device_name: string;
-  uptime_percentage: number;
-  total_pings: number;
-  is_monitored: boolean;
-}
-
-export interface ToggleMonitoringRequest {
-  device_id: number;
-  is_ping_target: boolean;
-}
-
-export interface IngestUptimeDataRequest {
-  device_id: number;
-  is_alive: boolean;
-  successful_pings: number;
-  timestamp?: string;
-}
+// Functions for device monitoring
 
 /**
  * Toggle device monitoring (enable/disable ping monitoring)
@@ -123,9 +88,7 @@ export const fetchDeviceUptimeAggregates = async (
 ): Promise<DeviceAggregationData[]> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.get(
-    `/uptime/aggregates/?period=${encodeURIComponent(
-      period
-    )}&min_pings=${minPings}`
+    `/uptime/?period=${encodeURIComponent(period)}&min_pings=${minPings}`
   );
   // console.log("[DEVICE MONITORING] Uptime aggregates:", data);
   return data;
@@ -146,24 +109,6 @@ export const fetchPingAggregates = async (
     )}`
   );
   // console.log("[DEVICE MONITORING] Ping aggregates:", data);
-  return data;
-};
-
-/**
- * Get uptime line chart data
- */
-export const fetchDeviceUptimeLineData = async (
-  token: string,
-  deviceId: number,
-  timeRange: string = "24 hours"
-): Promise<DeviceUptimeData[]> => {
-  const axiosInstance = createAxiosInstanceWithToken(token);
-  const { data } = await axiosInstance.get(
-    `/uptime/${deviceId}/timeseries/?time_range=${encodeURIComponent(
-      timeRange
-    )}`
-  );
-  // console.log("[DEVICE MONITORING] Uptime line data:", data);
   return data;
 };
 
@@ -200,9 +145,12 @@ export const updateDeviceName = async (
     throw new Error("Either IP address or MAC address must be provided");
   }
 
-  const { data } = await axiosInstance.put(`/network-devices/${identifier}/`, {
-    name: newName,
-  });
+  const { data } = await axiosInstance.patch(
+    `/network-devices/${encodeURIComponent(identifier)}/`,
+    {
+      name: newName,
+    }
+  );
   // console.log("[DEVICE MONITORING] Updated device name:", data);
   return data;
 };
@@ -228,7 +176,7 @@ export const deleteDevice = async (
   }
 
   const { data } = await axiosInstance.delete(
-    `/network-devices/${identifier}/`
+    `/network-devices/${encodeURIComponent(identifier)}/`
   );
   // console.log("[DEVICE MONITORING] Deleted device:", data);
   return data;

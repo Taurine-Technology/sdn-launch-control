@@ -27,6 +27,7 @@ import {
   DeviceAggregationData,
   ToggleMonitoringRequest,
   IngestUptimeDataRequest,
+  NetworkDevice,
 } from "./types";
 
 // Functions for device monitoring
@@ -117,7 +118,7 @@ export const fetchPingAggregates = async (
  */
 export const fetchMonitoredDevices = async (
   token: string
-): Promise<DeviceUptimeStatus[]> => {
+): Promise<NetworkDevice[]> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.get("/network-devices/monitored/");
   // console.log("[DEVICE MONITORING] Monitored devices:", data);

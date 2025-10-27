@@ -136,7 +136,13 @@ class DevicePingStats(models.Model):
             # TimescaleDB-optimized indexes for hypertable
             models.Index(fields=['device', 'timestamp']),  # Composite index for device-specific queries
             models.Index(fields=['timestamp']),            # Time-based queries
-            models.Index(fields=['is_alive', 'timestamp']), # Status-based queries with time
+            models.Index(fields=['timestamp', 'is_alive'], name='device_moni_timesta_3e408d_idx'), # Status-based queries with time (timestamp first for better selectivity)
+        ]
+        constraints = [
+            models.CheckConstraint(
+                name='successful_pings_range_0_5',
+                check=models.Q(successful_pings__gte=0, successful_pings__lte=5),
+            ),
         ]
 
     def __str__(self):

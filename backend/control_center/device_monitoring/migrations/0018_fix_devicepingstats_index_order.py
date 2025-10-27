@@ -6,12 +6,19 @@ from django.db import migrations, models
 def remove_old_index_if_exists(apps, schema_editor):
     """
     Remove the old index if it exists, ignore if it doesn't.
+    Also drop any index that might have the wrong name.
     """
     with schema_editor.connection.cursor() as cursor:
+        # Drop old index with different column order
         try:
             cursor.execute("DROP INDEX IF EXISTS device_moni_is_aliv_71a46c_idx;")
         except Exception:
-            # Index might not exist, which is fine
+            pass
+        
+        # Drop any index with timestamp+is_alive in correct order but wrong name
+        try:
+            cursor.execute("DROP INDEX IF EXISTS device_moni_timestamp_is_alive_idx;")
+        except Exception:
             pass
 
 
@@ -36,6 +43,6 @@ class Migration(migrations.Migration):
         migrations.RunPython(remove_old_index_if_exists, reverse_remove_index),
         migrations.AddIndex(
             model_name='devicepingstats',
-            index=models.Index(fields=['timestamp', 'is_alive'], name='device_moni_timestamp_is_alive_idx'),
+            index=models.Index(fields=['timestamp', 'is_alive'], name='device_moni_timesta_3e408d_idx'),
         ),
     ]

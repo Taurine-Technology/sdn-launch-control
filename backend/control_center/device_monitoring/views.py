@@ -950,9 +950,7 @@ class DeviceUptimeViewSet(viewsets.ViewSet):
             )
         
         # Validate device exists
-        try:
-            device = NetworkDevice.objects.get(id=device_id)
-        except NetworkDevice.DoesNotExist:
+        if not NetworkDevice.objects.filter(id=device_id).exists():
             return Response(
                 {"error": f"Device with id {device_id} not found"},
                 status=status.HTTP_404_NOT_FOUND
@@ -1098,12 +1096,9 @@ class DeviceUptimeViewSet(viewsets.ViewSet):
 # _build_aggregates_query method removed - using direct TimescaleDB queries instead
     
     def _execute_query(self, sql, params):
-        """Execute optimized TimescaleDB query with performance hints."""
+        """Execute TimescaleDB query."""
         try:
             with connection.cursor() as cursor:
-                # Enable TimescaleDB-specific optimizations
-                cursor.execute("SET enable_hashagg = off;")  # Prefer hash aggregation
-                cursor.execute("SET enable_sort = off;")     # Prefer index scans
                 cursor.execute(sql, params)
                 columns = [col[0] for col in cursor.description]
                 return [dict(zip(columns, row)) for row in cursor.fetchall()]

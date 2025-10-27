@@ -21,57 +21,20 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     PortUtilizationStatsViewSet,
-    toggle_device_monitoring,
-    aggregate_device_uptime_status,
-    device_uptime_timeseries,
-    ingest_uptime_data,
-    aggregate_ping_view,
-    aggregate_uptime_view,
-    device_uptime_line_view,
+    DeviceUptimeViewSet,
 )
 
 app_name = 'device_monitoring'
 
 router = DefaultRouter()
 router.register(r"port-utilization-stats", PortUtilizationStatsViewSet, basename="port-utilization-stats")
+router.register(r"uptime", DeviceUptimeViewSet, basename="device-uptime")
 
 urlpatterns = [
     path('', include(router.urls)),
     
-    # Custom function-based view endpoints
-    path(
-        'toggle-monitoring/',
-        toggle_device_monitoring,
-        name='toggle-device-monitoring'
-    ),
-    path(
-        'uptime-status/',
-        aggregate_device_uptime_status,
-        name='device-uptime-status'
-    ),
-        path(
-            'uptime-timeseries/',
-            device_uptime_timeseries,
-            name='device-uptime-timeseries'
-        ),
-        path(
-            'ingest-uptime-data/',
-            ingest_uptime_data,
-            name='ingest-uptime-data'
-        ),
-        path(
-            'ping-aggregates/',
-            aggregate_ping_view,
-            name='ping-aggregates'
-        ),
-        path(
-            'uptime-aggregates/',
-            aggregate_uptime_view,
-            name='uptime-aggregates'
-        ),
-        path(
-            'uptime-line/',
-            device_uptime_line_view,
-            name='uptime-line'
-        ),
+    # Note: All old uptime endpoints removed - use DeviceUptimeViewSet instead
+    # GET /api/device-monitoring/uptime/ - List uptime status
+    # GET /api/device-monitoring/uptime/{device_id}/timeseries/ - Time series data  
+    # GET /api/device-monitoring/uptime/aggregates/ - Materialized view aggregates
 ]

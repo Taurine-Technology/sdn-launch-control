@@ -44,10 +44,6 @@ export function buildSidebarConfig(
           title: getT("navigation.network_notifications"),
           url: "/network-notifications",
         },
-        {
-          title: getT("navigation.device_monitoring"),
-          url: "/devices/monitoring",
-        },
       ],
     },
     {
@@ -62,6 +58,10 @@ export function buildSidebarConfig(
         {
           title: getT("navigation.port_utilization"),
           url: "/monitoring/port-stats",
+        },
+        {
+          title: getT("navigation.device_monitoring"),
+          url: "/devices/monitoring",
         },
       ],
     },

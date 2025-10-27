@@ -22,21 +22,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  fetchDeviceUptimeAggregates,
-  fetchDeviceUptimeStatus 
-} from "@/lib/deviceMonitoring";
-import { 
-  DeviceAggregationData, 
-  DeviceUptimeStatus, 
+import { fetchDeviceUptimeStatus } from "@/lib/deviceMonitoring";
+import {
+  DeviceUptimeStatus,
   ChartDataPoint,
-  TimePeriodOption 
+  TimePeriodOption,
 } from "@/lib/types";
 import RingLoader from "react-spinners/RingLoader";
 import { useLanguage } from "@/context/languageContext";
 import { useAuth } from "@/context/authContext";
 
-export const description = "An interactive bar chart showing device uptime overview";
+export const description =
+  "An interactive bar chart showing device uptime overview";
 
 const DeviceUptimeOverview = () => {
   const { getT } = useLanguage();
@@ -53,8 +50,9 @@ const DeviceUptimeOverview = () => {
     { label: "30 days", value: "30d" },
   ];
 
-  const [timePeriod, setTimePeriod] = React.useState(timePeriodOptions[2].value); // Default to 60m
-  const [aggregationData, setAggregationData] = React.useState<DeviceAggregationData[]>([]);
+  const [timePeriod, setTimePeriod] = React.useState(
+    timePeriodOptions[2].value
+  ); // Default to 60m
   const [devices, setDevices] = React.useState<DeviceUptimeStatus[]>([]);
   const [loading, setLoading] = React.useState(false);
 
@@ -62,14 +60,14 @@ const DeviceUptimeOverview = () => {
   const convertPeriodToBackendFormat = (period: string): string => {
     const value = parseInt(period.slice(0, -1));
     const unit = period.slice(-1);
-    
+
     const unitMap: Record<string, string> = {
-      'm': value === 1 ? 'minute' : 'minutes',
-      'h': value === 1 ? 'hour' : 'hours',
-      'd': value === 1 ? 'day' : 'days'
+      m: value === 1 ? "minute" : "minutes",
+      h: value === 1 ? "hour" : "hours",
+      d: value === 1 ? "day" : "days",
     };
-    
-    return `${value} ${unitMap[unit] || 'minutes'}`;
+
+    return `${value} ${unitMap[unit] || "minutes"}`;
   };
 
   const loadData = React.useCallback(async () => {
@@ -78,18 +76,11 @@ const DeviceUptimeOverview = () => {
     setLoading(true);
     try {
       const backendPeriod = convertPeriodToBackendFormat(timePeriod);
-      const [aggData, devicesData] = await Promise.all([
-        fetchDeviceUptimeAggregates(token, backendPeriod, 1),
-        fetchDeviceUptimeStatus(token),
-      ]);
+      const devicesData = await fetchDeviceUptimeStatus(token, backendPeriod);
 
-      console.log('[OVERVIEW] Raw aggregation data:', aggData);
-      console.log('[OVERVIEW] Devices data:', devicesData);
-      setAggregationData(aggData);
       setDevices(devicesData);
     } catch (error) {
       console.error("Error fetching data:", error);
-      setAggregationData([]);
       setDevices([]);
     }
     setLoading(false);
@@ -100,9 +91,11 @@ const DeviceUptimeOverview = () => {
   }, [loadData]);
 
   const getBarColor = (uptimePercentage: number): string => {
-    if (uptimePercentage > 95) {
-      return "#22c55e"; // Green
-    } else if (uptimePercentage > 80) {
+    if (uptimePercentage >= 95) {
+      return "#15803d"; // Dark green
+    } else if (uptimePercentage >= 75) {
+      return "#22c55e"; // Light green
+    } else if (uptimePercentage >= 50) {
       return "#eab308"; // Yellow
     } else {
       return "#ef4444"; // Red
@@ -110,32 +103,30 @@ const DeviceUptimeOverview = () => {
   };
 
   const chartData: ChartDataPoint[] = React.useMemo(() => {
-    if (!aggregationData || aggregationData.length === 0) return [];
+    if (!devices || devices.length === 0) return [];
 
-    // The backend now includes device_name directly in aggregation data
-    // Map each aggregation record to the chart data format
-    const mapped = aggregationData.map((item) => ({
-      name: item.device_name || `Device ${item.device_id}`,
-      "Uptime": item.uptime_percentage, // Use readable label for tooltip
-      total_pings: item.total_pings,
-      device_id: item.device_id,
-      fill: getBarColor(item.uptime_percentage), // Add color for tooltip
+    // Map each device to the chart data format
+    const mapped = devices.map((device) => ({
+      name: device.device_name || `Device ${device.device_id}`,
+      Uptime: device.uptime_percentage, // Use readable label for tooltip
+      total_pings: device.total_pings,
+      device_id: device.device_id,
+      fill: getBarColor(device.uptime_percentage), // Add color for tooltip
     }));
-    
-    console.log('[OVERVIEW] Chart data:', mapped);
     return mapped;
-  }, [aggregationData]);
+  }, [devices]);
 
-  const t = React.useCallback((key: string) => getT(`deviceMonitoring.overview.${key}`), [getT]);
+  const t = React.useCallback(
+    (key: string) => getT(`deviceMonitoring.overview.${key}`),
+    [getT]
+  );
 
   return (
     <Card className="@container/card">
       <CardHeader>
         <CardTitle>{t("title")}</CardTitle>
         <CardDescription>
-          <span className="hidden @[540px]/card:block">
-            {t("description")}
-          </span>
+          <span className="hidden @[540px]/card:block">{t("description")}</span>
         </CardDescription>
         <CardAction className="flex flex-col gap-2 sm:flex-row sm:gap-4">
           <div className="flex items-center gap-2">
@@ -150,17 +141,17 @@ const DeviceUptimeOverview = () => {
               >
                 <SelectValue placeholder="Select period" />
               </SelectTrigger>
-            <SelectContent className="rounded-xl bg-card border border-border">
-              {timePeriodOptions.map((opt) => (
-                <SelectItem
-                  key={opt.value}
-                  value={opt.value}
-                  className="rounded-lg"
-                >
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
+              <SelectContent className="rounded-xl bg-card border border-border">
+                {timePeriodOptions.map((opt) => (
+                  <SelectItem
+                    key={opt.value}
+                    value={opt.value}
+                    className="rounded-lg"
+                  >
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
         </CardAction>
@@ -175,7 +166,7 @@ const DeviceUptimeOverview = () => {
           config={{
             Uptime: {
               label: "Uptime %",
-              color: "#22c55e",
+              color: "#22c55e", // Default light green
             },
           }}
           className="aspect-auto h-[400px] w-full"
@@ -188,7 +179,12 @@ const DeviceUptimeOverview = () => {
               axisLine={false}
               tickMargin={8}
               minTickGap={32}
-              label={{ value: "Device Name", position: "insideBottom", offset: -5, style: { fontSize: "12px", fill: "#888" } }}
+              label={{
+                value: "Device Name",
+                position: "insideBottom",
+                offset: -5,
+                style: { fontSize: "12px", fill: "#888" },
+              }}
               tickFormatter={(value) => {
                 return value && value.length > 10
                   ? `${value.substring(0, 10)}...`
@@ -199,28 +195,32 @@ const DeviceUptimeOverview = () => {
               domain={[0, 100]}
               tickLine={false}
               axisLine={false}
-              label={{ value: "Uptime Percentage (%)", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "#888" } }}
+              label={{
+                value: "Uptime Percentage (%)",
+                angle: -90,
+                position: "insideLeft",
+                style: { fontSize: "12px", fill: "#888" },
+              }}
               tickFormatter={(tick) => `${tick}%`}
             />
             <ChartTooltip
-              content={<ChartTooltipContent indicator="line" nameKey="Uptime" />}
+              content={
+                <ChartTooltipContent indicator="line" nameKey="Uptime" />
+              }
             />
             <Bar dataKey="Uptime" name="Uptime %">
               {chartData.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={getBarColor(entry.Uptime)}
-                />
+                <Cell key={`cell-${index}`} fill={getBarColor(entry.Uptime)} />
               ))}
             </Bar>
           </BarChart>
         </ChartContainer>
-        {loading && <div className="text-center text-xs mt-2">{t("loading")}</div>}
+        {loading && (
+          <div className="text-center text-xs mt-2">{t("loading")}</div>
+        )}
         {!loading && devices.length === 0 && (
           <div className="text-center py-8">
-            <p className="text-muted-foreground text-sm">
-              {t("noDevices")}
-            </p>
+            <p className="text-muted-foreground text-sm">{t("noDevices")}</p>
           </div>
         )}
         {!loading && devices.length > 0 && !chartData.length && (

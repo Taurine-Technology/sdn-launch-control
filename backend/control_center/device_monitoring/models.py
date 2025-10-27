@@ -105,7 +105,11 @@ class PortUtilizationAlert(models.Model):
 class DevicePingStats(models.Model):
     """
     Time-series model for storing ping results.
-    This will be converted to a TimescaleDB hypertable.
+    
+    This model is already converted to a TimescaleDB hypertable with:
+    - Chunk interval: 7 days
+    - Partition key: timestamp
+    - Optimized for fast time-series queries and compression
     """
     device = models.ForeignKey(
         'network_device.NetworkDevice',
@@ -121,7 +125,7 @@ class DevicePingStats(models.Model):
         help_text="Number of successful pings out of 5"
     )
     timestamp = models.DateTimeField(
-        default=timezone.now,
+        auto_now_add=True,
         db_index=True,
         help_text="Timestamp of the ping check"
     )
@@ -129,8 +133,10 @@ class DevicePingStats(models.Model):
     class Meta:
         ordering = ['-timestamp']
         indexes = [
-            models.Index(fields=['device', 'timestamp']),
-            models.Index(fields=['timestamp']),
+            # TimescaleDB-optimized indexes for hypertable
+            models.Index(fields=['device', 'timestamp']),  # Composite index for device-specific queries
+            models.Index(fields=['timestamp']),            # Time-based queries
+            models.Index(fields=['is_alive', 'timestamp']), # Status-based queries with time
         ]
 
     def __str__(self):

@@ -1,5 +1,6 @@
 .idea
 ui/control-center/node_modules
+node_modules/
 backend/control_center/artifacts
 /backend/control_center/ovs_install/utilities/artifacts/
 /backend/control_center/venv/
@@ -26,3 +27,4 @@ __pycache__
 
 # cursor
 .cursor
+artifacts/

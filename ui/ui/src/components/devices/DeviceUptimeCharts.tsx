@@ -1,7 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { Area, AreaChart, Bar, BarChart, Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  Line,
+  LineChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   Card,
   CardAction,
@@ -23,19 +33,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
+import {
   fetchDeviceUptimeTimeseries,
-  fetchDeviceUptimeStatus 
+  fetchDeviceUptimeStatus,
 } from "@/lib/deviceMonitoring";
-import { 
-  DeviceUptimeData, 
+import {
+  DeviceUptimeData,
   DeviceUptimeStatus,
-  TimePeriodOption 
+  TimePeriodOption,
 } from "@/lib/types";
 import RingLoader from "react-spinners/RingLoader";
 import { useAuth } from "@/context/authContext";
 
-export const description = "Interactive charts showing device uptime over time with multiple visualizations";
+export const description =
+  "Interactive charts showing device uptime over time with multiple visualizations";
 
 type ChartType = "area" | "line" | "bar";
 
@@ -53,7 +64,9 @@ const DeviceUptimeCharts = () => {
   ];
 
   const [selectedDevice, setSelectedDevice] = React.useState<string>("");
-  const [timePeriod, setTimePeriod] = React.useState(timePeriodOptions[2].value);
+  const [timePeriod, setTimePeriod] = React.useState(
+    timePeriodOptions[2].value
+  );
   const [chartType, setChartType] = React.useState<ChartType>("area");
   const [data, setData] = React.useState<DeviceUptimeData[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -63,14 +76,14 @@ const DeviceUptimeCharts = () => {
   const convertPeriodToBackendFormat = (period: string): string => {
     const value = parseInt(period.slice(0, -1));
     const unit = period.slice(-1);
-    
+
     const unitMap: Record<string, string> = {
-      'm': value === 1 ? 'minute' : 'minutes',
-      'h': value === 1 ? 'hour' : 'hours',
-      'd': value === 1 ? 'day' : 'days'
+      m: value === 1 ? "minute" : "minutes",
+      h: value === 1 ? "hour" : "hours",
+      d: value === 1 ? "day" : "days",
     };
-    
-    return `${value} ${unitMap[unit] || 'hours'}`;
+
+    return `${value} ${unitMap[unit] || "hours"}`;
   };
 
   // Load devices on mount
@@ -81,7 +94,7 @@ const DeviceUptimeCharts = () => {
       try {
         const devicesData = await fetchDeviceUptimeStatus(token);
         setDevices(devicesData);
-        
+
         if (devicesData.length > 0) {
           setSelectedDevice(String(devicesData[0].device_id));
         }
@@ -120,7 +133,7 @@ const DeviceUptimeCharts = () => {
   }, [token, selectedDevice, timePeriod]);
 
   const chartData = React.useMemo(() => {
-    console.log('[CHART] Raw data from API:', data);
+    // console.log('[CHART] Raw data from API:', data);
     const mapped = data.map((item) => {
       // Parse the timestamp and convert to readable format for display
       const timestamp = new Date(item.bucket);
@@ -137,8 +150,8 @@ const DeviceUptimeCharts = () => {
         total_pings: item.total_pings,
       };
     });
-    console.log('[CHART] Mapped chart data:', mapped.slice(0, 3)); // Log first 3 items
-    console.log('[CHART] Chart data length:', mapped.length);
+    // console.log("[CHART] Mapped chart data:", mapped.slice(0, 3)); // Log first 3 items
+    // console.log("[CHART] Chart data length:", mapped.length);
     return mapped;
   }, [data]);
 
@@ -156,23 +169,15 @@ const DeviceUptimeCharts = () => {
           >
             <defs>
               <linearGradient id="fillUptime" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="#a855f7"
-                  stopOpacity={0.8}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="#a855f7"
-                  stopOpacity={0.1}
-                />
+                <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#a855f7" stopOpacity={0.1} />
               </linearGradient>
             </defs>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="date"
               type="number"
-              domain={['dataMin', 'dataMax']}
+              domain={["dataMin", "dataMax"]}
               tickLine={false}
               axisLine={false}
               tickMargin={8}
@@ -199,13 +204,16 @@ const DeviceUptimeCharts = () => {
                   nameKey="Uptime %"
                   labelFormatter={(_, payload) => {
                     const item = payload?.[0]?.payload;
-                    if (!item) return '—';
-                    return item.Time ?? new Date(item.date).toLocaleString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    });
+                    if (!item) return "—";
+                    return (
+                      item.Time ??
+                      new Date(item.date).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    );
                   }}
                 />
               }
@@ -235,7 +243,7 @@ const DeviceUptimeCharts = () => {
             <XAxis
               dataKey="date"
               type="number"
-              domain={['dataMin', 'dataMax']}
+              domain={["dataMin", "dataMax"]}
               tickLine={false}
               axisLine={false}
               tickMargin={8}
@@ -262,13 +270,16 @@ const DeviceUptimeCharts = () => {
                   nameKey="Uptime %"
                   labelFormatter={(_, payload) => {
                     const item = payload?.[0]?.payload;
-                    if (!item) return '—';
-                    return item.Time ?? new Date(item.date).toLocaleString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    });
+                    if (!item) return "—";
+                    return (
+                      item.Time ??
+                      new Date(item.date).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    );
                   }}
                 />
               }
@@ -297,7 +308,7 @@ const DeviceUptimeCharts = () => {
             <XAxis
               dataKey="date"
               type="number"
-              domain={['dataMin', 'dataMax']}
+              domain={["dataMin", "dataMax"]}
               tickLine={false}
               axisLine={false}
               tickMargin={8}
@@ -324,22 +335,21 @@ const DeviceUptimeCharts = () => {
                   nameKey="Uptime %"
                   labelFormatter={(_, payload) => {
                     const item = payload?.[0]?.payload;
-                    if (!item) return '—';
-                    return item.Time ?? new Date(item.date).toLocaleString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    });
+                    if (!item) return "—";
+                    return (
+                      item.Time ??
+                      new Date(item.date).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    );
                   }}
                 />
               }
             />
-            <Bar 
-              dataKey="Uptime %"
-              fill="#a855f7"
-              radius={4}
-            />
+            <Bar dataKey="Uptime %" fill="#a855f7" radius={4} />
           </BarChart>
         );
     }
@@ -414,7 +424,11 @@ const DeviceUptimeCharts = () => {
             <label className="text-sm font-medium text-foreground">
               Chart Type:
             </label>
-            <Tabs value={chartType} onValueChange={(v) => setChartType(v as ChartType)} className="w-full">
+            <Tabs
+              value={chartType}
+              onValueChange={(v) => setChartType(v as ChartType)}
+              className="w-full"
+            >
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="area">Area Chart</TabsTrigger>
                 <TabsTrigger value="line">Line Chart</TabsTrigger>
@@ -430,7 +444,7 @@ const DeviceUptimeCharts = () => {
             <RingLoader color="var(--color-logo-orange)" size={48} />
           </div>
         )}
-        
+
         <ChartContainer
           config={{
             "Uptime %": {
@@ -442,7 +456,7 @@ const DeviceUptimeCharts = () => {
         >
           {renderChart()}
         </ChartContainer>
-        
+
         {isLoading && (
           <div className="text-center text-xs mt-2">Loading...</div>
         )}
@@ -454,7 +468,9 @@ const DeviceUptimeCharts = () => {
           </div>
         )}
         {!isLoading && devices.length > 0 && !chartData.length && (
-          <div className="text-center text-xs mt-2">No data available for the selected period.</div>
+          <div className="text-center text-xs mt-2">
+            No data available for the selected period.
+          </div>
         )}
       </CardContent>
     </Card>
@@ -462,4 +478,3 @@ const DeviceUptimeCharts = () => {
 };
 
 export default DeviceUptimeCharts;
-

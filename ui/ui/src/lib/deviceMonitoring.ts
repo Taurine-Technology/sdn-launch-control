@@ -74,11 +74,11 @@ export const toggleDeviceMonitoring = async (
   payload: ToggleMonitoringRequest
 ): Promise<{ success: boolean; message: string }> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
-  const { data } = await axiosInstance.post(
-    "/toggle-monitoring/",
-    payload
+  const { data } = await axiosInstance.patch(
+    `/network-devices/${payload.device_id}/`,
+    { is_ping_target: payload.is_ping_target }
   );
-  console.log("[DEVICE MONITORING] Toggle monitoring:", data);
+  // console.log("[DEVICE MONITORING] Toggle monitoring:", data);
   return data;
 };
 
@@ -91,9 +91,9 @@ export const fetchDeviceUptimeStatus = async (
 ): Promise<DeviceUptimeStatus[]> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.get(
-    `/uptime-status/?period=${encodeURIComponent(period)}`
+    `/uptime/?period=${encodeURIComponent(period)}`
   );
-  console.log("[DEVICE MONITORING] Uptime status:", data);
+  // console.log("[DEVICE MONITORING] Uptime status:", data);
   return data;
 };
 
@@ -107,9 +107,9 @@ export const fetchDeviceUptimeTimeseries = async (
 ): Promise<DeviceUptimeData[]> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.get(
-    `/uptime-line/?device_id=${deviceId}&period=${encodeURIComponent(period)}`
+    `/uptime/${deviceId}/timeseries/?period=${encodeURIComponent(period)}`
   );
-  console.log("[DEVICE MONITORING] Uptime timeseries:", data);
+  // console.log("[DEVICE MONITORING] Uptime timeseries:", data);
   return data;
 };
 
@@ -123,9 +123,11 @@ export const fetchDeviceUptimeAggregates = async (
 ): Promise<DeviceAggregationData[]> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.get(
-    `/uptime-aggregates/?period=${encodeURIComponent(period)}&min_pings=${minPings}`
+    `/uptime/aggregates/?period=${encodeURIComponent(
+      period
+    )}&min_pings=${minPings}`
   );
-  console.log("[DEVICE MONITORING] Uptime aggregates:", data);
+  // console.log("[DEVICE MONITORING] Uptime aggregates:", data);
   return data;
 };
 
@@ -139,9 +141,11 @@ export const fetchPingAggregates = async (
 ): Promise<DeviceAggregationData[]> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.get(
-    `/device-monitoring/ping-aggregates/?aggregation=${aggregation}&time_range=${encodeURIComponent(timeRange)}`
+    `/uptime/aggregates/?aggregation=${aggregation}&time_range=${encodeURIComponent(
+      timeRange
+    )}`
   );
-  console.log("[DEVICE MONITORING] Ping aggregates:", data);
+  // console.log("[DEVICE MONITORING] Ping aggregates:", data);
   return data;
 };
 
@@ -155,25 +159,11 @@ export const fetchDeviceUptimeLineData = async (
 ): Promise<DeviceUptimeData[]> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.get(
-    `/device-monitoring/uptime-line/?device_id=${deviceId}&time_range=${encodeURIComponent(timeRange)}`
+    `/uptime/${deviceId}/timeseries/?time_range=${encodeURIComponent(
+      timeRange
+    )}`
   );
-  console.log("[DEVICE MONITORING] Uptime line data:", data);
-  return data;
-};
-
-/**
- * Ingest uptime data (for testing or external data sources)
- */
-export const ingestUptimeData = async (
-  token: string,
-  payload: IngestUptimeDataRequest[]
-): Promise<{ success: boolean; message: string; created_count: number }> => {
-  const axiosInstance = createAxiosInstanceWithToken(token);
-  const { data } = await axiosInstance.post(
-    "/ingest-uptime-data/",
-    { data: payload }
-  );
-  console.log("[DEVICE MONITORING] Ingested uptime data:", data);
+  // console.log("[DEVICE MONITORING] Uptime line data:", data);
   return data;
 };
 
@@ -185,7 +175,7 @@ export const fetchMonitoredDevices = async (
 ): Promise<DeviceUptimeStatus[]> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.get("/network-devices/monitored/");
-  console.log("[DEVICE MONITORING] Monitored devices:", data);
+  // console.log("[DEVICE MONITORING] Monitored devices:", data);
   return data;
 };
 
@@ -199,18 +189,21 @@ export const updateDeviceName = async (
   newName: string
 ): Promise<{ message: string }> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
-  
-  const payload: { name: string; mac_address?: string; ip_address?: string } = { name: newName };
+
+  // Determine the identifier to use in the URL
+  let identifier: string;
   if (macAddress) {
-    payload.mac_address = macAddress;
+    identifier = macAddress;
   } else if (ipAddress) {
-    payload.ip_address = ipAddress;
+    identifier = ipAddress;
   } else {
     throw new Error("Either IP address or MAC address must be provided");
   }
-  
-  const { data } = await axiosInstance.put("/update-device/", payload);
-  console.log("[DEVICE MONITORING] Updated device name:", data);
+
+  const { data } = await axiosInstance.put(`/network-devices/${identifier}/`, {
+    name: newName,
+  });
+  // console.log("[DEVICE MONITORING] Updated device name:", data);
   return data;
 };
 
@@ -223,17 +216,37 @@ export const deleteDevice = async (
   macAddress: string | undefined
 ): Promise<{ message: string }> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
-  
-  const payload: { mac_address?: string; ip_address?: string } = {};
+
+  // Determine the identifier to use in the URL
+  let identifier: string;
   if (macAddress) {
-    payload.mac_address = macAddress;
+    identifier = macAddress;
   } else if (ipAddress) {
-    payload.ip_address = ipAddress;
+    identifier = ipAddress;
   } else {
     throw new Error("Either IP address or MAC address must be provided");
   }
-  
-  const { data } = await axiosInstance.delete("/delete-device/", { data: payload });
-  console.log("[DEVICE MONITORING] Deleted device:", data);
+
+  const { data } = await axiosInstance.delete(
+    `/network-devices/${identifier}/`
+  );
+  // console.log("[DEVICE MONITORING] Deleted device:", data);
+  return data;
+};
+
+export const createNetworkDevice = async (
+  token: string,
+  deviceData: {
+    name: string;
+    device_type: string;
+    operating_system: string;
+    ip_address: string;
+    mac_address?: string;
+    is_ping_target: boolean;
+  }
+): Promise<{ success: boolean; message: string }> => {
+  const axiosInstance = createAxiosInstanceWithToken(token);
+  const { data } = await axiosInstance.post("/network-devices/", deviceData);
+  // console.log("[DEVICE MONITORING] Created device:", data);
   return data;
 };

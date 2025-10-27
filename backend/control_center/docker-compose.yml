@@ -41,6 +41,7 @@ services:
                python manage.py create_default_user &&
                python manage.py setup_device_health_monitor &&
                python manage.py setup_port_utilization_monitor &&
+               python manage.py setup_device_ping_monitor &&
                gunicorn control_center.asgi:application -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000"
     volumes:
       - .:/usr/app/

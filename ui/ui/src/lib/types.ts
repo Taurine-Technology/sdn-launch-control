@@ -1088,7 +1088,7 @@ export interface IngestUptimeDataRequest {
 
 export interface ChartDataPoint {
   name: string;
-  "Uptime": number;
+  Uptime: number;
   total_pings: number;
   device_id: number;
   fill?: string;
@@ -1098,6 +1098,35 @@ export interface TimePeriodOption {
   label: string;
   value: string;
 }
+
+export const DEVICE_TYPES = [
+  { value: "switch", label: "Switch" },
+  { value: "access_point", label: "Access Point" },
+  { value: "server", label: "Server" },
+  { value: "controller", label: "Controller" },
+  { value: "vm", label: "Virtual Machine" },
+  { value: "client", label: "Client" },
+  { value: "dns", label: "DNS Server" },
+  { value: "end_user", label: "End User" },
+] as const;
+
+export const OS_TYPES = [
+  { value: "ubuntu_20_server", label: "Ubuntu 20 Server" },
+  { value: "ubuntu_22_server", label: "Ubuntu 22 Server" },
+  { value: "ubuntu_24_server", label: "Ubuntu 24 Server" },
+  { value: "ubuntu_20_desktop", label: "Ubuntu 20 Desktop" },
+  { value: "ubuntu_22_desktop", label: "Ubuntu 22 Desktop" },
+  { value: "ubuntu_24_desktop", label: "Ubuntu 24 Desktop" },
+  { value: "unknown", label: "Unknown" },
+  { value: "windows", label: "Windows" },
+  { value: "macos", label: "macOS" },
+  { value: "linux", label: "Linux" },
+  { value: "android", label: "Android" },
+  { value: "ios", label: "iOS" },
+  { value: "chromeos", label: "ChromeOS" },
+  { value: "chromebook", label: "Chromebook" },
+  { value: "other", label: "Other" },
+] as const;
 
 // By-port endpoint response
 export interface ByPortResponse {
@@ -1148,47 +1177,4 @@ export function getTranslation<T extends DeepNestedRecord>(
   }
 
   return typeof current === "string" ? current : fallback;
-}
-
-// Device Monitoring Types
-export interface DeviceUptime {
-  bucket: string;
-  uptime_percentage: number;
-  total_pings: number;
-}
-
-
-export interface DevicePingStats {
-  id: number;
-  device: number;
-  is_alive: boolean;
-  successful_pings: number;
-  timestamp: string;
-}
-
-export interface ToggleMonitoringRequest {
-  device_id: number;
-  is_ping_target: boolean;
-}
-
-export interface IngestUptimeDataRequest {
-  data: Array<{
-    device_id: number;
-    is_alive: boolean;
-    successful_pings: number;
-    timestamp?: string;
-  }>;
-}
-
-export interface ChartDataPoint {
-  name: string;
-  "Uptime": number;
-  total_pings: number;
-  device_id: number;
-  fill?: string;
-}
-
-export interface TimePeriodOption {
-  label: string;
-  value: string;
 }

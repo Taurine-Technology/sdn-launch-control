@@ -101,7 +101,7 @@ export default function DeviceStatsGraphRealTime({
       }
     });
     return unsubscribe;
-  }, [subscribe, ipAddress]);
+  }, [subscribe, ipAddress, WINDOW_MS]);
 
   const chartData = [...data];
   const now = Date.now();

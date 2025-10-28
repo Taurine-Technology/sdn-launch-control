@@ -222,7 +222,7 @@ export default function PortStatsGraph({
       }
     });
     return unsubscribe;
-  }, [subscribe, targetIpAddress, targetPorts]);
+  }, [subscribe, targetIpAddress, targetPorts, WINDOW_MS]);
 
   const chartData = [...data];
   const now = Date.now();

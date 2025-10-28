@@ -21,7 +21,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   SidebarInset,
   SidebarProvider,
@@ -61,8 +61,14 @@ import {
 
 export default function ModelManagementPage() {
   const { getT } = useLanguage();
-  const { models, activeModel, isLoading, error, switchActiveModel } =
-    useModel();
+  const {
+    models,
+    activeModel,
+    isLoading,
+    error,
+    switchActiveModel,
+    refreshModels,
+  } = useModel();
 
   const handleSwitchModel = async (model: ClassificationModel) => {
     if (model.is_active) return;
@@ -93,6 +99,11 @@ export default function ModelManagementPage() {
       </Badge>
     );
   };
+
+  // Refresh models when the page loads
+  useEffect(() => {
+    refreshModels();
+  }, [refreshModels]);
 
   if (isLoading) {
     return (

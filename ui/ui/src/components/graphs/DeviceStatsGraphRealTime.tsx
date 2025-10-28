@@ -46,6 +46,8 @@ function formatTime(value: number) {
   });
 }
 
+const WINDOW_MS = 5 * 60 * 1000;
+
 export default function DeviceStatsGraphRealTime({
   switchId,
   ipAddress,
@@ -63,8 +65,6 @@ export default function DeviceStatsGraphRealTime({
       disk: number | null;
     }>
   >([]);
-  // Keep a sliding window of the last 5 minutes of points
-  const WINDOW_MS = 5 * 60 * 1000;
 
   // Store all received points (for 5 min window)
   const allPoints = useRef<
@@ -94,16 +94,20 @@ export default function DeviceStatsGraphRealTime({
         const points = allPoints.current;
         points.push(newPoint);
         // Remove all points older than the sliding window
-        while (points.length > 0 && points[0].ts < cutoff) {
-          points.shift();
+        const firstValidIndex = points.findIndex((p) => p.ts >= cutoff);
+        if (firstValidIndex > 0) {
+          points.splice(0, firstValidIndex);
+        } else if (firstValidIndex === -1 && points.length > 1) {
+          // All points except the last are old
+          points.splice(0, points.length - 1);
         }
         setData([...points]);
       }
     });
     return unsubscribe;
-  }, [subscribe, ipAddress, WINDOW_MS]);
+  }, [subscribe, ipAddress]);
 
-  const chartData = [...data];
+  const chartData = data;
   const now = Date.now();
   const minTime = now - WINDOW_MS;
   const maxTime = now;

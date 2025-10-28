@@ -44,12 +44,12 @@ export function DeviceStatsChart({ data }: Props) {
   const chartData = data.map((p) => ({
     time: p.bucket_time,
     ts: new Date(p.bucket_time).getTime(),
-    cpu: p.cpu_avg ?? 0,
-    memory: p.memory_avg ?? 0,
-    disk: p.disk_avg ?? 0,
-    cpu_max: p.cpu_max ?? 0,
-    memory_max: p.memory_max ?? 0,
-    disk_max: p.disk_max ?? 0,
+    cpu: p.cpu_avg ?? null,
+    memory: p.memory_avg ?? null,
+    disk: p.disk_avg ?? null,
+    cpu_max: p.cpu_max ?? null,
+    memory_max: p.memory_max ?? null,
+    disk_max: p.disk_max ?? null,
   }));
 
   const chartConfig: ChartConfig = {
@@ -70,7 +70,7 @@ export function DeviceStatsChart({ data }: Props) {
   }: {
     active?: boolean;
     payload?: Array<{
-      payload: Record<string, string | number>;
+      payload: Record<string, string | number | null>;
     }>;
   }) => {
     if (!active || !payload || payload.length === 0) return null;
@@ -89,8 +89,9 @@ export function DeviceStatsChart({ data }: Props) {
 
             if (value === undefined) return null;
 
-            const metricValue = typeof value === "number" ? value : 0;
-            const maxMetricValue = typeof maxValue === "number" ? maxValue : 0;
+            const metricValue = typeof value === "number" ? value : null;
+            const maxMetricValue =
+              typeof maxValue === "number" ? maxValue : null;
 
             return (
               <div key={metric} className="text-xs">
@@ -107,9 +108,9 @@ export function DeviceStatsChart({ data }: Props) {
                     `page.DeviceStatsPage.${metric}`,
                     metric.charAt(0).toUpperCase() + metric.slice(1)
                   )}
-                  : {metricValue.toFixed(2)}%
-                  {maxMetricValue !== undefined &&
-                    maxMetricValue >= metricValue && (
+                  : {metricValue === null ? "—" : `${metricValue.toFixed(2)}%`}
+                  {maxMetricValue !== null &&
+                    (metricValue === null || maxMetricValue >= metricValue) && (
                       <span
                         className="ml-1 font-medium"
                         style={{ color: getChartColor(index) }}
@@ -163,7 +164,7 @@ export function DeviceStatsChart({ data }: Props) {
           strokeWidth={3}
           dot={false}
           name="CPU"
-          connectNulls
+          // connectNulls={false} // default
           isAnimationActive={false}
         />
         <Line
@@ -173,7 +174,7 @@ export function DeviceStatsChart({ data }: Props) {
           strokeWidth={3}
           dot={false}
           name="Memory"
-          connectNulls
+          // connectNulls={false}
           isAnimationActive={false}
         />
         <Line
@@ -183,7 +184,7 @@ export function DeviceStatsChart({ data }: Props) {
           strokeWidth={3}
           dot={false}
           name="Disk"
-          connectNulls
+          // connectNulls={false}
           isAnimationActive={false}
         />
       </LineChart>

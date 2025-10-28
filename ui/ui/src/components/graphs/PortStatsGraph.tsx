@@ -97,6 +97,8 @@ function formatTime(value: number) {
   });
 }
 
+const WINDOW_MS = 5 * 60 * 1000;
+
 export default function PortStatsGraph({
   targetIpAddress,
   targetPorts,
@@ -104,8 +106,6 @@ export default function PortStatsGraph({
   const { getT } = useLanguage();
   const { subscribe } = useMultiWebSocket();
   const [data, setData] = useState<PortDataPoint[]>([]);
-  // Keep a sliding window of the last 5 minutes of points
-  const WINDOW_MS = 5 * 60 * 1000;
   // Store all received points (for 5 minute window)
   const allPoints = useRef<PortDataPoint[]>([]);
   // Track which data keys are actually used for each port
@@ -115,6 +115,11 @@ export default function PortStatsGraph({
 
   // Create dynamic chart config based on target ports
   const chartConfig = createChartConfig(targetPorts);
+
+  // When the target ports set changes, reset the mapping to avoid stale keys
+  useEffect(() => {
+    setPortDataKeyMap({});
+  }, [targetPorts]);
 
   useEffect(() => {
     const unsubscribe = subscribe("openflow", (msg) => {
@@ -214,17 +219,21 @@ export default function PortStatsGraph({
           const points = allPoints.current;
           points.push(newPoint);
           // Remove all points older than the sliding window
-          while (points.length > 0 && points[0].ts < cutoff) {
-            points.shift();
+          const firstValidIndex = points.findIndex((p) => p.ts >= cutoff);
+          if (firstValidIndex > 0) {
+            points.splice(0, firstValidIndex);
+          } else if (firstValidIndex === -1 && points.length > 1) {
+            // All points except the last are old
+            points.splice(0, points.length - 1);
           }
           setData([...points]);
         }
       }
     });
     return unsubscribe;
-  }, [subscribe, targetIpAddress, targetPorts, WINDOW_MS]);
+  }, [subscribe, targetIpAddress, targetPorts]);
 
-  const chartData = [...data];
+  const chartData = data;
   const now = Date.now();
   const minTime = now - WINDOW_MS;
   const maxTime = now;

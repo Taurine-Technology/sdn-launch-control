@@ -22,6 +22,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     PortUtilizationStatsViewSet,
     DeviceUptimeViewSet,
+    DeviceStatsViewSet,
 )
 
 app_name = 'device_monitoring'
@@ -29,12 +30,8 @@ app_name = 'device_monitoring'
 router = DefaultRouter()
 router.register(r"port-utilization-stats", PortUtilizationStatsViewSet, basename="port-utilization-stats")
 router.register(r"uptime", DeviceUptimeViewSet, basename="device-uptime")
+router.register(r"device-stats", DeviceStatsViewSet, basename="device-stats")
 
 urlpatterns = [
     path('', include(router.urls)),
-    
-    # Note: All old uptime endpoints removed - use DeviceUptimeViewSet instead
-    # GET /api/device-monitoring/uptime/ - List uptime status
-    # GET /api/device-monitoring/uptime/{device_id}/timeseries/ - Time series data  
-    # GET /api/device-monitoring/uptime/aggregates/ - Materialized view aggregates
 ]

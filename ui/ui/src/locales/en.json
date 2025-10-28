@@ -391,6 +391,19 @@
       "data_limit_mb": "Data Limit (MB)",
       "success_message": "Notification created successfully!",
       "error_message": "Error creating notification"
+    },
+    "DeviceStatsPage": {
+      "page_title": "Device Statistics",
+      "description": "View CPU, memory, and disk utilization for your network devices",
+      "select_device": "Select Device",
+      "select_device_placeholder": "Select device",
+      "loading": "Loading device statistics...",
+      "no_data": "No device data available",
+      "no_devices": "No switches found",
+      "cpu": "CPU",
+      "memory": "Memory",
+      "disk": "Disk",
+      "percentage": "Percentage (%)"
     }
   },
   "components": {
@@ -1036,6 +1049,9 @@
     "ai_services": "AI Services",
     "traffic_classification": "Traffic Classification",
     "port_utilization": "Port Utilization",
+    "device_stats": "Device Stats",
+    "uptime": "Uptime",
+    "resources": "Resources",
     "traffic_classification_plugin": "Traffic Classification Plugin",
     "model_management": "Model Management",
     "sniffer_management": "Sniffer Management",

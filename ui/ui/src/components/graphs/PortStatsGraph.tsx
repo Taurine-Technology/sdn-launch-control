@@ -47,7 +47,7 @@ interface PortStatsGraphProps {
 }
 
 interface PortDataPoint {
-  time: string;
+  ts: number;
   [key: string]: string | number | null;
 }
 
@@ -88,14 +88,16 @@ const createChartConfig = (ports: Port[]) => {
   return config;
 };
 
-function formatTime(iso: string) {
-  const d = new Date(iso);
+function formatTime(value: number) {
+  const d = new Date(value);
   return d.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
   });
 }
+
+const WINDOW_MS = 5 * 60 * 1000;
 
 export default function PortStatsGraph({
   targetIpAddress,
@@ -104,13 +106,6 @@ export default function PortStatsGraph({
   const { getT } = useLanguage();
   const { subscribe } = useMultiWebSocket();
   const [data, setData] = useState<PortDataPoint[]>([]);
-  const startTimeRef = useRef(Date.now());
-  const [minTime, setMinTime] = useState<string>(
-    new Date(startTimeRef.current - 1000).toISOString()
-  );
-  const [maxTime, setMaxTime] = useState<string>(
-    new Date(Date.now()).toISOString()
-  );
   // Store all received points (for 5 minute window)
   const allPoints = useRef<PortDataPoint[]>([]);
   // Track which data keys are actually used for each port
@@ -120,6 +115,11 @@ export default function PortStatsGraph({
 
   // Create dynamic chart config based on target ports
   const chartConfig = createChartConfig(targetPorts);
+
+  // When the target ports set changes, reset the mapping to avoid stale keys
+  useEffect(() => {
+    setPortDataKeyMap({});
+  }, [targetPorts]);
 
   useEffect(() => {
     const unsubscribe = subscribe("openflow", (msg) => {
@@ -209,39 +209,34 @@ export default function PortStatsGraph({
           setPortDataKeyMap((prev) => ({ ...prev, ...newPortDataKeyMap }));
 
           const now = Date.now();
+          const cutoff = now - WINDOW_MS;
           const newPoint: PortDataPoint = {
-            time: new Date().toISOString(),
+            ts: now,
             ...filteredPorts,
           };
 
-          allPoints.current = [...allPoints.current, newPoint].filter(
-            (d) => new Date(d.time).getTime() >= startTimeRef.current - 300000
-          );
-
-          setMinTime(new Date(startTimeRef.current - 1000).toISOString());
-          setMaxTime(
-            new Date(
-              Math.max(now, new Date(newPoint.time).getTime())
-            ).toISOString()
-          );
-          setData([...allPoints.current]);
+          // Append and trim in-place to maintain a stable, bounded buffer
+          const points = allPoints.current;
+          points.push(newPoint);
+          // Remove all points older than the sliding window
+          const firstValidIndex = points.findIndex((p) => p.ts >= cutoff);
+          if (firstValidIndex > 0) {
+            points.splice(0, firstValidIndex);
+          } else if (firstValidIndex === -1 && points.length > 1) {
+            // All points except the last are old
+            points.splice(0, points.length - 1);
+          }
+          setData([...points]);
         }
       }
     });
     return unsubscribe;
   }, [subscribe, targetIpAddress, targetPorts]);
 
-  // Keep the x-axis buffer on the left fixed, and update the right as new data arrives
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setMinTime(new Date(startTimeRef.current - 300000).toISOString());
-      setMaxTime(new Date(now).toISOString());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const chartData = [...data];
+  const chartData = data;
+  const now = Date.now();
+  const minTime = now - WINDOW_MS;
+  const maxTime = now;
 
   return (
     <div className="w-full flex justify-center pt-6">
@@ -261,14 +256,15 @@ export default function PortStatsGraph({
             >
               <CartesianGrid vertical={false} />
               <XAxis
-                dataKey="time"
+                dataKey="ts"
+                type="number"
+                scale="time"
+                domain={[minTime, maxTime]}
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
                 minTickGap={32}
                 tickFormatter={formatTime}
-                domain={[minTime, maxTime]}
-                type="category"
               />
               <YAxis
                 domain={["auto", "auto"]}
@@ -283,7 +279,10 @@ export default function PortStatsGraph({
                 content={
                   <ChartTooltipContent
                     indicator="line"
-                    labelFormatter={(value) => formatTime(value)}
+                    labelFormatter={(_value, payload) => {
+                      const ts = Number(payload?.[0]?.payload?.ts);
+                      return Number.isFinite(ts) ? formatTime(ts) : "";
+                    }}
                   />
                 }
               />

@@ -97,7 +97,7 @@ export const fetchSwitches = async (
 ): Promise<{ results: NetworkDeviceDetails[] } | NetworkDeviceDetails[]> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.get("/switches/");
-  console.log("[DEVICES.ts] fetchSwitches", data);
+  // console.log("[DEVICES.ts] fetchSwitches", data);
   return data;
 };
 

@@ -391,6 +391,19 @@
       "data_limit_mb": "Límite de datos (MB)",
       "success_message": "Notificación creada con éxito!",
       "error_message": "Error al crear la notificación"
+    },
+    "DeviceStatsPage": {
+      "page_title": "Estadísticas de Dispositivos",
+      "description": "Ver utilización de CPU, memoria y disco para sus dispositivos de red",
+      "select_device": "Seleccionar Dispositivo",
+      "select_device_placeholder": "Seleccionar dispositivo",
+      "loading": "Cargando estadísticas del dispositivo...",
+      "no_data": "No hay datos del dispositivo disponibles",
+      "no_devices": "No se encontraron switches",
+      "cpu": "CPU",
+      "memory": "Memoria",
+      "disk": "Disco",
+      "percentage": "Porcentaje (%)"
     }
   },
   "components": {
@@ -1093,6 +1106,9 @@
     "ai_services": "Servicios de IA",
     "traffic_classification": "Clasificación de Tráfico",
     "port_utilization": "Utilización de Puertos",
+    "device_stats": "Estadísticas de Dispositivos",
+    "uptime": "Tiempo de Actividad",
+    "resources": "Recursos",
     "traffic_classification_plugin": "Plugin de Clasificación de Tráfico",
     "model_management": "Gestión de Modelos",
     "sniffer_management": "Gestión de Sniffers",

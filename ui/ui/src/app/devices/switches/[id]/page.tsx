@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import ProtectedRoute from "@/lib/ProtectedRoute";
 import { RingLoader } from "react-spinners";
-import DeviceStatsGraph from "@/components/graphs/DeviceStatsGraph";
+import DeviceStatsGraphRealTime from "@/components/graphs/DeviceStatsGraphRealTime";
 import PortStatsGraph from "@/components/graphs/PortStatsGraph";
 import BridgeDataComponent from "@/components/devices/BridgeDataComponent";
 import ConnectionIndicator from "@/components/devices/ConnectionIndicator";
@@ -136,7 +136,7 @@ export default function SwitchEditPage() {
                     switchData={switchData as NetworkDeviceDetails}
                     onUpdate={handleUpdate}
                   />
-                  <DeviceStatsGraph
+                  <DeviceStatsGraphRealTime
                     switchId={id as string}
                     ipAddress={switchData?.lan_ip_address as string}
                   />

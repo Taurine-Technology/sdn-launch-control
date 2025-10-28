@@ -29,7 +29,7 @@ import os
 from knox.auth import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from .models import DeviceStats, PortUtilizationStats
-from .serializers import PortUtilizationStatsSerializer
+from .serializers import PortUtilizationStatsSerializer, DeviceStatsSerializer
 from network_device.models import NetworkDevice
 from network_device.serializers import NetworkDeviceSerializer
 from requests.auth import HTTPBasicAuth
@@ -436,190 +436,7 @@ class PortUtilizationStatsViewSet(viewsets.ReadOnlyModelViewSet):
         
         # Order by timestamp ascending (oldest first) for proper graph rendering
         return queryset.order_by('timestamp')
-
-    @action(detail=False, methods=['get'], url_path='aggregate')
-    def aggregate(self, request):
-        """
-        Aggregate port utilization data using TimescaleDB time_bucket function.
-        
-        Returns time-bucketed data for time-series charts.
-        Supports both single-device and network-wide queries.
-        
-        Query Parameters:
-        - ip_address (optional): Device IP to filter by. If omitted, returns ALL devices.
-        - port_name (optional): Specific port name
-        - start_time (recommended): ISO 8601 format
-        - end_time (optional): ISO 8601 format (default: now)
-        - interval (optional): Time bucket size (default: '10 seconds' for spike detection)
-          Valid: '1 second', '10 seconds', '30 seconds', '1 minute', '5 minutes', 
-                 '15 minutes', '1 hour', '1 day'
-          Use 'none' or 'raw' to get unbucketed raw data points
-        - hours (optional): Shortcut for last N hours
-        - days (optional): Shortcut for last N days
-        
-        Examples:
-        - All devices, catch spikes: ?hours=1&interval=10 seconds
-        - All devices, raw data: ?hours=0.1&interval=raw
-        - Single device, 5min buckets: ?ip_address=10.10.10.5&hours=24&interval=5 minutes
-        - Network-wide, 1min buckets: ?hours=6&interval=1 minute
-        
-        Returns: Time-series data perfect for line graphs (ordered oldest to newest).
-        Network spikes are captured with 10-second default granularity.
-        """
-        # ip_address is now OPTIONAL - can query entire network
-        ip_address = request.query_params.get('ip_address')
-        
-        # Get filter parameters
-        port_name = request.query_params.get('port_name')
-        start_time = request.query_params.get('start_time')
-        end_time = request.query_params.get('end_time')
-        interval = request.query_params.get('interval', '10 seconds')  # Default to 10s for spike detection
-        
-        # Handle convenient time shortcuts
-        hours = request.query_params.get('hours')
-        days = request.query_params.get('days')
-        
-        if hours:
-            try:
-                hours_float = float(hours)
-                start_time = (timezone.now() - timezone.timedelta(hours=hours_float)).isoformat()
-            except ValueError:
-                pass
-        
-        if days:
-            try:
-                days_int = int(days)
-                start_time = (timezone.now() - timezone.timedelta(days=days_int)).isoformat()
-            except ValueError:
-                pass
-        
-        # Check if raw/unbucketed data requested
-        use_raw_data = interval.lower() in ['none', 'raw', 'unbucketed']
-        
-        # Validate interval parameter (unless raw data requested)
-        if not use_raw_data:
-            valid_intervals = [
-                '1 second', '10 seconds', '30 seconds',
-                '1 minute', '5 minutes', '15 minutes', 
-                '1 hour', '1 day'
-            ]
-            if interval not in valid_intervals:
-                return Response(
-                    {"error": f"Invalid interval. Must be one of: {valid_intervals} or 'raw'"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Build SQL query for TimescaleDB aggregation with parameter binding
-        where_conditions = []
-        params = []
-        
-        # Add interval parameter only if bucketing is enabled
-        if not use_raw_data:
-            params = [interval]  # First parameter is the interval
-        
-        # ip_address is now optional - allows network-wide queries
-        if ip_address:
-            where_conditions.append("ip_address = %s")
-            params.append(ip_address)
-        
-        if port_name:
-            where_conditions.append("port_name = %s")
-            params.append(port_name)
-        
-        if start_time:
-            try:
-                start_dt = parse_datetime(start_time)
-                if start_dt:
-                    where_conditions.append("timestamp >= %s")
-                    params.append(start_dt)
-            except ValueError:
-                return Response(
-                    {"error": "Invalid start_time format"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        if end_time:
-            try:
-                end_dt = parse_datetime(end_time)
-                if end_dt:
-                    where_conditions.append("timestamp <= %s")
-                    params.append(end_dt)
-            except ValueError:
-                return Response(
-                    {"error": "Invalid end_time format"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Construct the TimescaleDB query
-        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
-        
-        if use_raw_data:
-            # Raw unbucketed data - return individual data points
-            query = f"""
-                SELECT 
-                    timestamp AS bucket_time,
-                    ip_address,
-                    port_name,
-                    utilization_percent as avg_utilization,
-                    utilization_percent as max_utilization,
-                    throughput_mbps as avg_throughput,
-                    throughput_mbps as max_throughput
-                FROM device_monitoring_portutilizationstats
-                WHERE {where_clause}
-                ORDER BY timestamp ASC, ip_address, port_name
-            """
-        else:
-            # Time-bucketed aggregated data
-            query = f"""
-                SELECT 
-                    time_bucket(%s::interval, timestamp) AS bucket_time,
-                    ip_address,
-                    port_name,
-                    AVG(utilization_percent) as avg_utilization,
-                    MAX(utilization_percent) as max_utilization,
-                    AVG(throughput_mbps) as avg_throughput,
-                    MAX(throughput_mbps) as max_throughput
-                FROM device_monitoring_portutilizationstats
-                WHERE {where_clause}
-                GROUP BY bucket_time, ip_address, port_name
-                ORDER BY bucket_time ASC, ip_address, port_name
-            """
-
-        logger.info(f"Query type: {'raw' if use_raw_data else 'bucketed'}")
-        logger.info(f"Params: {params}")
-        
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute(query, params)
-                rows = cursor.fetchall()
-            
-            # Format results
-            results = []
-            for row in rows:
-                results.append({
-                    'bucket_time': row[0],
-                    'ip_address': row[1], 
-                    'port_name': row[2],
-                    'avg_utilization': float(row[3]) if row[3] is not None else None,
-                    'max_utilization': float(row[4]) if row[4] is not None else None,
-                    'avg_throughput': float(row[5]) if row[5] is not None else None,
-                    'max_throughput': float(row[6]) if row[6] is not None else None,
-                })
-            
-            return Response({
-                'aggregated_data': results,
-                'interval': 'raw (unbucketed)' if use_raw_data else interval,
-                'count': len(results),
-                'bucketed': not use_raw_data
-            })
-            
-        except Exception as e:
-            logger.exception("Error in port utilization aggregation")
-            return Response(
-                {"error": f"Database error: {str(e)}"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
+    
     @action(detail=False, methods=['get'], url_path='all-devices')
     def all_devices(self, request):
         """
@@ -860,6 +677,311 @@ class PortUtilizationStatsViewSet(viewsets.ReadOnlyModelViewSet):
                 {"error": f"Database error: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=False, methods=['get'], url_path='aggregate')
+    def aggregate(self, request):
+        """
+        Aggregate port utilization data using TimescaleDB time_bucket function.
+        
+        Returns time-bucketed data for time-series charts.
+        Supports both single-device and network-wide queries.
+        
+        Query Parameters:
+        - ip_address (optional): Device IP to filter by. If omitted, returns ALL devices.
+        - port_name (optional): Specific port name
+        - start_time (recommended): ISO 8601 format
+        - end_time (optional): ISO 8601 format (default: now)
+        - interval (optional): Time bucket size (default: '10 seconds' for spike detection)
+          Valid: '1 second', '10 seconds', '30 seconds', '1 minute', '5 minutes', 
+                 '15 minutes', '1 hour', '1 day'
+          Use 'none' or 'raw' to get unbucketed raw data points
+        - hours (optional): Shortcut for last N hours
+        - days (optional): Shortcut for last N days
+        
+        Examples:
+        - All devices, catch spikes: ?hours=1&interval=10 seconds
+        - All devices, raw data: ?hours=0.1&interval=raw
+        - Single device, 5min buckets: ?ip_address=10.10.10.5&hours=24&interval=5 minutes
+        - Network-wide, 1min buckets: ?hours=6&interval=1 minute
+        
+        Returns: Time-series data perfect for line graphs (ordered oldest to newest).
+        Network spikes are captured with 10-second default granularity.
+        """
+        # ip_address is now OPTIONAL - can query entire network
+        ip_address = request.query_params.get('ip_address')
+        
+        # Get filter parameters
+        port_name = request.query_params.get('port_name')
+        start_time = request.query_params.get('start_time')
+        end_time = request.query_params.get('end_time')
+        interval = request.query_params.get('interval', '10 seconds')  # Default to 10s for spike detection
+        
+        # Handle convenient time shortcuts
+        hours = request.query_params.get('hours')
+        days = request.query_params.get('days')
+        
+        if hours:
+            try:
+                hours_float = float(hours)
+                start_time = (timezone.now() - timezone.timedelta(hours=hours_float)).isoformat()
+            except ValueError:
+                pass
+        
+        if days:
+            try:
+                days_int = int(days)
+                start_time = (timezone.now() - timezone.timedelta(days=days_int)).isoformat()
+            except ValueError:
+                pass
+        
+        # Check if raw/unbucketed data requested
+        use_raw_data = interval.lower() in ['none', 'raw', 'unbucketed']
+        
+        # Validate interval parameter (unless raw data requested)
+        if not use_raw_data:
+            valid_intervals = [
+                '1 second', '10 seconds', '30 seconds',
+                '1 minute', '5 minutes', '15 minutes', 
+                '1 hour', '1 day'
+            ]
+            if interval not in valid_intervals:
+                return Response(
+                    {"error": f"Invalid interval. Must be one of: {valid_intervals} or 'raw'"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Build SQL query for TimescaleDB aggregation with parameter binding
+        where_conditions = []
+        params = []
+        
+        # Add interval parameter only if bucketing is enabled
+        if not use_raw_data:
+            params = [interval]  # First parameter is the interval
+        
+        # ip_address is now optional - allows network-wide queries
+        if ip_address:
+            where_conditions.append("ip_address = %s")
+            params.append(ip_address)
+        
+        if port_name:
+            where_conditions.append("port_name = %s")
+            params.append(port_name)
+        
+        if start_time:
+            try:
+                start_dt = parse_datetime(start_time)
+                if start_dt:
+                    where_conditions.append("timestamp >= %s")
+                    params.append(start_dt)
+            except ValueError:
+                return Response(
+                    {"error": "Invalid start_time format"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        if end_time:
+            try:
+                end_dt = parse_datetime(end_time)
+                if end_dt:
+                    where_conditions.append("timestamp <= %s")
+                    params.append(end_dt)
+            except ValueError:
+                return Response(
+                    {"error": "Invalid end_time format"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Construct the TimescaleDB query
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+        
+        if use_raw_data:
+            # Raw unbucketed data - return individual data points
+            query = f"""
+                SELECT 
+                    timestamp AS bucket_time,
+                    ip_address,
+                    port_name,
+                    utilization_percent as avg_utilization,
+                    utilization_percent as max_utilization,
+                    throughput_mbps as avg_throughput,
+                    throughput_mbps as max_throughput
+                FROM device_monitoring_portutilizationstats
+                WHERE {where_clause}
+                ORDER BY timestamp ASC, ip_address, port_name
+            """
+        else:
+            # Time-bucketed aggregated data
+            query = f"""
+                SELECT 
+                    time_bucket(%s::interval, timestamp) AS bucket_time,
+                    ip_address,
+                    port_name,
+                    AVG(utilization_percent) as avg_utilization,
+                    MAX(utilization_percent) as max_utilization,
+                    AVG(throughput_mbps) as avg_throughput,
+                    MAX(throughput_mbps) as max_throughput
+                FROM device_monitoring_portutilizationstats
+                WHERE {where_clause}
+                GROUP BY bucket_time, ip_address, port_name
+                ORDER BY bucket_time ASC, ip_address, port_name
+            """
+
+        logger.info(f"Query type: {'raw' if use_raw_data else 'bucketed'}")
+        logger.info(f"Params: {params}")
+        
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+            
+            # Format results
+            results = []
+            for row in rows:
+                results.append({
+                    'bucket_time': row[0],
+                    'ip_address': row[1], 
+                    'port_name': row[2],
+                    'avg_utilization': float(row[3]) if row[3] is not None else None,
+                    'max_utilization': float(row[4]) if row[4] is not None else None,
+                    'avg_throughput': float(row[5]) if row[5] is not None else None,
+                    'max_throughput': float(row[6]) if row[6] is not None else None,
+                })
+            
+            return Response({
+                'aggregated_data': results,
+                'interval': 'raw (unbucketed)' if use_raw_data else interval,
+                'count': len(results),
+                'bucketed': not use_raw_data
+            })
+            
+        except Exception as e:
+            logger.exception("Error in port utilization aggregation")
+            return Response(
+                {"error": f"Database error: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class DeviceStatsViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet exposing aggregated DeviceStats for a single device over time.
+    Primary endpoint is /device-stats/aggregate/ using TimescaleDB time_bucket.
+
+    Query Parameters:
+    - ip_address (required): Device IP to filter by
+    - start_time, end_time (ISO8601) or shortcuts: hours, days
+    - interval: one of {'10 seconds','1 minute','5 minutes','15 minutes','1 hour','1 day'}; default '5 minutes'
+    """
+    serializer_class = DeviceStatsSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'], url_path='aggregate')
+    def aggregate(self, request):
+        ip_address = request.query_params.get('ip_address')
+        if not ip_address:
+            return Response({"error": "ip_address parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        start_time = request.query_params.get('start_time')
+        end_time = request.query_params.get('end_time')
+        interval = request.query_params.get('interval', '5 minutes')
+
+        hours = request.query_params.get('hours')
+        days = request.query_params.get('days')
+
+        if hours:
+            try:
+                hours_float = float(hours)
+                start_time = (timezone.now() - timezone.timedelta(hours=hours_float)).isoformat()
+            except ValueError:
+                pass
+
+        if days:
+            try:
+                days_int = int(days)
+                start_time = (timezone.now() - timezone.timedelta(days=days_int)).isoformat()
+            except ValueError:
+                pass
+
+        valid_intervals = [
+            '10 seconds', '1 minute', '5 minutes', '15 minutes', '1 hour', '1 day'
+        ]
+        if interval not in valid_intervals:
+            return Response(
+                {"error": f"Invalid interval. Must be one of: {valid_intervals}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        where_conditions = ["ip_address = %s"]
+        params = [ip_address]
+
+        if start_time:
+            try:
+                start_dt = parse_datetime(start_time)
+                if start_dt:
+                    where_conditions.append("timestamp >= %s")
+                    params.append(start_dt)
+            except ValueError:
+                return Response({"error": "Invalid start_time format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if end_time:
+            try:
+                end_dt = parse_datetime(end_time)
+                if end_dt:
+                    where_conditions.append("timestamp <= %s")
+                    params.append(end_dt)
+            except ValueError:
+                return Response({"error": "Invalid end_time format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not start_time and not end_time and not hours and not days:
+            # Default to last 24 hours when no range provided
+            where_conditions.append("timestamp >= %s")
+            params.append(timezone.now() - timezone.timedelta(days=1))
+
+        where_clause = " AND ".join(where_conditions)
+
+        query = f"""
+            SELECT 
+                time_bucket(%s::interval, timestamp) AS bucket_time,
+                AVG(cpu) AS cpu_avg, MAX(cpu) AS cpu_max,
+                AVG(memory) AS memory_avg, MAX(memory) AS memory_max,
+                AVG(disk) AS disk_avg, MAX(disk) AS disk_max
+            FROM device_monitoring_devicestats
+            WHERE {where_clause}
+            GROUP BY bucket_time
+            ORDER BY bucket_time ASC
+        """
+
+        params = [interval] + params
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+        except Exception as e:
+            logger.exception("Error executing DeviceStats aggregate query")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        results = [
+            {
+                'bucket_time': r[0],
+                'cpu_avg': float(r[1]) if r[1] is not None else None,
+                'cpu_max': float(r[2]) if r[2] is not None else None,
+                'memory_avg': float(r[3]) if r[3] is not None else None,
+                'memory_max': float(r[4]) if r[4] is not None else None,
+                'disk_avg': float(r[5]) if r[5] is not None else None,
+                'disk_max': float(r[6]) if r[6] is not None else None,
+            }
+            for r in rows
+        ]
+
+        return Response({
+            'data': results,
+            'metadata': {
+                'bucket': interval,
+                'ip_address': ip_address,
+                'count': len(results)
+            }
+        })
+    
 
 
 # toggle_device_monitoring function removed - use NetworkDeviceViewSet instead

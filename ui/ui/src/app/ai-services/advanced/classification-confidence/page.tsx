@@ -100,6 +100,7 @@ export default function ClassificationConfidencePage() {
   // Refresh models when the page loads
   useEffect(() => {
     if (token) {
+      // Refresh to ensure model list is up-to-date when navigating to page (on first set up this can be an issue)
       refreshModels();
     }
   }, [token, refreshModels]);

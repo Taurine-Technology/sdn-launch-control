@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/authContext";
 import { useLanguage } from "@/context/languageContext";
+import { useModel } from "@/context/ModelContext";
 import { getClassificationStats } from "@/lib/classifier";
-import { ClassificationModel } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -70,6 +70,12 @@ const chartConfig = {
 export default function ClassificationConfidencePage() {
   const { token } = useAuth();
   const { getT } = useLanguage();
+  const {
+    models,
+    activeModel,
+    isLoading: modelsLoading,
+    refreshModels,
+  } = useModel();
   const t = useCallback(
     (key: string) => getT(`aiServices.classificationConfidence.${key}`),
     [getT]
@@ -77,39 +83,27 @@ export default function ClassificationConfidencePage() {
 
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [selectedHours, setSelectedHours] = useState<string>("720");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<ClassificationData[]>([]);
   const [totalClassifications, setTotalClassifications] = useState<number>(0);
   const [avgPredictionTime, setAvgPredictionTime] = useState<number>(0);
-  const [availableModels, setAvailableModels] = useState<ClassificationModel[]>(
-    []
-  );
 
-  const fetchModels = useCallback(async () => {
-    try {
-      const response = await fetch("http://localhost:8000/api/v1/models/", {
-        headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await response.json();
-      if (data.status === "success" && data.models) {
-        setAvailableModels(data.models);
-        // Set the active model as default
-        const activeModel = data.models.find(
-          (model: ClassificationModel) => model.is_active
-        );
-        if (activeModel) {
-          setSelectedModel(activeModel.name);
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching models:", err);
+  // Set the active model as default when models are loaded
+  useEffect(() => {
+    if (activeModel && !selectedModel) {
+      setSelectedModel(activeModel.name);
     }
-  }, [token]);
+  }, [activeModel, selectedModel]);
+
+  // Refresh models when the page loads
+  useEffect(() => {
+    if (token) {
+      // Refresh to ensure model list is up-to-date when navigating to page (on first set up this can be an issue)
+      refreshModels();
+    }
+  }, [token, refreshModels]);
 
   const fetchData = useCallback(async () => {
     if (!token) return;
@@ -246,19 +240,13 @@ export default function ClassificationConfidencePage() {
   }, [token, selectedModel, selectedHours, t]);
 
   useEffect(() => {
-    if (token) {
-      fetchModels();
-    }
-  }, [token, fetchModels]);
-
-  useEffect(() => {
     if (token && selectedModel) {
       fetchData();
     }
   }, [token, selectedModel, selectedHours, fetchData]);
 
   const renderContent = () => {
-    if (loading) {
+    if (modelsLoading || loading) {
       return (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin" />
@@ -290,7 +278,7 @@ export default function ClassificationConfidencePage() {
                 <SelectValue placeholder={t("selectModel")} />
               </SelectTrigger>
               <SelectContent>
-                {availableModels.map((model) => (
+                {models.map((model) => (
                   <SelectItem key={model.name} value={model.name}>
                     {model.display_name}
                   </SelectItem>
@@ -335,7 +323,7 @@ export default function ClassificationConfidencePage() {
               <SelectValue placeholder={t("selectModel")} />
             </SelectTrigger>
             <SelectContent>
-              {availableModels.map((model) => (
+              {models.map((model) => (
                 <SelectItem key={model.name} value={model.name}>
                   {model.display_name}
                 </SelectItem>

@@ -26,6 +26,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import { ClassificationModel } from "@/lib/types";
@@ -55,7 +56,7 @@ export const ModelProvider: React.FC<ModelProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadModels = async () => {
+  const loadModels = useCallback(async () => {
     const token = localStorage.getItem("taurineToken");
     if (!token) return;
 
@@ -82,11 +83,11 @@ export const ModelProvider: React.FC<ModelProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const refreshModels = async () => {
+  const refreshModels = useCallback(async () => {
     await loadModels();
-  };
+  }, [loadModels]);
 
   const switchActiveModel = async (modelName: string) => {
     const token = localStorage.getItem("taurineToken");
@@ -123,7 +124,7 @@ export const ModelProvider: React.FC<ModelProviderProps> = ({ children }) => {
   // Load models on mount
   useEffect(() => {
     loadModels();
-  }, []);
+  }, [loadModels]);
 
   const value: ModelContextType = {
     models,

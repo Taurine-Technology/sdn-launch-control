@@ -22,11 +22,9 @@
 import { createAxiosInstanceWithToken } from "./axiosInstance";
 import {
   DeviceUptimeStatus,
-  DevicePingStats,
   DeviceUptimeData,
   DeviceAggregationData,
   ToggleMonitoringRequest,
-  IngestUptimeDataRequest,
   NetworkDevice,
 } from "./types";
 

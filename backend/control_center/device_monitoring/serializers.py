@@ -21,6 +21,7 @@ from rest_framework import serializers
 from .models import (
     PortUtilizationStats,
     DevicePingStats,
+    DeviceStats,
 )
 
 
@@ -60,6 +61,23 @@ class DevicePingStatsSerializer(serializers.ModelSerializer):
             'device',
             'is_alive',
             'successful_pings',
+            'timestamp',
+        )
+        read_only_fields = fields
+
+
+class DeviceStatsSerializer(serializers.ModelSerializer):
+    """
+    Serializer for DeviceStats model. Useful for parity and potential raw listings.
+    """
+    class Meta:
+        model = DeviceStats
+        fields = (
+            'id',
+            'ip_address',
+            'cpu',
+            'memory',
+            'disk',
             'timestamp',
         )
         read_only_fields = fields

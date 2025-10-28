@@ -27,11 +27,13 @@ export function NavMain({
   items: {
     title: string;
     url: string;
-    icon: LucideIcon;
+    icon?: LucideIcon;
     isActive?: boolean;
     items?: {
       title: string;
       url: string;
+      icon?: LucideIcon;
+      items?: { title: string; url: string }[];
     }[];
   }[];
 }) {
@@ -48,7 +50,8 @@ export function NavMain({
       // ignore storage errors
     }
   }
-  const [openMap, setOpenMap] = React.useState<Record<string, boolean>>(initialMap);
+  const [openMap, setOpenMap] =
+    React.useState<Record<string, boolean>>(initialMap);
 
   const setItemOpen = (title: string, next: boolean) => {
     setOpenMap((prev) => {
@@ -71,7 +74,8 @@ export function NavMain({
           const hasChildren = !!item.items?.length;
           const isOpen = openMap[item.title] ?? item.isActive ?? false;
           const showPrimaryChild =
-            hasChildren && (item.url === "/dashboard" || item.url === "/account");
+            hasChildren &&
+            (item.url === "/dashboard" || item.url === "/account");
           const primaryChildLabel =
             item.url === "/dashboard"
               ? getT("navigation.dashboard", "Dashboard")
@@ -94,14 +98,16 @@ export function NavMain({
                   <>
                     <CollapsibleTrigger asChild>
                       <SidebarMenuButton tooltip={item.title}>
-                        <item.icon />
+                        {item.icon && <item.icon />}
                         <span>{item.title}</span>
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleTrigger asChild>
                       <SidebarMenuAction className="data-[state=open]:rotate-90">
                         <ChevronRight />
-                        <span className="sr-only">{getT("navigation.toggle")}</span>
+                        <span className="sr-only">
+                          {getT("navigation.toggle")}
+                        </span>
                       </SidebarMenuAction>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
@@ -116,22 +122,64 @@ export function NavMain({
                             </SidebarMenuSubButton>
                           </SidebarMenuSubItem>
                         )}
-                        {(item.items || []).map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.title}>
-                            <SidebarMenuSubButton asChild>
-                              <Link href={subItem.url}>
-                                <span>{subItem.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
+                        {(item.items || []).map((subItem) => {
+                          const hasSubChildren = !!subItem.items?.length;
+                          const subItemKey = `${item.title}__${subItem.title}`;
+                          const isSubOpen = openMap[subItemKey] ?? false;
+
+                          return (
+                            <SidebarMenuSubItem key={subItem.title}>
+                              {hasSubChildren ? (
+                                <Collapsible
+                                  className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90"
+                                  open={isSubOpen}
+                                  onOpenChange={(next) =>
+                                    setItemOpen(subItemKey, next)
+                                  }
+                                >
+                                  <CollapsibleTrigger asChild>
+                                    <SidebarMenuSubButton>
+                                      <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                                      {subItem.icon && <subItem.icon />}
+                                      <span>{subItem.title}</span>
+                                    </SidebarMenuSubButton>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <SidebarMenuSub>
+                                      {(subItem.items || []).map(
+                                        (subSubItem) => (
+                                          <SidebarMenuSubItem
+                                            key={subSubItem.title}
+                                          >
+                                            <SidebarMenuSubButton asChild>
+                                              <Link href={subSubItem.url}>
+                                                <span>{subSubItem.title}</span>
+                                              </Link>
+                                            </SidebarMenuSubButton>
+                                          </SidebarMenuSubItem>
+                                        )
+                                      )}
+                                    </SidebarMenuSub>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              ) : (
+                                <SidebarMenuSubButton asChild>
+                                  <Link href={subItem.url}>
+                                    {subItem.icon && <subItem.icon />}
+                                    <span>{subItem.title}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              )}
+                            </SidebarMenuSubItem>
+                          );
+                        })}
                       </SidebarMenuSub>
                     </CollapsibleContent>
                   </>
                 ) : (
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <Link href={item.url}>
-                      <item.icon />
+                      {item.icon && <item.icon />}
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>

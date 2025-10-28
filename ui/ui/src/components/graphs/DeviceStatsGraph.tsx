@@ -1,213 +1,207 @@
-import { useEffect, useRef, useState } from "react";
-import { useMultiWebSocket } from "@/context/MultiWebSocketContext";
+/**
+ * File: DeviceStatsGraph.tsx
+ * Copyright (C) 2025 Keegan White
+ *
+ * This file is part of the SDN Launch Control project.
+ *
+ * This project is licensed under the GNU General Public License v3.0 (GPL-3.0),
+ * available at: https://www.gnu.org/licenses/gpl-3.0.en.html#license-text
+ *
+ * Contributions to this project are governed by a Contributor License Agreement (CLA).
+ * By submitting a contribution, contributors grant Keegan White exclusive rights to
+ * the contribution, including the right to relicense it under a different license
+ * at the copyright owner's discretion.
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed
+ * under this license is provided "AS IS", WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the GNU General Public License for more details.
+ *
+ * For inquiries, contact Keegan White at keeganwhite@taurinetech.com.
+ */
+
+"use client";
+
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { TrendingUp } from "lucide-react";
 import { useLanguage } from "@/context/languageContext";
-import { DeviceStatsMessage, WebSocketMessage } from "@/lib/types";
+import { useAuth } from "@/context/authContext";
+import { fetchSwitches } from "@/lib/devices";
+import { fetchDeviceStatsAggregate } from "@/lib/deviceStats";
+import { NetworkDeviceDetails, DeviceStatsTimeSeriesPoint } from "@/lib/types";
+import { DeviceStatsDeviceSelector } from "./device-stats/DeviceStatsDeviceSelector";
+import {
+  TimeRangeSelector,
+  getIntervalForHours,
+} from "./port-utilization/TimeRangeSelector";
+import { DeviceStatsChart } from "./device-stats/DeviceStatsChart";
+import { DeviceStatsSkeleton } from "./device-stats/DeviceStatsSkeleton";
 
-const chartConfig = {
-  cpu: {
-    label: "CPU",
-    color: "var(--stats-chart-1)",
-  },
-  memory: {
-    label: "Memory",
-    color: "var(--stats-chart-2)",
-  },
-  disk: {
-    label: "Disk",
-    color: "var(--stats-chart-3)",
-  },
-};
-
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-export default function DeviceStatsGraph({
-  switchId,
-  ipAddress,
-}: {
-  switchId: string;
-  ipAddress: string;
-}) {
+export default function DeviceStatsGraph() {
   const { getT } = useLanguage();
-  const { subscribe } = useMultiWebSocket();
-  const [data, setData] = useState<
-    Array<{
-      time: string;
-      cpu: number | null;
-      memory: number | null;
-      disk: number | null;
-    }>
-  >([]);
-  const startTimeRef = useRef(Date.now());
-  // Add a 1-second buffer to the left (start) of the x-axis
-  const [minTime, setMinTime] = useState<string>(
-    new Date(startTimeRef.current - 1000).toISOString()
-  );
-  const [maxTime, setMaxTime] = useState<string>(
-    new Date(Date.now()).toISOString()
-  );
+  const { token } = useAuth();
 
-  // Store all received points (for 5 min window)
-  const allPoints = useRef<
-    Array<{
-      time: string;
-      cpu: number | null;
-      memory: number | null;
-      disk: number | null;
-    }>
-  >([]);
+  const [devices, setDevices] = useState<NetworkDeviceDetails[]>([]);
+  const [selectedIp, setSelectedIp] = useState<string>("");
+  const [selectedHours, setSelectedHours] = useState<number>(1); // default 1 hour
+  const [interval, setInterval] = useState<string>("10 seconds");
+  const [data, setData] = useState<DeviceStatsTimeSeriesPoint[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Load switches
   useEffect(() => {
-    const unsubscribe = subscribe("deviceStats", (msg: WebSocketMessage) => {
-      if (
-        msg.type === "stats" &&
-        (msg as DeviceStatsMessage).data?.ip_address === ipAddress
-      ) {
-        const now = Date.now();
-        const newPoint = {
-          time: new Date().toISOString(),
-          cpu: (msg as DeviceStatsMessage).data.cpu,
-          memory: (msg as DeviceStatsMessage).data.memory,
-          disk: (msg as DeviceStatsMessage).data.disk,
-        };
-        allPoints.current = [...allPoints.current, newPoint].filter(
-          (d) => new Date(d.time).getTime() >= startTimeRef.current - 1000
-        );
-        // minTime: 1 second before the time we joined (fixed)
-        setMinTime(new Date(startTimeRef.current - 1000).toISOString());
-        // maxTime: latest data point or now
-        setMaxTime(
-          new Date(
-            Math.max(now, new Date(newPoint.time).getTime())
-          ).toISOString()
-        );
-        setData([...allPoints.current]);
+    const load = async () => {
+      if (!token) return;
+      try {
+        setIsInitialLoading(true);
+        setError(null);
+        const resp = await fetchSwitches(token);
+        const results = Array.isArray(resp) ? resp : resp.results || [];
+        setDevices(results);
+        if (results.length > 0) {
+          setSelectedIp(
+            (results[0].lan_ip_address as string) || results[0].ip_address || ""
+          );
+        }
+      } catch (e) {
+        console.error("Error fetching switches", e);
+        setError(getT("page.DeviceStatsPage.no_devices", "No switches found"));
+      } finally {
+        setIsInitialLoading(false);
       }
-    });
-    return unsubscribe;
-  }, [subscribe, ipAddress]);
+    };
+    load();
+  }, [token, getT]);
 
-  // Keep the x-axis buffer on the left fixed, and update the right as new data arrives
+  const loadStats = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!token || !selectedIp) return;
+      try {
+        setIsLoading(true);
+        setError(null);
+        const resp = await fetchDeviceStatsAggregate(
+          token,
+          selectedIp,
+          selectedHours,
+          interval,
+          signal
+        );
+        if (signal?.aborted) return;
+        setData(resp.data);
+      } catch (e) {
+        if (signal?.aborted) return;
+        console.error("Error fetching device stats", e);
+        setError(
+          getT("page.DeviceStatsPage.no_data", "No device stats available")
+        );
+        setData([]);
+      } finally {
+        if (!signal?.aborted) setIsLoading(false);
+      }
+    },
+    [token, selectedIp, selectedHours, interval, getT]
+  );
+
+  // Refresh when dependencies change
   useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setMinTime(new Date(startTimeRef.current - 1000).toISOString());
-      setMaxTime(new Date(now).toISOString());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!selectedIp) return;
+    const ac = new AbortController();
+    loadStats(ac.signal);
+    return () => ac.abort();
+  }, [selectedIp, selectedHours, interval, loadStats]);
 
-  const chartData = [...data];
+  // Initial skeleton
+  if (isInitialLoading) {
+    return <DeviceStatsSkeleton />;
+  }
 
-  return (
-    <div className="w-full flex justify-center pt-6">
-      <Card className="w-full">
+  // Empty state
+  if (devices.length === 0) {
+    return (
+      <Card>
         <CardHeader>
-          <CardTitle>{getT("components.graphs.device_stats.title")}</CardTitle>
-          <CardDescription>
-            {getT("components.graphs.device_stats.description")}
-          </CardDescription>
+          <CardTitle>
+            {getT("page.DeviceStatsPage.page_title", "Device Stats")}
+          </CardTitle>
         </CardHeader>
-        <CardContent className="lg:max-h-[220px] 2xl:max-h-[420px]">
-          <ChartContainer config={chartConfig} className="w-full h-full">
-            <AreaChart
-              accessibilityLayer
-              data={chartData}
-              margin={{ left: 12, right: 12 }}
-            >
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="time"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                minTickGap={32}
-                tickFormatter={formatTime}
-                domain={[minTime, maxTime]}
-                type="category"
-              />
-              <YAxis domain={[0, 100]} />
-              <ChartTooltip
-                cursor={false}
-                content={
-                  <ChartTooltipContent
-                    indicator="line"
-                    labelFormatter={(value) => formatTime(value)}
-                  />
-                }
-              />
-              <Area
-                strokeWidth={2}
-                type="monotone"
-                dataKey="cpu"
-                stroke="var(--stats-chart-1)"
-                fill="var(--stats-chart-1)"
-                fillOpacity={0.2}
-                animationEasing="linear"
-                animationDuration={0}
-              />
-              <Area
-                strokeWidth={2}
-                type="monotone"
-                dataKey="memory"
-                stroke="var(--stats-chart-2)"
-                fill="var(--stats-chart-2)"
-                fillOpacity={0.2}
-                animationEasing="linear"
-                animationDuration={0}
-              />
-              <Area
-                strokeWidth={2}
-                type="monotone"
-                dataKey="disk"
-                stroke="var(--stats-chart-3)"
-                fill="var(--stats-chart-3)"
-                fillOpacity={0.2}
-                animationEasing="linear"
-                animationDuration={0}
-              />
-              <ChartLegend content={<ChartLegendContent />} />
-            </AreaChart>
-          </ChartContainer>
-        </CardContent>
-        <CardFooter>
-          <div className="flex w-full items-start gap-2 text-sm">
-            <div className="grid gap-2">
-              <div className="flex items-center gap-2 leading-none font-medium">
-                {getT("components.graphs.device_stats.live_stats")}{" "}
-                <span className="font-mono">{switchId}</span>
-                <TrendingUp className="h-4 w-4" />
-              </div>
-              <div className="text-muted-foreground flex items-center gap-2 leading-none">
-                {getT("components.graphs.device_stats.last_5_minutes")}
-              </div>
+        <CardContent>
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <p className="text-destructive mb-2">
+                {getT("page.DeviceStatsPage.no_devices", "No switches found")}
+              </p>
             </div>
           </div>
-        </CardFooter>
+        </CardContent>
       </Card>
-    </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          {getT("page.DeviceStatsPage.page_title", "Device Stats")}
+        </CardTitle>
+        <CardDescription>
+          <div className="flex gap-3 flex-wrap items-center">
+            <DeviceStatsDeviceSelector
+              devices={devices}
+              selectedIp={selectedIp}
+              onChange={setSelectedIp}
+            />
+            <TimeRangeSelector
+              selectedHours={selectedHours}
+              onHoursChange={(h) => {
+                setSelectedHours(h);
+                setInterval(getIntervalForHours(h));
+              }}
+            />
+          </div>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <span className="text-muted-foreground">
+                {getT(
+                  "page.DeviceStatsPage.loading",
+                  "Loading device stats..."
+                )}
+              </span>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <p className="text-destructive mb-2">Error loading data</p>
+              <p className="text-sm text-muted-foreground">{error}</p>
+            </div>
+          </div>
+        ) : data.length === 0 ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <p className="text-muted-foreground">
+                {getT(
+                  "page.DeviceStatsPage.no_data",
+                  "No device stats available"
+                )}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <DeviceStatsChart data={data} />
+        )}
+      </CardContent>
+    </Card>
   );
 }

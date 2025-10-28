@@ -25,15 +25,21 @@ import {
   Network,
   Settings2,
   LucideIcon,
+  Monitor,
 } from "lucide-react";
 import type { PluginInstallation } from "@/lib/types";
 
 export interface SidebarNavItem {
   title: string;
   url: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   isActive?: boolean;
-  items?: { title: string; url: string }[];
+  items?: {
+    title: string;
+    url: string;
+    icon?: LucideIcon;
+    items?: { title: string; url: string }[];
+  }[];
 }
 
 export function buildSidebarConfig(
@@ -77,12 +83,23 @@ export function buildSidebarConfig(
           url: "/monitoring/classifications",
         },
         {
-          title: getT("navigation.port_utilization"),
-          url: "/monitoring/port-stats",
-        },
-        {
-          title: getT("navigation.device_monitoring"),
-          url: "/devices/monitoring",
+          title: getT("navigation.devices"),
+          url: "/monitoring/devices",
+          icon: Monitor,
+          items: [
+            {
+              title: getT("navigation.port_utilization"),
+              url: "/monitoring/port-stats",
+            },
+            {
+              title: getT("navigation.uptime"),
+              url: "/devices/monitoring",
+            },
+            {
+              title: getT("navigation.resources"),
+              url: "/monitoring/device-stats",
+            },
+          ],
         },
       ],
     },

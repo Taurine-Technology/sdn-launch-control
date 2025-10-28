@@ -1159,6 +1159,26 @@ export interface AggregatePortStatsResponse {
   bucketed: boolean;
 }
 
+// Device Stats aggregate types
+export interface DeviceStatsTimeSeriesPoint {
+  bucket_time: string;
+  cpu_avg: number | null;
+  cpu_max: number | null;
+  memory_avg: number | null;
+  memory_max: number | null;
+  disk_avg: number | null;
+  disk_max: number | null;
+}
+
+export interface AggregateDeviceStatsResponse {
+  data: DeviceStatsTimeSeriesPoint[];
+  metadata: {
+    bucket: string;
+    ip_address: string;
+    count: number;
+  };
+}
+
 // Helper function for type-safe translation access with fallback
 export function getTranslation<T extends DeepNestedRecord>(
   translations: T,

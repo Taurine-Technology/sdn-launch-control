@@ -43,6 +43,7 @@ export function DeviceStatsChart({ data }: Props) {
   // Transform data for recharts (already bucketed and ordered by backend)
   const chartData = data.map((p) => ({
     time: p.bucket_time,
+    ts: new Date(p.bucket_time).getTime(),
     cpu: p.cpu_avg ?? 0,
     memory: p.memory_avg ?? 0,
     disk: p.disk_avg ?? 0,
@@ -57,8 +58,8 @@ export function DeviceStatsChart({ data }: Props) {
     disk: { label: "Disk", color: getChartColor(2) },
   };
 
-  const formatTime = (iso: string) => {
-    const d = new Date(iso);
+  const formatTime = (value: number) => {
+    const d = new Date(value);
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
@@ -74,12 +75,12 @@ export function DeviceStatsChart({ data }: Props) {
   }) => {
     if (!active || !payload || payload.length === 0) return null;
 
-    const timeValue = payload[0]?.payload?.time;
+    const timeValue = payload[0]?.payload?.ts;
 
     return (
       <div className="bg-background border border-border rounded-md shadow-md p-3">
         <p className="text-sm font-medium mb-2">
-          {timeValue ? formatTime(String(timeValue)) : ""}
+          {timeValue ? formatTime(Number(timeValue)) : ""}
         </p>
         <div className="space-y-1">
           {["cpu", "memory", "disk"].map((metric, index) => {
@@ -133,7 +134,10 @@ export function DeviceStatsChart({ data }: Props) {
       >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
-          dataKey="time"
+          dataKey="ts"
+          type="number"
+          scale="time"
+          domain={["dataMin", "dataMax"]}
           tickFormatter={formatTime}
           tickLine={false}
           axisLine={false}

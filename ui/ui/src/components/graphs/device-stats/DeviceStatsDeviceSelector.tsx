@@ -55,14 +55,16 @@ export function DeviceStatsDeviceSelector({
         />
       </SelectTrigger>
       <SelectContent>
-        {devices.map((d) => {
-          const ip = (d.lan_ip_address as string) || d.ip_address || "";
-          return (
-            <SelectItem key={d.id} value={ip}>
-              {d.name ? `${d.name} (${ip})` : ip}
-            </SelectItem>
-          );
-        })}
+        {devices
+          .filter((d) => d.lan_ip_address || d.ip_address)
+          .map((d) => {
+            const ip = d.lan_ip_address || d.ip_address || "";
+            return (
+              <SelectItem key={d.id} value={ip}>
+                {d.name ? `${d.name} (${ip})` : ip}
+              </SelectItem>
+            );
+          })}
       </SelectContent>
     </Select>
   );

@@ -37,8 +37,8 @@ const chartConfig = {
   },
 };
 
-function formatTime(iso: string) {
-  const d = new Date(iso);
+function formatTime(value: number) {
+  const d = new Date(value);
   return d.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -57,25 +57,19 @@ export default function DeviceStatsGraphRealTime({
   const { subscribe } = useMultiWebSocket();
   const [data, setData] = useState<
     Array<{
-      time: string;
+      ts: number;
       cpu: number | null;
       memory: number | null;
       disk: number | null;
     }>
   >([]);
-  const startTimeRef = useRef(Date.now());
-  // Add a 1-second buffer to the left (start) of the x-axis
-  const [minTime, setMinTime] = useState<string>(
-    new Date(startTimeRef.current - 1000).toISOString()
-  );
-  const [maxTime, setMaxTime] = useState<string>(
-    new Date(Date.now()).toISOString()
-  );
+  // Keep a sliding window of the last 5 minutes of points
+  const WINDOW_MS = 5 * 60 * 1000;
 
   // Store all received points (for 5 min window)
   const allPoints = useRef<
     Array<{
-      time: string;
+      ts: number;
       cpu: number | null;
       memory: number | null;
       disk: number | null;
@@ -89,40 +83,30 @@ export default function DeviceStatsGraphRealTime({
         (msg as DeviceStatsMessage).data?.ip_address === ipAddress
       ) {
         const now = Date.now();
+        const cutoff = now - WINDOW_MS;
         const newPoint = {
-          time: new Date().toISOString(),
+          ts: now,
           cpu: (msg as DeviceStatsMessage).data.cpu,
           memory: (msg as DeviceStatsMessage).data.memory,
           disk: (msg as DeviceStatsMessage).data.disk,
         };
-        allPoints.current = [...allPoints.current, newPoint].filter(
-          (d) => new Date(d.time).getTime() >= startTimeRef.current - 1000
-        );
-        // minTime: 1 second before the time we joined (fixed)
-        setMinTime(new Date(startTimeRef.current - 1000).toISOString());
-        // maxTime: latest data point or now
-        setMaxTime(
-          new Date(
-            Math.max(now, new Date(newPoint.time).getTime())
-          ).toISOString()
-        );
-        setData([...allPoints.current]);
+        // Append and trim in-place to maintain a stable, bounded buffer
+        const points = allPoints.current;
+        points.push(newPoint);
+        // Remove all points older than the sliding window
+        while (points.length > 0 && points[0].ts < cutoff) {
+          points.shift();
+        }
+        setData([...points]);
       }
     });
     return unsubscribe;
   }, [subscribe, ipAddress]);
 
-  // Keep the x-axis buffer on the left fixed, and update the right as new data arrives
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setMinTime(new Date(startTimeRef.current - 1000).toISOString());
-      setMaxTime(new Date(now).toISOString());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const chartData = [...data];
+  const now = Date.now();
+  const minTime = now - WINDOW_MS;
+  const maxTime = now;
 
   return (
     <div className="w-full flex justify-center pt-6">
@@ -142,14 +126,15 @@ export default function DeviceStatsGraphRealTime({
             >
               <CartesianGrid vertical={false} />
               <XAxis
-                dataKey="time"
+                dataKey="ts"
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
                 minTickGap={32}
                 tickFormatter={formatTime}
                 domain={[minTime, maxTime]}
-                type="category"
+                type="number"
+                scale="time"
               />
               <YAxis domain={[0, 100]} />
               <ChartTooltip
@@ -157,7 +142,10 @@ export default function DeviceStatsGraphRealTime({
                 content={
                   <ChartTooltipContent
                     indicator="line"
-                    labelFormatter={(value) => formatTime(value)}
+                    labelFormatter={(_value, payload) => {
+                      const ts = Number(payload?.[0]?.payload?.ts);
+                      return Number.isFinite(ts) ? formatTime(ts) : "";
+                    }}
                   />
                 }
               />

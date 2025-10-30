@@ -13,6 +13,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 import keras
+from asgiref.sync import sync_to_async, async_to_sync
 import numpy as np
 import redis
 
@@ -85,8 +86,10 @@ class ModelManager:
     def _initialize_from_database(self):
         """Initialize model manager from database"""
         try:
-            # Load configurations from database
-            db_models = ModelConfiguration.objects.all()
+            # Load configurations from database (safe in async contexts)
+            def _load_all_models():
+                return list(ModelConfiguration.objects.all())
+            db_models = async_to_sync(sync_to_async(_load_all_models, thread_sensitive=True))()
             
             # Cache configurations in Redis
             for model in db_models:
@@ -106,7 +109,9 @@ class ModelManager:
                 state_manager.set_model_config(model.name, config_dict)
             
             # Set active model from database
-            active_model = ModelConfiguration.objects.filter(is_active=True).first()
+            def _get_active_model():
+                return ModelConfiguration.objects.filter(is_active=True).first()
+            active_model = async_to_sync(sync_to_async(_get_active_model, thread_sensitive=True))()
             if active_model:
                 state_manager.set_active_model(active_model.name)
                 logger.debug(f"Active model set to: {active_model.name}")
@@ -144,21 +149,23 @@ class ModelManager:
             model_path = os.path.join(settings.BASE_DIR, model_data['model_path'])
             
             # Create or update model configuration
-            model_config, created = ModelConfiguration.objects.get_or_create(
-                name=model_key,
-                defaults={
-                    'display_name': model_data['name'],
-                    'model_type': model_data['model_type'],
-                    'model_path': model_path,
-                    'input_shape': model_data.get('input_shape', [225, 5]),
-                    'num_categories': model_data['num_categories'],
-                    'confidence_threshold': model_data.get('confidence_threshold', 0.7),
-                    'description': model_data.get('description', ''),
-                    'version': model_data.get('version', '1.0'),
-                    'is_active': model_data.get('is_active', False),
-                    'categories': model_data['categories']
-                }
-            )
+            def _get_or_create_model():
+                return ModelConfiguration.objects.get_or_create(
+                    name=model_key,
+                    defaults={
+                        'display_name': model_data['name'],
+                        'model_type': model_data['model_type'],
+                        'model_path': model_path,
+                        'input_shape': model_data.get('input_shape', [225, 5]),
+                        'num_categories': model_data['num_categories'],
+                        'confidence_threshold': model_data.get('confidence_threshold', 0.7),
+                        'description': model_data.get('description', ''),
+                        'version': model_data.get('version', '1.0'),
+                        'is_active': model_data.get('is_active', False),
+                        'categories': model_data['categories']
+                    }
+                )
+            model_config, created = async_to_sync(sync_to_async(_get_or_create_model, thread_sensitive=True))()
             
             if not created:
                 # Update existing model
@@ -171,7 +178,9 @@ class ModelManager:
                 model_config.description = model_data.get('description', '')
                 model_config.version = model_data.get('version', '1.0')
                 model_config.categories = model_data['categories']
-                model_config.save()
+                def _save():
+                    model_config.save()
+                async_to_sync(sync_to_async(_save, thread_sensitive=True))()
             
             # Cache in Redis
             config_dict = {

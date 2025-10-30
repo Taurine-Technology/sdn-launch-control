@@ -26,6 +26,8 @@ from .models import FlowStat
 import threading
 import time
 import requests
+import logging
+logger = logging.getLogger(__name__)
 
 @shared_task
 def create_flow_entry(data):
@@ -109,7 +111,7 @@ def create_flow_stat_entry(data):
                 duration_seconds = float(duration_str.rstrip('s'))
             except ValueError:
                 # logger.warning(f"Could not parse duration string: {duration_str}")
-                print(f"Could not parse duration string: {duration_str}")
+                logger.exception(f"Could not parse duration string: {duration_str}")
         elif isinstance(duration_str, (int, float)):
             duration_seconds = float(duration_str)
 
@@ -129,12 +131,15 @@ def create_flow_stat_entry(data):
         return f"FlowStat entry created with id {flow_stat.id}"
     except KeyError as e:
         # logger.error(f"Missing expected key in flow stat data: {e}. Data: {data}")
+        logger.exception(f"Missing expected key in flow stat data: {e}. Data: {data}")
         return f"Error: Missing key {e}"
     except ValueError as e:  # Catch specific ValueErrors from int/float conversions
         # logger.error(f"ValueError processing flow stat data: {e}. Data: {data}")
+        logger.exception(f"ValueError processing flow stat data: {e}. Data: {data}")
         return f"Error: ValueError - {e}"
     except Exception as e:
         # logger.error(f"Error creating FlowStat entry: {e}. Data: {data}", exc_info=True)
+        logger.exception(f"Error creating FlowStat entry: {e}. Data: {data}")
         return f"Error creating FlowStat entry: {e}"
 
 

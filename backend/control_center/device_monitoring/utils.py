@@ -57,7 +57,7 @@ def ping_device(ip_address):
             # Get the part between first = and next comma (or end)
             stats_part = stderr.split('xmt/rcv/%loss =')[1].split(',')[0].strip()
             parts = stats_part.split('/')
-            logger.info(f"Ping stats for {ip_address}: {stats_part}")
+            logger.debug(f"Ping stats for {ip_address}: {stats_part}")
             if len(parts) >= 2:
                 sent = int(parts[0])
                 received = int(parts[1])
@@ -70,10 +70,10 @@ def ping_device(ip_address):
         logger.warning(f"Ping timeout for {ip_address}")
         return False, 0
     except FileNotFoundError:
-        logger.error("fping not found. Install with: apt-get install fping")
+        logger.exception("fping not found. Install with: apt-get install fping")
         return False, 0
     except Exception as e:
-        logger.error(f"Error pinging {ip_address}: {e}")
+        logger.exception(f"Error pinging {ip_address}: {e}")
         return False, 0
 
 
@@ -217,7 +217,7 @@ def ping_devices_with_fallback(ip_addresses: List[str], batch_size: int = 10) ->
     """
     try:
         # Try batch approach first
-        logger.info(f"Attempting batch ping for {len(ip_addresses)} devices")
+        logger.debug(f"Attempting batch ping for {len(ip_addresses)} devices")
         results = ping_devices_batch(ip_addresses, batch_size)
         
         # Check if batch was successful (at least some results)
@@ -231,20 +231,20 @@ def ping_devices_with_fallback(ip_addresses: List[str], batch_size: int = 10) ->
                 try:
                     results[ip] = ping_device(ip)
                 except Exception as e:
-                    logger.error(f"Individual ping failed for {ip}: {e}")
+                    logger.exception(f"Individual ping failed for {ip}: {e}")
                     results[ip] = (False, 0)
         else:
-            logger.info(f"Batch ping successful: {successful_results}/{len(ip_addresses)} devices responded")
+            logger.debug(f"Batch ping successful: {successful_results}/{len(ip_addresses)} devices responded")
             
     except Exception as e:
-        logger.error(f"Batch ping failed with error: {e}, falling back to individual pings")
+        logger.exception(f"Batch ping failed with error: {e}, falling back to individual pings")
         # Fall back to individual pings
         results = {}
         for ip in ip_addresses:
             try:
                 results[ip] = ping_device(ip)
             except Exception as e:
-                logger.error(f"Individual ping failed for {ip}: {e}")
+                logger.exception(f"Individual ping failed for {ip}: {e}")
                 results[ip] = (False, 0)
     
     return results

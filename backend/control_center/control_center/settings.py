@@ -30,7 +30,7 @@ env = environ.Env()
 # load environment variables
 if os.path.exists(os.path.join(BASE_DIR, ".env")):
     environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
-    print('Found environment variables')
+    # print('Found environment variables')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -269,6 +269,32 @@ LOGGING = {
         'django': {
             'handlers': ['console', 'file', 'error_file'],
             'level': 'WARNING',  # Only show warnings/errors from Django internals
+            'propagate': False,
+        },
+        # Web server / ASGI stack noise reduction (override to WARNING)
+        'uvicorn': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'uvicorn.error': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'uvicorn.access': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'daphne': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'channels': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'WARNING',
             'propagate': False,
         },
         # Generate identical configs for app loggers

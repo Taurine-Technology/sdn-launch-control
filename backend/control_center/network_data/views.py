@@ -21,6 +21,9 @@ from django.utils import timezone as django_timezone
 from django.conf import settings
 
 from .models import FlowStat, Flow
+import logging
+
+logger = logging.getLogger(__name__)
 ALLOWED_PERIOD_REGEX = re.compile(r"^\s*\d+\s*(seconds?|minutes?|hours?|days?)\s*$", re.IGNORECASE)
 # Validator for MAC addresses (format: XX:XX:XX:XX:XX:XX)
 mac_address_validator = RegexValidator(
@@ -51,7 +54,7 @@ def log_flow(request):
     if request.method == 'POST':
         stats_data_list = request.data
         if not isinstance(stats_data_list, list):
-            print("Received non-list data for log_flow_stats")
+            logger.debug("Received non-list data for log_flow_stats")
             return Response(
                 {"status": "error", "message": "Expected a list of flow stat objects."},
                 status=status.HTTP_400_BAD_REQUEST
@@ -65,7 +68,7 @@ def log_flow(request):
             create_flow_stat_entries_batch.delay(stats_data_list)
             successful_tasks += 1
         except Exception as e:  # Catch issues with .delay() itself, though rare
-            print(f"Error dispatching Celery task for stats_data_list: {stats_data_list}, Error: {e}")
+            logger.exception(f"Error dispatching Celery task for stats_data_list: {stats_data_list}, Error: {e}")
             failed_tasks += 1
 
         msg = f"Processed {len(stats_data_list)} flow stat entries. Dispatched: {successful_tasks}, Failed to dispatch: {failed_tasks}."
@@ -220,7 +223,7 @@ def data_used_per_classification(request):
         }
         # print(category_cookie_to_name_map)
     except Exception as e:
-        print(f"Error fetching category mappings: {e}")
+        logger.exception(f"Error fetching category mappings: {e}")
         return Response(
             {
                 "status": "error",
@@ -253,8 +256,7 @@ def data_used_per_classification(request):
             cursor.execute(query, [period])
             rows = cursor.fetchall()
     except Exception as e:
-        # Log this error in a real application
-        print(f"Database query error: {e}")  # Replace with logging
+        logger.exception(f"Database query error: {e}")  # Replace with logging
         return Response(
             {"status": "error", "message": "Error querying data usage."},
             status=500,
@@ -329,7 +331,7 @@ def data_used_per_user_per_classification(request):
             if cat.category_cookie and cat.name
         }
     except Exception as e:
-        print(f"Error fetching category mappings: {e}")
+        logger.exception(f"Error fetching category mappings: {e}")
         return Response(
             {
                 "status": "error",

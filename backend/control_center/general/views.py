@@ -67,7 +67,7 @@ class CheckDeviceConnectionView(APIView):
         try:
             validate_ipv4_address(lan_ip_address)
             device = get_object_or_404(Device, lan_ip_address=lan_ip_address, device_type=device_type)
-            print('### Found device', device)
+            # print('### Found device', device)
 
             inv_content = create_inv_data(lan_ip_address, device.username, device.password)
             inv_path = create_temp_inv(inv_content)
@@ -77,7 +77,7 @@ class CheckDeviceConnectionView(APIView):
                         'ip_address': lan_ip_address,
                     })
             if result['status'] == 'failed':
-                print(result)
+                logger.debug(result)
                 return Response({'status': 'error', 'message': result['error']},
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -86,8 +86,8 @@ class CheckDeviceConnectionView(APIView):
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print('CAUGHT AN UNEXPECTED ERROR')
-            print(e)
+            logger.debug('CAUGHT AN UNEXPECTED ERROR')
+            logger.exception(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -221,7 +221,7 @@ class InstallPluginView(APIView):
                 plugin.installed = True
                 device = Device.objects.get(lan_ip_address=device_ip_address)
                 if not plugin.target_devices.filter(id=device.id).exists():
-                    print(f'adding {device.lan_ip_address}')
+                    logger.debug(f'adding {device.lan_ip_address}')
                     plugin.target_devices.add(device)
             else:
                 plugin.installed = False
@@ -305,11 +305,11 @@ class DeviceDetailsViewByIp(APIView):
                 "ovs_version": device.ovs_version,
                 "openflow_version": device.openflow_version
             }
-            print(data)
+            logger.debug(data)
 
             return Response({"status": "success", "device": data}, status=status.HTTP_200_OK)
         except Exception as e:
-            print(e)
+            logger.exception(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -328,12 +328,12 @@ class ForceDeleteDeviceView(APIView):
 
             # remove links to bridges if this device is a controller
             if Controller.objects.filter(device=device).exists():
-                print(f'{Device.name} is a controller.')
+                logger.debug(f'{Device.name} is a controller.')
                 controller = get_object_or_404(Controller, device=device)
                 associated_bridges = controller.bridges.all()
                 if associated_bridges:
                     for bridge in associated_bridges:
-                        print(f"Bridge Name: {bridge.name}, Device: {bridge.device.name}")
+                        logger.debug(f"Bridge Name: {bridge.name}, Device: {bridge.device.name}")
                         bridge.controller = None
                         bridge.save()
                 device.delete()
@@ -351,7 +351,7 @@ class DeleteDeviceView(APIView):
     def delete(self, request):
         data = request.data
         try:
-            print(data.get('lan_ip_address'))
+            logger.debug(data.get('lan_ip_address'))
             validate_ipv4_address(data.get('lan_ip_address'))
         except ValidationError:
             return Response({"status": "error", "message": "Invalid IP address format."},
@@ -364,11 +364,11 @@ class DeleteDeviceView(APIView):
 
             # remove links to bridges if this device is a controller
             if Controller.objects.filter(device=device).exists():
-                print(f'{Device.name} is a controller.')
+                logger.debug(f'{Device.name} is a controller.')
                 controller = get_object_or_404(Controller, device=device)
                 associated_bridges = controller.bridges.all()
                 for bridge in associated_bridges:
-                    print(f"Bridge Name: {bridge.name}, Device: {bridge.device.name}")
+                    logger.debug(f"Bridge Name: {bridge.name}, Device: {bridge.device.name}")
                     bridge_name = bridge.name
                     bridge_host_device = bridge.device
                     bridge_host_lan_ip_address = bridge_host_device.lan_ip_address
@@ -416,9 +416,9 @@ class DeleteDeviceView(APIView):
                     # save_ip_to_config(lan_ip_address, config_path)
                     # delete_bridge = run_playbook('ovs-delete-bridge', playbook_dir_path, inventory_path)
                     if delete_bridge.get('status') == 'success':
-                        print(f'Bridge {b.name} successfully deleted on {device.name}')
+                        logger.debug(f'Bridge {b.name} successfully deleted on {device.name}')
                     else:
-                        print(delete_bridge)
+                        logger.debug(delete_bridge)
                         if 'Failed to connect' in delete_bridge.get('error'):
                             return Response({
                                 'status': 'failed', 'message': 'Could not connect to the device. Is it online?'
@@ -608,13 +608,13 @@ class SwitchViewSet(ModelViewSet):
         Custom action to fetch bridges associated with a specific switch.
         """
         try:
-            print('Getting switch')
+            logger.debug('Getting switch')
             switch = self.get_object()
-            print('Getting switch bridges...')
+            logger.debug('Getting switch bridges...')
             bridges = switch.bridges.all()
-            print('Serializing bridges...')
+            logger.debug('Serializing bridges...')
             data = BridgeSerializer(bridges, many=True).data
             return Response({"bridges": data}, status=200)
         except Exception as e:
-            print('Error getting switch bridges...', e)
+            logger.exception('Error getting switch bridges...')
             return Response({"error": str(e)}, status=500)

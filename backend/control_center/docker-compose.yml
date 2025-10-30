@@ -9,6 +9,14 @@ services:
       - POSTGRES_PASSWORD=postgres
     volumes:
       - launch-control-timescale-data:/var/lib/postgresql/data
+    command:
+      [
+        "postgres",
+        "-c",
+        "log_min_messages=warning",
+        "-c",
+        "client_min_messages=warning",
+      ]
 
   redis:
     container_name: launch-control-redis
@@ -42,7 +50,7 @@ services:
                python manage.py setup_device_health_monitor &&
                python manage.py setup_port_utilization_monitor &&
                python manage.py setup_device_ping_monitor &&
-               gunicorn control_center.asgi:application -w 2 -k uvicorn.workers.UvicornWorker --max-requests 1000 --max-requests-jitter 200 --timeout 120 --graceful-timeout 120 --keep-alive 5 --worker-tmp-dir /dev/shm -b 0.0.0.0:8000"
+               gunicorn control_center.asgi:application -w 2 -k uvicorn.workers.UvicornWorker --max-requests 1000 --max-requests-jitter 200 --timeout 120 --graceful-timeout 120 --keep-alive 5 --worker-tmp-dir /dev/shm -b 0.0.0.0:8000 --log-level warning --access-logfile /dev/null"
     volumes:
       - .:/usr/app/
     depends_on:

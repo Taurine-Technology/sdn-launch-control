@@ -13,7 +13,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 import keras
-from asgiref.sync import sync_to_async, async_to_sync
+import threading
 import numpy as np
 import redis
 
@@ -26,6 +26,25 @@ logger = logging.getLogger(__name__)
 # DNS Redis key - same as in dns_loader.py
 REDIS_DNS_KEY = "dns_servers:ip_set"
 
+def _run_in_thread(func):
+        """Run a callable in a dedicated thread and return its result, raising exceptions.
+
+        Avoids interacting with any running asyncio event loop in the current thread.
+        """
+        result_holder: Dict[str, Any] = {'res': None, 'exc': None}
+
+        def _wrapper():
+            try:
+                result_holder['res'] = func()
+            except Exception as e:  # noqa: BLE001
+                result_holder['exc'] = e
+
+        t = threading.Thread(target=_wrapper, daemon=True)
+        t.start()
+        t.join()
+        if result_holder['exc'] is not None:
+            raise result_holder['exc']
+        return result_holder['res']
 
 class ModelManager:
     """
@@ -41,6 +60,9 @@ class ModelManager:
         # No in-memory counters needed - using state_manager.increment_classification_stat()
         
         self._initialize_from_database()
+
+
+    
     
     def _init_redis_connection(self):
         """Initialize Redis connection for DNS server lookups"""
@@ -86,10 +108,10 @@ class ModelManager:
     def _initialize_from_database(self):
         """Initialize model manager from database"""
         try:
-            # Load configurations from database (safe in async contexts)
+            # Run ORM work on a dedicated thread to avoid async-loop constraints
             def _load_all_models():
                 return list(ModelConfiguration.objects.all())
-            db_models = async_to_sync(sync_to_async(_load_all_models, thread_sensitive=True))()
+            db_models = _run_in_thread(_load_all_models)
             
             # Cache configurations in Redis
             for model in db_models:
@@ -111,7 +133,7 @@ class ModelManager:
             # Set active model from database
             def _get_active_model():
                 return ModelConfiguration.objects.filter(is_active=True).first()
-            active_model = async_to_sync(sync_to_async(_get_active_model, thread_sensitive=True))()
+            active_model = _run_in_thread(_get_active_model)
             if active_model:
                 state_manager.set_active_model(active_model.name)
                 logger.debug(f"Active model set to: {active_model.name}")
@@ -165,7 +187,7 @@ class ModelManager:
                         'categories': model_data['categories']
                     }
                 )
-            model_config, created = async_to_sync(sync_to_async(_get_or_create_model, thread_sensitive=True))()
+            model_config, created = _run_in_thread(_get_or_create_model)
             
             if not created:
                 # Update existing model
@@ -180,7 +202,7 @@ class ModelManager:
                 model_config.categories = model_data['categories']
                 def _save():
                     model_config.save()
-                async_to_sync(sync_to_async(_save, thread_sensitive=True))()
+                _run_in_thread(_save)
             
             # Cache in Redis
             config_dict = {

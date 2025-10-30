@@ -40,6 +40,7 @@ from general.models import Device, Bridge
 from .serializers import OdlMeterSerializer, OdlNodeSerializer
 from channels.layers import get_channel_layer
 from classifier.models import ModelConfiguration
+from classifier.state_manager import state_manager
 
 from django.utils.timezone import now as django_now
 from django.db.models import Q
@@ -598,7 +599,7 @@ def odl_classify_and_apply_policy(request):
                 print(f"Invalid data for classification: {e}")
                 results.append({"status": "error", "message": str(e)})
             except Exception as e:
-                logger.error(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Error during ODL classification/policy application: {e}")
+                logger.exception(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Error during ODL classification/policy application")
                 results.append({"status": "error", "message": f"An internal error occurred: {str(e)}"})
         # After the loop, batch log the flow entries
         if flow_entries_to_log:

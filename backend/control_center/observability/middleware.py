@@ -3,6 +3,7 @@ import logging
 import inspect
 from typing import Callable, Any
 
+from asgiref.sync import async_to_sync
 from django.http import HttpRequest, HttpResponse
 
 from .batcher import get_batcher
@@ -20,21 +21,20 @@ class ApiMetricsMiddleware:
         )
         logger.info("ApiMetricsMiddleware initialized; batcher configured for telemetry.api_requests")
 
-    async def __call__(self, request: HttpRequest) -> HttpResponse:
+    def __call__(self, request: HttpRequest) -> HttpResponse:
         start = time.time()
-        response_or_coro = self.get_response(request)
-        response: HttpResponse
-        if inspect.isawaitable(response_or_coro):
-            response = await response_or_coro
-        else:
-            response = response_or_coro  # type: ignore[assignment]
-
         try:
+            # Support both sync and async get_response
+            if inspect.iscoroutinefunction(self.get_response):
+                response = async_to_sync(self.get_response)(request)
+            else:
+                response = self.get_response(request)
+
             dur_ms = (time.time() - start) * 1000.0
             route = getattr(getattr(request, "resolver_match", None), "route", request.path)
             method = request.method
             status = getattr(response, "status_code", 0)
-            # Support both Django HttpResponse (mapping-like) and ASGI Response with headers dict
+            # Content-Length from HttpResponse or headers mapping
             length_header = 0
             try:
                 length_header = response.get("Content-Length", 0)  # type: ignore[attr-defined]
@@ -55,9 +55,16 @@ class ApiMetricsMiddleware:
                 length,
                 host,
             )
+            return response
         except Exception:
             # Never break request path on metrics failure
             logger.warning("ApiMetricsMiddleware failed to enqueue metric", exc_info=True)
-        return response
+            # Best-effort: still return underlying response if available; otherwise pass through
+            try:
+                return response  # type: ignore[name-defined]
+            except Exception:
+                if inspect.iscoroutinefunction(self.get_response):
+                    return async_to_sync(self.get_response)(request)
+                return self.get_response(request)
 
 

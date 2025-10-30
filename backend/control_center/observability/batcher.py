@@ -87,10 +87,30 @@ def get_batcher(table: str, columns: Tuple[str, ...]) -> _InsertBatcher:
 def start_default_batchers_if_enabled():
     if os.environ.get("OBS_ENABLE", "true").lower() != "true":
         return
-    # api_requests batcher
+    # Start batchers for all known telemetry tables so producers can enqueue safely
     get_batcher(
         table="telemetry.api_requests",
         columns=("ts", "route", "method", "status", "bytes", "dur_ms", "host"),
+    ).start()
+    get_batcher(
+        table="telemetry.api_process_gauges",
+        columns=("ts", "rss_mb", "heap_mb", "gc_gen0", "gc_gen1", "gc_gen2", "threads", "fds"),
+    ).start()
+    get_batcher(
+        table="telemetry.db_pool_stats",
+        columns=("ts", "size", "checked_in", "checked_out", "overflow"),
+    ).start()
+    get_batcher(
+        table="telemetry.channels_stats",
+        columns=("ts", "conns", "groups", "msgs_per_s"),
+    ).start()
+    get_batcher(
+        table="telemetry.celery_tasks",
+        columns=("ts", "task", "status", "dur_ms", "rss_before_mb", "rss_after_mb"),
+    ).start()
+    get_batcher(
+        table="telemetry.gunicorn_events",
+        columns=("ts", "event", "worker_pid"),
     ).start()
 
 

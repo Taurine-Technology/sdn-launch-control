@@ -21,14 +21,26 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 
+from observability.channels_hooks import connection_opened, connection_closed, group_joined, group_left
+
 
 class FlowConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         await self.accept()
         await self.channel_layer.group_add('flow_updates', self.channel_name)
+        try:
+            connection_opened()
+            group_joined()
+        except Exception:
+            pass
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard('flow_updates', self.channel_name)
+        try:
+            group_left()
+            connection_closed()
+        except Exception:
+            pass
 
     async def receive(self, text_data):
         pass

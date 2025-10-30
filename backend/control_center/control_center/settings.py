@@ -95,6 +95,11 @@ INSTALLED_APPS = [
 
 ]
 
+# Observability app
+INSTALLED_APPS += [
+    'observability',
+]
+
 
 # CHANNEL_LAYERS = {
 #     'default': {
@@ -116,6 +121,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'general.middleware.DatabaseConnectionMiddleware',  # Database connection monitoring
     'general.middleware.ConnectionPoolMiddleware',  # Connection pool management
+    'observability.middleware.ApiMetricsMiddleware',  # Request metrics
 ]
 
 ROOT_URLCONF = 'control_center.urls'

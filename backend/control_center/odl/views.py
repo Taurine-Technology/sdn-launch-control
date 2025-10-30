@@ -56,37 +56,7 @@ from network_data.tasks import create_flow_entries_batch
 
 logger = logging.getLogger(__name__)
 
-# Initialize the model manager
-try:
-    # The model manager will automatically load the active model
-    logger.info("Initializing model manager...")
-    # Ensure the default active model is loaded
-    active_model = model_manager.active_model
-    if active_model:
-        # Check if model is already loaded before attempting to load
-        if active_model not in model_manager.loaded_models:
-            success = model_manager.load_model(active_model)
-            if success:
-                logger.info(f"Model manager initialized with active model: {active_model}")
-            else:
-                logger.error(f"Failed to load active model: {active_model}")
-        else:
-            logger.info(f"Active model {active_model} already loaded")
-    else:
-        logger.warning("No active model configured in model manager")
-        # Try to restore from database
-        from classifier.models import ModelConfiguration
-        try:
-            active_model_config = ModelConfiguration.objects.filter(is_active=True).first()
-            if active_model_config:
-                logger.info(f"Found active model in database: {active_model_config.name}")
-                state_manager.set_active_model(active_model_config.name)
-                if model_manager.load_model(active_model_config.name):
-                    logger.info(f"Successfully restored active model: {active_model_config.name}")
-        except Exception as db_error:
-            logger.error(f"Error restoring active model from database: {db_error}")
-except Exception as e:
-    logger.error(f"Error initializing model manager: {e}")
+# Avoid import-time model loading; models are loaded lazily on demand
 
 
 class OdlMeterListView(ListAPIView):

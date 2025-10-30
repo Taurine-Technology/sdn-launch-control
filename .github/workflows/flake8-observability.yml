@@ -1,0 +1,35 @@
+name: Flake8 (observability changed files)
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Detect changed Python files
+        id: changed
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            backend/control_center/observability/**.py
+      - name: Install flake8
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+      - name: Run flake8 on changed files (observability)
+        if: steps.changed.outputs.any_changed == 'true'
+        run: |
+          echo "Changed files: ${{ steps.changed.outputs.all_changed_files }}"
+          flake8 ${{ steps.changed.outputs.all_changed_files }}
+      - name: Skip (no observability changes)
+        if: steps.changed.outputs.any_changed != 'true'
+        run: echo "No changes under observability. Skipping flake8."
+
+

@@ -25,14 +25,26 @@ from knox.auth import TokenAuthentication
 from django.contrib.auth.models import AnonymousUser
 from rest_framework.exceptions import AuthenticationFailed
 
+from observability.channels_hooks import connection_opened, connection_closed, group_joined, group_left
+
 
 class DeviceConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         await self.accept()
         await self.channel_layer.group_add('device_stats', self.channel_name)
+        try:
+            connection_opened()
+            group_joined()
+        except Exception:
+            pass
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard('device_stats', self.channel_name)
+        try:
+            group_left()
+            connection_closed()
+        except Exception:
+            pass
 
     async def receive(self, text_data):
         # Handle incoming WebSocket messages
@@ -63,12 +75,22 @@ class OpenFlowMetricsConsumer(AsyncWebsocketConsumer):
         else:
             print(f"🟢 WebSocket Connected: {self.user.username}")
             await self.channel_layer.group_add("openflow_metrics", self.channel_name)
+            try:
+                connection_opened()
+                group_joined()
+            except Exception:
+                pass
             await self.accept()
 
     async def disconnect(self, close_code):
         """ Remove the connection from the WebSocket group """
         print(f"🔴 WebSocket Disconnected: {close_code}")
         await self.channel_layer.group_discard("openflow_metrics", self.channel_name)
+        try:
+            group_left()
+            connection_closed()
+        except Exception:
+            pass
 
     async def receive(self, text_data):
         """ Handle incoming WebSocket messages """

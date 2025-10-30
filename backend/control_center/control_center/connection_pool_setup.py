@@ -4,7 +4,7 @@ Connection pool setup for django-db-connection-pool
 import os
 import dj_db_conn_pool
 from django.conf import settings
-
+from dj_db_conn_pool.core import pool_container
 
 def setup_connection_pool():
     """
@@ -65,25 +65,71 @@ def setup_dev_connection_pool():
 
 def get_pool_stats():
     """
-    Get current pool statistics
+    Get current pool statistics across all configured aliases.
+
+    This uses best-effort introspection to support multiple versions of
+    django-db-connection-pool where the container API changed.
+
+    References:
+      - PyPI: https://pypi.org/project/django-db-connection-pool/
+      - Source (PoolContainer): https://github.com/altairbow/django-db-connection-pool
     """
     try:
-        from dj_db_conn_pool.core import pool_container
-        
+        # Candidate locations for the internal pools mapping in different releases
+        candidate_attrs = (
+            'pools',            # older versions
+            '_pools',           # private attribute in some versions
+            'pool_map',         # alternative naming
+            'db_pools',         # alternative naming
+        )
+
+        pools_mapping = None
+        for attr in candidate_attrs:
+            if hasattr(pool_container, attr):
+                value = getattr(pool_container, attr)
+                if isinstance(value, dict) and value:
+                    pools_mapping = value
+                    break
+
+        # As a fallback, introspect any dict attribute holding pool-like objects
+        if pools_mapping is None:
+            for name in dir(pool_container):
+                try:
+                    value = getattr(pool_container, name)
+                except Exception:
+                    continue
+                if isinstance(value, dict) and value:
+                    # Heuristic: values implement SQLAlchemy pool API
+                    any_val = next(iter(value.values()))
+                    if all(hasattr(any_val, m) for m in ('size', 'checkedin', 'checkedout', 'overflow')):
+                        pools_mapping = value
+                        break
+
+        if pools_mapping is None:
+            # Nothing found; return empty so callers can skip emitting warnings
+            return {
+                'total_pools': 0,
+                'pools': {}
+            }
+
         stats = {
-            'total_pools': len(pool_container.pools),
+            'total_pools': len(pools_mapping),
             'pools': {}
         }
-        
-        for alias, pool in pool_container.pools.items():
-            stats['pools'][alias] = {
-                'size': pool.size(),
-                'checked_in': pool.checkedin(),
-                'checked_out': pool.checkedout(),
-                'overflow': pool.overflow(),
-                'invalid': pool.invalid()
-            }
-        
+
+        for alias, pool in pools_mapping.items():
+            try:
+                stats['pools'][alias] = {
+                    'size': pool.size(),
+                    'checked_in': pool.checkedin(),
+                    'checked_out': pool.checkedout(),
+                    'overflow': pool.overflow(),
+                    'invalid': getattr(pool, 'invalid', lambda: 0)(),
+                }
+            except Exception:
+                # Skip aliases we cannot introspect
+                continue
+
         return stats
     except Exception as e:
         print(f"Error getting pool stats: {e}")

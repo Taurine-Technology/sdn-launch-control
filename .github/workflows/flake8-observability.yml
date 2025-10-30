@@ -3,7 +3,7 @@ name: Flake8 (observability changed files)
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   lint:
@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - name: Detect changed Python files
         id: changed
         uses: tj-actions/changed-files@v45
@@ -31,5 +31,3 @@ jobs:
       - name: Skip (no observability changes)
         if: steps.changed.outputs.any_changed != 'true'
         run: echo "No changes under observability. Skipping flake8."
-
-

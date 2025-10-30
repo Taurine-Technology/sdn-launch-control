@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+import logging
 from collections import deque
 from typing import Deque, Dict, List, Tuple
 
@@ -9,7 +10,14 @@ from django.db.utils import OperationalError
 
 
 class _InsertBatcher:
-    def __init__(self, table: str, columns: Tuple[str, ...], maxlen: int = 5000, batch_size: int = 400, interval_s: float = 1.0):
+    def __init__(
+        self,
+        table: str,
+        columns: Tuple[str, ...],
+        maxlen: int = 5000,
+        batch_size: int = 400,
+        interval_s: float = 1.0,
+    ):
         self.table = table
         self.columns = columns
         self.queue: Deque[Tuple] = deque(maxlen=maxlen)
@@ -17,18 +25,25 @@ class _InsertBatcher:
         self.interval_s = interval_s
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, name=f"obs-batcher-{table}", daemon=True)
+        self._logger = logging.getLogger(__name__)
+        self._logger.info("Created InsertBatcher for table=%s columns=%s batch_size=%d interval_s=%.2f", table, columns, batch_size, interval_s)
 
     def start(self):
         if not self._thread.is_alive():
             self._thread.start()
+            self._logger.info("Started InsertBatcher thread for table=%s", self.table)
 
     def stop(self):
         self._stop.set()
         self._thread.join(timeout=2)
+        self._logger.info("Stopped InsertBatcher thread for table=%s", self.table)
 
     def put(self, row: Tuple):
         # Drop-oldest behavior via deque(maxlen)
         self.queue.append(row)
+        # Use debug to avoid log spam under load
+        if self._logger.isEnabledFor(logging.DEBUG):
+            self._logger.debug("Queued row for table=%s; queue_len=%d", self.table, len(self.queue))
 
     def _flush(self, rows: List[Tuple]):
         if not rows:
@@ -40,9 +55,13 @@ class _InsertBatcher:
             conn = connections[DEFAULT_DB_ALIAS]
             with conn.cursor() as cur:
                 cur.executemany(sql, rows)
+            self._logger.debug("Flushed %d rows into %s", len(rows), self.table)
         except OperationalError:
             # Transient failure; drop batch to avoid blocking hot path
-            pass
+            self._logger.warning("OperationalError flushing %d rows into %s; dropping batch", len(rows), self.table, exc_info=True)
+        except Exception:
+            # Any other error should be visible but non-fatal
+            self._logger.error("Unexpected error flushing %d rows into %s; dropping batch", len(rows), self.table, exc_info=True)
 
     def _run(self):
         while not self._stop.is_set():

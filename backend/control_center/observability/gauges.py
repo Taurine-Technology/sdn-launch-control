@@ -5,7 +5,6 @@ import gc
 from typing import Optional
 
 import psutil
-from django.db import connections, DEFAULT_DB_ALIAS
 
 from .batcher import get_batcher
 
@@ -56,7 +55,15 @@ class _GaugesSampler:
                     stats = get_pool_stats()
                     default = (stats or {}).get('pools', {}).get('default')
                     if default:
-                        self._pool_batcher.put((ts, default['size'], default['checked_in'], default['checked_out'], default['overflow']))
+                        self._pool_batcher.put(
+                            (
+                                ts,
+                                default['size'],
+                                default['checked_in'],
+                                default['checked_out'],
+                                default['overflow'],
+                            )
+                        )
                 except Exception:
                     pass
             except Exception:

@@ -52,7 +52,6 @@ class _ChannelsFlusher:
         self._thread.join(timeout=2)
 
     def _run(self):
-        prev_msgs = 0.0
         while not self._stop.is_set():
             try:
                 import datetime

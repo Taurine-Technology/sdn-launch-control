@@ -505,7 +505,7 @@ class ModelManager:
         #     percentage = probability * 100
         #     logger.info(f"{i+1}. {class_name}: {percentage:.2f}%")
         
-        logger.info("**********************************************")
+        logger.debug("**********************************************")
         
         # Confidence analysis
         max_probability = class_probabilities[0][1]
@@ -533,9 +533,9 @@ class ModelManager:
         
         # logger.info(f"Max Probability: {max_probability:.3f}")
         # logger.info(f"Second Highest: {second_highest_probability:.3f}")
-        logger.info(f"Confidence Level: {confidence_level}")
-        logger.info(f"Final Prediction: {final_prediction}")
-        logger.info("************************************************")
+        logger.debug(f"Confidence Level: {confidence_level}")
+        logger.debug(f"Final Prediction: {final_prediction}")
+        logger.debug("************************************************")
         
         # Track DNS and ASN usage
         dns_detected = False
@@ -549,8 +549,8 @@ class ModelManager:
                 if dns_category:
                     final_prediction = dns_category
                     dns_detected = True
-                    logger.info(f"DNS server detected: {client_ip_address} -> {dns_category}")
-                    logger.info("************************************************")
+                    logger.debug(f"DNS server detected: {client_ip_address} -> {dns_category}")
+                    logger.debug("************************************************")
                     # Track stats before returning
                     self._increment_stats(confidence_level, time_elapsed, dns_detected=True, asn_used=False)
                     return final_prediction, time_elapsed
@@ -559,15 +559,15 @@ class ModelManager:
                 asn_info = get_asn_from_ip(client_ip_address)
                 
                 if asn_info:
-                    logger.info("**********************************************")
-                    logger.info("ASN Lookup Results for Enhanced Category Matching:")
-                    logger.info(f"Client IP: {client_ip_address}")
-                    logger.info(f"ASN: {asn_info['asn']}")
-                    logger.info(f"Organization: {asn_info['organization']}")
+                    logger.debug("**********************************************")
+                    logger.debug("ASN Lookup Results for Enhanced Category Matching:")
+                    logger.debug(f"Client IP: {client_ip_address}")
+                    logger.debug(f"ASN: {asn_info['asn']}")
+                    logger.debug(f"Organization: {asn_info['organization']}")
                     
                     # Enhanced category matching logic
                     organization_lower = asn_info['organization'].lower()
-                    logger.info(f"Available categories in model: {class_names}")
+                    logger.debug(f"Available categories in model: {class_names}")
                     # original_prediction = final_prediction
                     
                     if final_prediction == "Unknown":
@@ -576,9 +576,9 @@ class ModelManager:
                         if matched_category:
                             final_prediction = matched_category
                             asn_used = True
-                            logger.info(f"ASN Match Found: '{asn_info['organization']}' -> '{matched_category}'")
+                            logger.debug(f"ASN Match Found: '{asn_info['organization']}' -> '{matched_category}'")
                         else:
-                            logger.info(f"No ASN match found for '{asn_info['organization']}', keeping as 'Unknown'")
+                            logger.debug(f"No ASN match found for '{asn_info['organization']}', keeping as 'Unknown'")
                     
                     elif final_prediction == "QUIC":
                         # Special QUIC handling with ASN matching
@@ -586,14 +586,14 @@ class ModelManager:
                         if quic_category:
                             final_prediction = quic_category
                             asn_used = True
-                            logger.info(f"QUIC ASN Match: '{asn_info['organization']}' -> '{quic_category}'")
+                            logger.debug(f"QUIC ASN Match: '{asn_info['organization']}' -> '{quic_category}'")
                         else:
-                            logger.info(f"No QUIC ASN match found for '{asn_info['organization']}', keeping as 'QUIC'")
+                            logger.debug(f"No QUIC ASN match found for '{asn_info['organization']}', keeping as 'QUIC'")
                     
-                    logger.info(f"Final Prediction After ASN Matching: {final_prediction}")
-                    logger.info("**********************************************")
+                    logger.debug(f"Final Prediction After ASN Matching: {final_prediction}")
+                    logger.debug("**********************************************")
                 else:
-                    logger.info(f"ASN lookup failed for IP: {client_ip_address}")
+                    logger.debug(f"ASN lookup failed for IP: {client_ip_address}")
             except Exception as e:
                 logger.error(f"Error during ASN lookup for IP {client_ip_address}: {e}")
         
@@ -784,14 +784,14 @@ class ModelManager:
         # Try exact matches first
         for org_key, categories in asn_mappings.items():
             if org_key in organization_lower:
-                logger.info(f"Exact match found: '{org_key}' in '{organization_lower}'")
+                logger.debug(f"Exact match found: '{org_key}' in '{organization_lower}'")
                 # Find the first matching category that's available in the model
                 for category in categories:
                     if category in available_categories:
-                        logger.info(f"Returning category '{category}' from exact match")
+                        logger.debug(f"Returning category '{category}' from exact match")
                         return category
                     else:
-                        logger.info(f"Category '{category}' not available in model")
+                        logger.debug(f"Category '{category}' not available in model")
         
         # Try partial matches for more flexible matching (word boundaries)
         for org_key, categories in asn_mappings.items():
@@ -801,13 +801,13 @@ class ModelManager:
             
             # Check if any word from org_key appears as a complete word in organization_lower
             if org_words.intersection(org_lower_words):
-                logger.info(f"Partial match found: '{org_key}' words in '{organization_lower}'")
+                logger.debug(f"Partial match found: '{org_key}' words in '{organization_lower}'")
                 for category in categories:
                     if category in available_categories:
-                        logger.info(f"Returning category '{category}' from partial match")
+                        logger.debug(f"Returning category '{category}' from partial match")
                         return category
                     else:
-                        logger.info(f"Category '{category}' not available in model")
+                        logger.debug(f"Category '{category}' not available in model")
         
         return None
     
@@ -864,7 +864,7 @@ class ModelManager:
         if self.redis_dns:
             try:
                 if self.redis_dns.sismember(REDIS_DNS_KEY, ip_address):
-                    logger.info(f"Detected DNS server from Redis: {ip_address}")
+                    logger.debug(f"Detected DNS server from Redis: {ip_address}")
                     return 'DNS'
                 # Redis lookup succeeded but IP not found
                 redis_lookup_successful = True
@@ -879,7 +879,7 @@ class ModelManager:
         fallback_dns_servers = {'8.8.8.8', '8.8.4.4', '1.1.1.1', '1.0.0.1'}
         if ip_address in fallback_dns_servers:
             if redis_lookup_successful:
-                logger.info(f"Critical DNS server detected via fallback: {ip_address}")
+                logger.debug(f"Critical DNS server detected via fallback: {ip_address}")
             else:
                 logger.warning(f"Using fallback DNS detection (Redis unavailable/failed): {ip_address}")
             return 'DNS'
@@ -1002,7 +1002,7 @@ class ModelManager:
                     avg_prediction_time_ms=avg_prediction_time
                 )
                 
-                logger.info(
+                logger.debug(
                     f"Saved classification stats for {active_model_name}: "
                     f"{redis_stats['total']} total, "
                     f"{redis_stats['high_confidence']} high confidence "

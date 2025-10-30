@@ -189,7 +189,7 @@ def classify(request):
             except Exception as e:
                 results.append({'status': 'error', 'message': str(e)})
         # Batch log the flow entries
-        logger.info(f"[CLASSIFIER] Batching {len(flow_entries_to_log)} flow entries")
+        logger.debug(f"[CLASSIFIER] Batching {len(flow_entries_to_log)} flow entries")
         create_flow_entries_batch.delay(flow_entries_to_log)
         return JsonResponse(results, safe=False, status=200)
 

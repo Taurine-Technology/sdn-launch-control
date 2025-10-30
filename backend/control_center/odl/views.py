@@ -568,11 +568,11 @@ def odl_classify_and_apply_policy(request):
                 print(f"Invalid data for classification: {e}")
                 results.append({"status": "error", "message": str(e)})
             except Exception as e:
-                logger.info(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Error during ODL classification/policy application: {e}")
+                logger.error(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Error during ODL classification/policy application: {e}")
                 results.append({"status": "error", "message": f"An internal error occurred: {str(e)}"})
         # After the loop, batch log the flow entries
         if flow_entries_to_log:
-            logger.info(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Batching {len(flow_entries_to_log)} flow entries")
+            logger.debug(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Batching {len(flow_entries_to_log)} flow entries")
             create_flow_entries_batch.delay(flow_entries_to_log)
         # Return a list if input was a list, or a single result if input was a dict
         if single_input:

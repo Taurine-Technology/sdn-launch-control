@@ -158,7 +158,7 @@ def run_playbook_with_extravars(playbook_name, playbook_dir_path, inventory_path
             playbook=playbook_path,
             inventory=inventory_path,
             status_handler=my_status_handler,
-            quiet=False,
+            quiet=quiet,
             event_handler=my_event_handler
         )
         if r.rc != 0:

@@ -34,7 +34,7 @@ def save_classification_statistics():
     try:
         result = model_manager.save_classification_stats()
         if result:
-            logger.info("Successfully saved classification statistics")
+            logger.debug("Successfully saved classification statistics")
             return "Classification statistics saved successfully"
         else:
             logger.debug("No classification statistics to save")

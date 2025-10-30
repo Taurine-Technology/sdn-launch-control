@@ -42,7 +42,7 @@ services:
                python manage.py setup_device_health_monitor &&
                python manage.py setup_port_utilization_monitor &&
                python manage.py setup_device_ping_monitor &&
-               gunicorn control_center.asgi:application -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000"
+               gunicorn control_center.asgi:application -w 2 -k uvicorn.workers.UvicornWorker --config python:observability.gunicorn_conf --max-requests 1000 --max-requests-jitter 200 --timeout 120 --graceful-timeout 120 --keep-alive 5 --worker-tmp-dir /dev/shm -b 0.0.0.0:8000"
     volumes:
       - .:/usr/app/
     depends_on:

@@ -39,7 +39,7 @@ from network_device.models import NetworkDevice
 from general.models import Device, Bridge
 from .serializers import OdlMeterSerializer, OdlNodeSerializer
 from channels.layers import get_channel_layer
-
+from classifier.models import ModelConfiguration
 
 from django.utils.timezone import now as django_now
 from django.db.models import Q
@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 # Initialize the model manager
 try:
     # The model manager will automatically load the active model
-    logger.info("Initializing model manager...")
+    logger.debug("Initializing model manager...")
     # Ensure the default active model is loaded
     active_model = model_manager.active_model
     if active_model:
@@ -67,22 +67,22 @@ try:
         if active_model not in model_manager.loaded_models:
             success = model_manager.load_model(active_model)
             if success:
-                logger.info(f"Model manager initialized with active model: {active_model}")
+                logger.debug(f"Model manager initialized with active model: {active_model}")
             else:
                 logger.error(f"Failed to load active model: {active_model}")
         else:
-            logger.info(f"Active model {active_model} already loaded")
+            logger.debug(f"Active model {active_model} already loaded")
     else:
         logger.warning("No active model configured in model manager")
         # Try to restore from database
-        from classifier.models import ModelConfiguration
+        
         try:
             active_model_config = ModelConfiguration.objects.filter(is_active=True).first()
             if active_model_config:
-                logger.info(f"Found active model in database: {active_model_config.name}")
+                logger.debug(f"Found active model in database: {active_model_config.name}")
                 state_manager.set_active_model(active_model_config.name)
                 if model_manager.load_model(active_model_config.name):
-                    logger.info(f"Successfully restored active model: {active_model_config.name}")
+                    logger.debug(f"Successfully restored active model: {active_model_config.name}")
         except Exception as db_error:
             logger.error(f"Error restoring active model from database: {db_error}")
 except Exception as e:
@@ -598,11 +598,11 @@ def odl_classify_and_apply_policy(request):
                 print(f"Invalid data for classification: {e}")
                 results.append({"status": "error", "message": str(e)})
             except Exception as e:
-                logger.info(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Error during ODL classification/policy application: {e}")
+                logger.error(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Error during ODL classification/policy application: {e}")
                 results.append({"status": "error", "message": f"An internal error occurred: {str(e)}"})
         # After the loop, batch log the flow entries
         if flow_entries_to_log:
-            logger.info(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Batching {len(flow_entries_to_log)} flow entries")
+            logger.debug(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Batching {len(flow_entries_to_log)} flow entries")
             create_flow_entries_batch.delay(flow_entries_to_log)
         # Return a list if input was a list, or a single result if input was a dict
         if single_input:

@@ -58,7 +58,7 @@ class ModelManager:
             )
             # Test connection
             self.redis_dns.ping()
-            logger.info("DNS Redis connection initialized successfully")
+            logger.debug("DNS Redis connection initialized successfully")
         except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError, redis.exceptions.RedisError):
             logger.exception("Failed to initialize DNS Redis connection")
             self.redis_dns = None
@@ -109,7 +109,7 @@ class ModelManager:
             active_model = ModelConfiguration.objects.filter(is_active=True).first()
             if active_model:
                 state_manager.set_active_model(active_model.name)
-                logger.info(f"Active model set to: {active_model.name}")
+                logger.debug(f"Active model set to: {active_model.name}")
                 
                 # Automatically load the active model
                 self.load_model(active_model.name)
@@ -133,7 +133,7 @@ class ModelManager:
                 for model_key, model_data in config_data.get('models', {}).items():
                     self._create_model_from_json(model_key, model_data)
                 
-                logger.info("Loaded models from JSON fallback")
+                logger.debug("Loaded models from JSON fallback")
                 
             except Exception as e:
                 logger.error(f"Error loading from JSON fallback: {e}")
@@ -204,7 +204,7 @@ class ModelManager:
         """
         # Check if already loaded
         if model_name in self.loaded_models:
-            logger.info(f"Model '{model_name}' already loaded")
+            logger.debug(f"Model '{model_name}' already loaded")
             return True
         
         # Get configuration from Redis cache or database
@@ -256,7 +256,7 @@ class ModelManager:
             # Update Redis state
             state_manager.add_loaded_model(model_name)
             
-            logger.info(f"Successfully loaded model: {model_name}")
+            logger.debug(f"Successfully loaded model: {model_name}")
             return True
             
         except Exception as e:
@@ -276,7 +276,7 @@ class ModelManager:
         if model_name in self.loaded_models:
             del self.loaded_models[model_name]
             state_manager.remove_loaded_model(model_name)
-            logger.info(f"Unloaded model: {model_name}")
+            logger.debug(f"Unloaded model: {model_name}")
             return True
         return False
     
@@ -308,7 +308,7 @@ class ModelManager:
         # Update Redis state (instant change)
         state_manager.set_active_model(model_name)
         
-        logger.info(f"Active model set to: {model_name}")
+        logger.debug(f"Active model set to: {model_name}")
         
         # Validate that categories exist in database
         self._validate_model_categories(model_name)
@@ -343,7 +343,7 @@ class ModelManager:
                 logger.warning(f"Missing categories for model '{model_name}': {missing_categories}")
                 logger.warning("Run 'python manage.py populate_categories_from_model' to create missing categories")
             else:
-                logger.info(f"All categories for model '{model_name}' are present in database")
+                logger.debug(f"All categories for model '{model_name}' are present in database")
                 
         except Exception as e:
             logger.error(f"Error validating categories for model '{model_name}': {e}")
@@ -361,7 +361,7 @@ class ModelManager:
             try:
                 active_model_config = ModelConfiguration.objects.filter(is_active=True).first()
                 if active_model_config:
-                    logger.info(f"Restoring active model from database: {active_model_config.name}")
+                    logger.debug(f"Restoring active model from database: {active_model_config.name}")
                     state_manager.set_active_model(active_model_config.name)
                     active_model_name = active_model_config.name
             except Exception as e:
@@ -385,7 +385,7 @@ class ModelManager:
             try:
                 active_model_config = ModelConfiguration.objects.filter(is_active=True).first()
                 if active_model_config:
-                    logger.info(f"Restoring active model from database: {active_model_config.name}")
+                    logger.debug(f"Restoring active model from database: {active_model_config.name}")
                     state_manager.set_active_model(active_model_config.name)
                     return active_model_config.name
             except Exception as e:
@@ -482,7 +482,7 @@ class ModelManager:
         x_test = packet_array.astype(int) / 255
         
         # Make prediction
-        predictions = model.predict(x_test)
+        predictions = model.predict(x_test, verbose=0)
         y_prediction = np.argmax(predictions)
         
         end_time = time.time()
@@ -505,7 +505,7 @@ class ModelManager:
         #     percentage = probability * 100
         #     logger.info(f"{i+1}. {class_name}: {percentage:.2f}%")
         
-        logger.info("**********************************************")
+        logger.debug("**********************************************")
         
         # Confidence analysis
         max_probability = class_probabilities[0][1]
@@ -533,9 +533,9 @@ class ModelManager:
         
         # logger.info(f"Max Probability: {max_probability:.3f}")
         # logger.info(f"Second Highest: {second_highest_probability:.3f}")
-        logger.info(f"Confidence Level: {confidence_level}")
-        logger.info(f"Final Prediction: {final_prediction}")
-        logger.info("************************************************")
+        logger.debug(f"Confidence Level: {confidence_level}")
+        logger.debug(f"Final Prediction: {final_prediction}")
+        logger.debug("************************************************")
         
         # Track DNS and ASN usage
         dns_detected = False
@@ -549,8 +549,8 @@ class ModelManager:
                 if dns_category:
                     final_prediction = dns_category
                     dns_detected = True
-                    logger.info(f"DNS server detected: {client_ip_address} -> {dns_category}")
-                    logger.info("************************************************")
+                    logger.debug(f"DNS server detected: {client_ip_address} -> {dns_category}")
+                    logger.debug("************************************************")
                     # Track stats before returning
                     self._increment_stats(confidence_level, time_elapsed, dns_detected=True, asn_used=False)
                     return final_prediction, time_elapsed
@@ -559,15 +559,15 @@ class ModelManager:
                 asn_info = get_asn_from_ip(client_ip_address)
                 
                 if asn_info:
-                    logger.info("**********************************************")
-                    logger.info("ASN Lookup Results for Enhanced Category Matching:")
-                    logger.info(f"Client IP: {client_ip_address}")
-                    logger.info(f"ASN: {asn_info['asn']}")
-                    logger.info(f"Organization: {asn_info['organization']}")
+                    logger.debug("**********************************************")
+                    logger.debug("ASN Lookup Results for Enhanced Category Matching:")
+                    logger.debug(f"Client IP: {client_ip_address}")
+                    logger.debug(f"ASN: {asn_info['asn']}")
+                    logger.debug(f"Organization: {asn_info['organization']}")
                     
                     # Enhanced category matching logic
                     organization_lower = asn_info['organization'].lower()
-                    logger.info(f"Available categories in model: {class_names}")
+                    logger.debug(f"Available categories in model: {class_names}")
                     # original_prediction = final_prediction
                     
                     if final_prediction == "Unknown":
@@ -576,9 +576,9 @@ class ModelManager:
                         if matched_category:
                             final_prediction = matched_category
                             asn_used = True
-                            logger.info(f"ASN Match Found: '{asn_info['organization']}' -> '{matched_category}'")
+                            logger.debug(f"ASN Match Found: '{asn_info['organization']}' -> '{matched_category}'")
                         else:
-                            logger.info(f"No ASN match found for '{asn_info['organization']}', keeping as 'Unknown'")
+                            logger.debug(f"No ASN match found for '{asn_info['organization']}', keeping as 'Unknown'")
                     
                     elif final_prediction == "QUIC":
                         # Special QUIC handling with ASN matching
@@ -586,14 +586,14 @@ class ModelManager:
                         if quic_category:
                             final_prediction = quic_category
                             asn_used = True
-                            logger.info(f"QUIC ASN Match: '{asn_info['organization']}' -> '{quic_category}'")
+                            logger.debug(f"QUIC ASN Match: '{asn_info['organization']}' -> '{quic_category}'")
                         else:
-                            logger.info(f"No QUIC ASN match found for '{asn_info['organization']}', keeping as 'QUIC'")
+                            logger.debug(f"No QUIC ASN match found for '{asn_info['organization']}', keeping as 'QUIC'")
                     
-                    logger.info(f"Final Prediction After ASN Matching: {final_prediction}")
-                    logger.info("**********************************************")
+                    logger.debug(f"Final Prediction After ASN Matching: {final_prediction}")
+                    logger.debug("**********************************************")
                 else:
-                    logger.info(f"ASN lookup failed for IP: {client_ip_address}")
+                    logger.debug(f"ASN lookup failed for IP: {client_ip_address}")
             except Exception as e:
                 logger.error(f"Error during ASN lookup for IP {client_ip_address}: {e}")
         
@@ -668,7 +668,7 @@ class ModelManager:
             # Cache in Redis
             state_manager.set_model_config(model_config.name, config_dict)
             
-            logger.info(f"Added model configuration: {model_config.name}")
+            logger.debug(f"Added model configuration: {model_config.name}")
             return True
             
         except Exception as e:
@@ -696,7 +696,7 @@ class ModelManager:
             # Clear from Redis cache
             # Note: Redis will auto-expire, but we could add a method to clear specific keys
             
-            logger.info(f"Removed model: {model_name}")
+            logger.debug(f"Removed model: {model_name}")
             return True
             
         except ModelConfiguration.DoesNotExist:
@@ -784,14 +784,14 @@ class ModelManager:
         # Try exact matches first
         for org_key, categories in asn_mappings.items():
             if org_key in organization_lower:
-                logger.info(f"Exact match found: '{org_key}' in '{organization_lower}'")
+                logger.debug(f"Exact match found: '{org_key}' in '{organization_lower}'")
                 # Find the first matching category that's available in the model
                 for category in categories:
                     if category in available_categories:
-                        logger.info(f"Returning category '{category}' from exact match")
+                        logger.debug(f"Returning category '{category}' from exact match")
                         return category
                     else:
-                        logger.info(f"Category '{category}' not available in model")
+                        logger.debug(f"Category '{category}' not available in model")
         
         # Try partial matches for more flexible matching (word boundaries)
         for org_key, categories in asn_mappings.items():
@@ -801,13 +801,13 @@ class ModelManager:
             
             # Check if any word from org_key appears as a complete word in organization_lower
             if org_words.intersection(org_lower_words):
-                logger.info(f"Partial match found: '{org_key}' words in '{organization_lower}'")
+                logger.debug(f"Partial match found: '{org_key}' words in '{organization_lower}'")
                 for category in categories:
                     if category in available_categories:
-                        logger.info(f"Returning category '{category}' from partial match")
+                        logger.debug(f"Returning category '{category}' from partial match")
                         return category
                     else:
-                        logger.info(f"Category '{category}' not available in model")
+                        logger.debug(f"Category '{category}' not available in model")
         
         return None
     
@@ -864,7 +864,7 @@ class ModelManager:
         if self.redis_dns:
             try:
                 if self.redis_dns.sismember(REDIS_DNS_KEY, ip_address):
-                    logger.info(f"Detected DNS server from Redis: {ip_address}")
+                    logger.debug(f"Detected DNS server from Redis: {ip_address}")
                     return 'DNS'
                 # Redis lookup succeeded but IP not found
                 redis_lookup_successful = True
@@ -1002,7 +1002,7 @@ class ModelManager:
                     avg_prediction_time_ms=avg_prediction_time
                 )
                 
-                logger.info(
+                logger.debug(
                     f"Saved classification stats for {active_model_name}: "
                     f"{redis_stats['total']} total, "
                     f"{redis_stats['high_confidence']} high confidence "

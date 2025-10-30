@@ -1,8 +1,8 @@
 import time
 import logging
-from typing import Callable
+import inspect
+from typing import Callable, Any
 
-from django.utils.deprecation import MiddlewareMixin
 from django.http import HttpRequest, HttpResponse
 
 from .batcher import get_batcher
@@ -11,8 +11,8 @@ from .batcher import get_batcher
 logger = logging.getLogger(__name__)
 
 
-class ApiMetricsMiddleware(MiddlewareMixin):
-    def __init__(self, get_response: Callable):
+class ApiMetricsMiddleware:
+    def __init__(self, get_response: Callable[[HttpRequest], Any]):
         self.get_response = get_response
         self._batcher = get_batcher(
             table="telemetry.api_requests",
@@ -20,17 +20,29 @@ class ApiMetricsMiddleware(MiddlewareMixin):
         )
         logger.info("ApiMetricsMiddleware initialized; batcher configured for telemetry.api_requests")
 
-    def __call__(self, request: HttpRequest) -> HttpResponse:
+    async def __call__(self, request: HttpRequest) -> HttpResponse:
         start = time.time()
-        response = self.get_response(request)
+        response_or_coro = self.get_response(request)
+        response: HttpResponse
+        if inspect.isawaitable(response_or_coro):
+            response = await response_or_coro
+        else:
+            response = response_or_coro  # type: ignore[assignment]
+
         try:
             dur_ms = (time.time() - start) * 1000.0
             route = getattr(getattr(request, "resolver_match", None), "route", request.path)
             method = request.method
             status = getattr(response, "status_code", 0)
-            length = int(response.get("Content-Length", 0) or 0)
+            # Support both Django HttpResponse (mapping-like) and ASGI Response with headers dict
+            length_header = 0
+            try:
+                length_header = response.get("Content-Length", 0)  # type: ignore[attr-defined]
+            except Exception:
+                headers = getattr(response, "headers", {}) or {}
+                length_header = headers.get("Content-Length", 0)
+            length = int(length_header or 0)
             host = request.get_host()
-            # ts uses DB NOW(); push as None to use server time? We'll pass client time; DB expects timestamptz
             import datetime
             ts = datetime.datetime.utcnow()
             self._batcher.put((ts, route, method, status, length, dur_ms, host))

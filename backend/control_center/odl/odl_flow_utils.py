@@ -5,6 +5,7 @@ from requests.auth import HTTPBasicAuth
 import time
 import hashlib
 
+logger = logging.getLogger(__name__)
 class OdlMeterFlowRule:
     def __init__(self, protocol_str, client_port_num,
                  in_port_of_number_client_to_server, out_port_of_number_client_to_server,
@@ -163,11 +164,11 @@ class OdlMeterFlowRule:
             return {"status": "success", "flow_id": flow_id_str, "response_code": response.status_code, "payload_sent": flow_payload}
         except requests.exceptions.HTTPError as e:
             err_msg = f"Failed to program ODL flow {flow_id_str}. Status: {e.response.status_code}. Response: {e.response.text}"
-            print(err_msg)
+            logger.exception(err_msg)
             return {"status": "error", "flow_id": flow_id_str, "message": err_msg, "response_code": e.response.status_code}
         except requests.exceptions.RequestException as e:
             err_msg = f"Network error while programming ODL flow {flow_id_str}: {e}"
-            print(err_msg)
+            logger.exception(err_msg)
             return {"status": "error", "flow_id": flow_id_str, "message": err_msg}
 
 
@@ -188,7 +189,7 @@ class OdlMeterFlowRule:
             result_s2c = self._send_flow_to_odl(payload_s2c, self.flow_id_s2c, controller_device_obj)
             results.append(result_s2c)
         else:
-            print(f"Skipping s2c flow for {self.flow_id_c2s} due to previous error.")
+            logger.debug(f"Skipping s2c flow for {self.flow_id_c2s} due to previous error.")
             results.append({"status": "skipped", "flow_id": self.flow_id_s2c, "reason": "c2s flow failed"})
 
         return results

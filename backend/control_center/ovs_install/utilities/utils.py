@@ -32,8 +32,10 @@ Key functionalities:
 - Extracting and displaying system details from Ansible playbook results.
 """
 import os
-
+import logging
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 def write_to_inventory(ip, user, password, inventory_path):
@@ -169,16 +171,16 @@ def check_system_details(results):
     distribution = 'Unknown'
     if os_details.get('distribution'):
         distribution = os_details['distribution']
-    print()
-    print(f"Your target device OS is {opr_system}, your target device distribution is {distribution} and you are "
+
+    logger.debug(f"Your target device OS is {opr_system}, your target device distribution is {distribution} and you are "
           f"working with the following interfaces {interfaces_arr}.")
-    print()
+
     if opr_system == 'Ubuntu' and distribution == '20.04':
-        print("We have tested this code on this OS and distribution.")
+        logger.debug("We have tested this code on this OS and distribution.")
     elif opr_system == 'Unknown':
-        print('We could not identify the target OS.')
+        logger.debug('We could not identify the target OS.')
     else:
-        print("We have not tested this code on your target OS. Please provide me with feedback on x.com "
+        logger.debug("We have not tested this code on your target OS. Please provide me with feedback on x.com "
               "@keeganwhitetech if it is successful or open an issue of GitHub if there are issues providing the"
               f"details below:\n OS: {opr_system}\Distribution: {distribution}")
     # print('returning')

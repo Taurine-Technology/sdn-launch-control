@@ -38,6 +38,9 @@ especially in the context of network device configuration and Open vSwitch manag
 import ansible_runner
 import sys
 import tempfile
+import logging
+
+logger = logging.getLogger(__name__)
 
 results = {}
 
@@ -58,8 +61,8 @@ def create_inv_data(ip, user, password,) :
     return content
 
 def my_status_handler(data, runner_config):
-    print('Status...')
-    print(data['status'])
+    logger.debug('Status...')
+    logger.debug(data['status'])
 
 
 def my_event_handler(data):
@@ -70,7 +73,7 @@ def my_event_handler(data):
         # print(event_data)
         if event_data.get('name'):
             event = event_data['name']
-            print(event)
+            logger.debug(event)
         if event_data.get('res') and event_data.get('task'):
             task = event_data['task']
             result = event_data['res']
@@ -110,15 +113,15 @@ def run_playbook_with_env(playbook_name, playbook_dir_path, inventory_path, env_
 
                 # Apt update error
                 elif results.get('Install required packages'):
-                    print('made it to apt get install')
-                    print(results['Install required packages'])
+                    logger.debug('made it to apt get install')
+                    logger.debug(results['Install required packages'])
                     results_apt = results['Install required packages']
-                    print(results_apt)
+                    logger.debug(results_apt)
                     #  'stderr': 'E: Could not get lock /var/lib/dpkg/lock-frontend
                     if results_apt.get('stderr'):
                         results_err = results_apt['stderr']
-                        print('results error found')
-                        print(results_err)
+                        logger.debug('results error found')
+                        logger.debug(results_err)
 
                         if 'Could not get lock' in results_err:
                             return {'status': 'failed', 'error': 'Cannot get lock while running apt install. Try restarting your device and trying again.'}
@@ -134,8 +137,8 @@ def run_playbook_with_env(playbook_name, playbook_dir_path, inventory_path, env_
         return {'status': 'success', 'results': results}
 
     except Exception as e:
-        print(f'***___RETURNING ERROR {e}___***')
-        print(results)
+        logger.exception(f'***___RETURNING ERROR {e}___***')
+        logger.debug(results)
         return {'status': 'failed', 'error': str(e)}
 
 
@@ -155,12 +158,12 @@ def run_playbook_with_extravars(playbook_name, playbook_dir_path, inventory_path
             playbook=playbook_path,
             inventory=inventory_path,
             status_handler=my_status_handler,
-            quiet=False,
+            quiet=quiet,
             event_handler=my_event_handler
         )
         if r.rc != 0:
 
-            print(f'*** RESULTS IN ERROR CHECK {results} ***')
+            logger.warning(f'*** RESULTS IN ERROR CHECK {results} ***')
             unreachable_err = 'Failed to connect to the host via ssh:'
             if results:
                 # if results.get('Get OVS Details'):
@@ -179,15 +182,15 @@ def run_playbook_with_extravars(playbook_name, playbook_dir_path, inventory_path
 
                 # Apt update error
                 elif results.get('Install required packages'):
-                    print('made it to apt get install')
-                    print(results['Install required packages'])
+                    logger.debug('made it to apt get install')
+                    logger.debug(results['Install required packages'])
                     results_apt = results['Install required packages']
-                    print(results_apt)
+                    logger.warning(results_apt)
                     #  'stderr': 'E: Could not get lock /var/lib/dpkg/lock-frontend
                     if results_apt.get('stderr'):
                         results_err = results_apt['stderr']
-                        print('results error found')
-                        print(results_err)
+                        logger.warning('results error found')
+                        logger.warning(results_err)
 
                         if 'Could not get lock' in results_err:
                             return {'status': 'failed',
@@ -204,6 +207,6 @@ def run_playbook_with_extravars(playbook_name, playbook_dir_path, inventory_path
         return {'status': 'success', 'results': results}
 
     except Exception as e:
-        print(f'***___RETURNING ERROR {e}___***')
-        print(results)
+        logger.exception(f'***___RETURNING ERROR {e}___***')
+        logger.warning(results)
         return {'status': 'failed', 'error': str(e)}

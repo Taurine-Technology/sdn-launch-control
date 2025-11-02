@@ -826,8 +826,8 @@ class PortUtilizationStatsViewSet(viewsets.ReadOnlyModelViewSet):
                 ORDER BY bucket_time ASC, ip_address, port_name
             """
 
-        logger.info(f"Query type: {'raw' if use_raw_data else 'bucketed'}")
-        logger.info(f"Params: {params}")
+        logger.debug(f"Query type: {'raw' if use_raw_data else 'bucketed'}")
+        logger.debug(f"Params: {params}")
         
         try:
             with connection.cursor() as cursor:

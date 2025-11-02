@@ -79,7 +79,7 @@ def check_device_health():
                 
                 # Check CPU threshold - Throttled to once per 60 seconds
                 if avg_cpu > 90:
-                    logger.info(f"Device {ip_address}: CPU threshold exceeded - {avg_cpu:.2f}%")
+                    logger.debug(f"Device {ip_address}: CPU threshold exceeded - {avg_cpu:.2f}%")
                     if not alert_record.last_cpu_alert or alert_record.last_cpu_alert < sixty_seconds_ago:
                         alerts_to_send.append({
                             'type': 'cpu',
@@ -91,7 +91,7 @@ def check_device_health():
                 
                 # Check Memory threshold - Throttled to once per 60 seconds
                 if avg_memory > 90:
-                    logger.info(f"Device {ip_address}: Memory threshold exceeded - {avg_memory:.2f}%")
+                    logger.debug(f"Device {ip_address}: Memory threshold exceeded - {avg_memory:.2f}%")
                     if not alert_record.last_memory_alert or alert_record.last_memory_alert < sixty_seconds_ago:
                         alerts_to_send.append({
                             'type': 'memory',
@@ -103,7 +103,7 @@ def check_device_health():
                 
                 # Check Disk threshold - Throttled to once per hour
                 if latest_disk > 95:
-                    logger.info(f"Device {ip_address}: Disk threshold exceeded - {latest_disk:.2f}%")
+                    logger.debug(f"Device {ip_address}: Disk threshold exceeded - {latest_disk:.2f}%")
                     if not alert_record.last_disk_alert or alert_record.last_disk_alert < one_hour_ago:
                         alerts_to_send.append({
                             'type': 'disk',
@@ -115,7 +115,7 @@ def check_device_health():
                 
                 # Persist throttle timestamps atomically only if alerts will be sent
                 if alerts_to_send:
-                    logger.info(f"Device {ip_address}: {len(alerts_to_send)} alert(s) to send")
+                    logger.debug(f"Device {ip_address}: {len(alerts_to_send)} alert(s) to send")
                     alert_record.save()
             
             # Create notifications outside the transaction to minimize lock duration
@@ -137,7 +137,7 @@ def check_device_health():
                 # Bulk create notifications for efficiency
                 if notifications_to_create:
                     Notification.objects.bulk_create(notifications_to_create)
-                    logger.info(f"Created {len(notifications_to_create)} health notifications for device {ip_address}")
+                    logger.debug(f"Created {len(notifications_to_create)} health notifications for device {ip_address}")
         
         return {"success": True, "message": "Device health check completed"}
     
@@ -210,7 +210,7 @@ def check_port_utilization():
         
         # Process utilization violations
         for ip_address, port_name, avg_utilization, avg_throughput in utilization_violations:
-            logger.info(f"Port {port_name} on {ip_address}: {avg_utilization:.2f}% utilized")
+            logger.debug(f"Port {port_name} on {ip_address}: {avg_utilization:.2f}% utilized")
             
             with transaction.atomic():
                 # Lock and check throttle for utilization alerts
@@ -243,7 +243,7 @@ def check_port_utilization():
                     
                     alert_record.last_utilization_alert = now
                     alert_record.save()
-                    logger.info(f"Created utilization alert for port {port_name} on {ip_address}")
+                    logger.debug(f"Created utilization alert for port {port_name} on {ip_address}")
                 else:
                     logger.debug(f"Utilization alert throttled for port {port_name} on {ip_address}")
         
@@ -276,14 +276,14 @@ def check_port_utilization():
                     
                     alert_record.last_null_link_speed_alert = now
                     alert_record.save()
-                    logger.info(f"Created link_speed warning for port {port_name} on {ip_address}")
+                    logger.debug(f"Created link_speed warning for port {port_name} on {ip_address}")
                 else:
                     logger.debug(f"Link_speed warning throttled for port {port_name} on {ip_address}")
         
         # Bulk create all notifications
         if notifications_to_create:
             Notification.objects.bulk_create(notifications_to_create)
-            logger.info(f"Created {len(notifications_to_create)} port utilization notifications")
+            logger.debug(f"Created {len(notifications_to_create)} port utilization notifications")
         
         return {"success": True, "message": "Port utilization check completed"}
     
@@ -312,10 +312,10 @@ def ping_all_monitored_devices():
         )
         
         device_list = list(devices)
-        logger.info(f"Pinging {len(device_list)} monitored devices using batch mode")
+        logger.debug(f"Pinging {len(device_list)} monitored devices using batch mode")
         
         if not device_list:
-            logger.info("No devices to ping")
+            logger.debug("No devices to ping")
             return {
                 'success': True,
                 'devices_pinged': 0,
@@ -375,7 +375,7 @@ def ping_all_monitored_devices():
         # Bulk create all stats records
         if stats_to_create:
             DevicePingStats.objects.bulk_create(stats_to_create)
-            logger.info(
+            logger.debug(
                 f"Created {len(stats_to_create)} ping stats records: "
                 f"{successful_pings} alive, {failed_pings} down"
             )

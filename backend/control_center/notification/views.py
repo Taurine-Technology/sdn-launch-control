@@ -1,7 +1,7 @@
 # notification/views.py
 from .tasks import monitor_telegram_registration
 import json
-
+import logging
 import requests
 from django.conf import settings
 from rest_framework import viewsets, status
@@ -11,6 +11,8 @@ from rest_framework.response import Response
 from .serializers import DataUsageNotificationSerializer
 from .models import Notification, Notifier, NetworkSummaryNotification, DataUsageNotification, ApplicationUsageNotification
 from .serializers import NotificationSerializer, NetworkSummaryNotificationSerializer, ApplicationUsageNotificationSerializer
+
+logger = logging.getLogger(__name__)
 
 class NotificationViewSet(viewsets.ModelViewSet):
     """
@@ -100,7 +102,7 @@ class NetworkSummaryNotificationViewSet(viewsets.ModelViewSet):
         return NetworkSummaryNotification.objects.filter(notifier__user=self.request.user)
 
     def perform_create(self, serializer):
-        print("perform_create with", self.request.user)
+        logger.debug("perform_create with", self.request.user)
 
         # Ensure that `request` context is passed to serializer
         serializer.save()

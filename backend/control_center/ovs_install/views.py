@@ -96,7 +96,7 @@ class InstallOvsView(APIView):
 
 
             if result_install['status'] == 'failed':
-                logger.error('install-ovs failed')
+                logger.exception('install-ovs failed')
                 return Response({"status": "error", "message": result_install['error']}, status=status.HTTP_400_BAD_REQUEST)
 
             # save_api_url_to_config(data.get('api_url'), config_path)
@@ -112,14 +112,14 @@ class InstallOvsView(APIView):
                 }
             )
             if result_install_monitor['status'] == 'failed':
-                logger.error('install-system_monitor failed')
+                logger.exception('install-system_monitor failed')
                 return Response({"status": "error", "message": result_install_monitor['error']}, status=status.HTTP_400_BAD_REQUEST)
            
             result = run_playbook_with_extravars(get_ports, playbook_dir_path, inv_path)
             interfaces = check_system_details(result)
             interface_speeds = get_interface_speeds_from_results(result.get('results', {}))
-            logger.info(f'Interfaces discovered: {interfaces}')
-            logger.info(f'Interface speeds: {interface_speeds}')
+            logger.debug(f'Interfaces discovered: {interfaces}')
+            logger.debug(f'Interface speeds: {interface_speeds}')
             if interfaces is not None:
                 num_ports = len(interfaces)
             else:
@@ -146,7 +146,7 @@ class InstallOvsView(APIView):
                 device.save(update_fields=['ovs_enabled'])
             if created:
                 if interfaces is not None:
-                    logger.info(f'Creating {len(interfaces)} ports for device {device.name}')
+                    logger.debug(f'Creating {len(interfaces)} ports for device {device.name}')
                     for interface in interfaces:
                         port, created_ports = Port.objects.get_or_create(
                             name=interface,
@@ -161,7 +161,7 @@ class InstallOvsView(APIView):
             end_time = time.perf_counter()
             duration = end_time - start_time
 
-            logger.info(
+            logger.debug(
                 f"InstallOvsView execution time (success): {duration:.4f} seconds"
             )
 
@@ -170,5 +170,5 @@ class InstallOvsView(APIView):
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f'Error in InstallOvsView: {str(e)}', exc_info=True)
+            logger.exception(f'Error in InstallOvsView: {str(e)}')
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)

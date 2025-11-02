@@ -132,13 +132,13 @@ def extract_ovs_port_map(playbook_result):
             if isinstance(potential_map, dict):
                 # Basic validation: keys are strings, values are integers
                 if all(isinstance(k, str) and isinstance(v, int) for k, v in potential_map.items()):
-                    logger.info(f"Successfully extracted ovs_port_map from debug task: {potential_map}")
+                    logger.debug(f"Successfully extracted ovs_port_map from debug task: {potential_map}")
                     return potential_map
                 else:
                     logger.warning("Map found in debug task has invalid key/value types.")
 
     except Exception as e:
-        logger.warning(f"Error accessing debug task output for ovs_port_map: {e}", exc_info=True)
+        logger.exception(f"Error accessing debug task output for ovs_port_map: {e}")
 
 
     # --- Attempt 2: Extract from the set_fact task output (Fallback) ---
@@ -158,13 +158,13 @@ def extract_ovs_port_map(playbook_result):
                         if isinstance(potential_map, dict):
                             # Basic validation
                             if all(isinstance(k, str) and isinstance(v, int) for k, v in potential_map.items()):
-                                logger.info(f"Successfully extracted ovs_port_map from set_fact task: {potential_map}")
+                                logger.debug(f"Successfully extracted ovs_port_map from set_fact task: {potential_map}")
                                 return potential_map
                             else:
                                 logger.warning("Map found in set_fact task has invalid key/value types.")
 
     except Exception as e:
-        logger.warning(f"Error accessing set_fact task output for ovs_port_map: {e}", exc_info=True)
+        logger.exception(f"Error accessing set_fact task output for ovs_port_map: {e}")
 
 
     # --- Attempt 3: Check if it exists at the top level of results (Less likely) ---
@@ -173,12 +173,12 @@ def extract_ovs_port_map(playbook_result):
         potential_map = results_data.get('ovs_port_map')
         if isinstance(potential_map, dict):
             if all(isinstance(k, str) and isinstance(v, int) for k, v in potential_map.items()):
-                logger.info(f"Successfully extracted ovs_port_map from top-level results: {potential_map}")
+                logger.debug(f"Successfully extracted ovs_port_map from top-level results: {potential_map}")
                 return potential_map
             else:
                 logger.warning("Map found in top-level results has invalid key/value types.")
     except Exception as e:
-        logger.warning(f"Error accessing top-level results for ovs_port_map: {e}", exc_info=True)
+        logger.exception(f"Error accessing top-level results for ovs_port_map: {e}")
 
     logger.warning("Could not find 'ovs_port_map' in any expected location within the playbook results.")
     return ovs_map  # Return empty dict if not found

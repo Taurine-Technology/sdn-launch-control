@@ -106,14 +106,14 @@ class InstallControllerView(APIView):
                 return Response({"status": "error", "message": "Invalid controller type"}, status=status.HTTP_400_BAD_REQUEST)
 
             if result_install['status'] == 'failed':
-                logger.error(f'Controller installation failed: {result_install}')
+                logger.exception(f'Controller installation failed: {result_install}')
                 return Response({"status": "error", "message": result_install['error']}, status=status.HTTP_400_BAD_REQUEST)
-            logger.info(f'Installing {controller_type} on device')
+            logger.debug(f'Installing {controller_type} on device')
             result = run_playbook(get_ports, playbook_dir_path, inv_path)
             interfaces = check_system_details(result)
             interface_speeds = get_interface_speeds_from_results(result.get('results', {}))
-            logger.info(f'Interfaces discovered: {interfaces}')
-            logger.info(f'Interface speeds: {interface_speeds}')
+            logger.debug(f'Interfaces discovered: {interfaces}')
+            logger.debug(f'Interface speeds: {interface_speeds}')
             if interfaces is not None:
                 num_ports = len(interfaces)
             else:
@@ -134,7 +134,7 @@ class InstallControllerView(APIView):
             )
             if created:
                 if interfaces is not None:
-                    logger.info(f'Creating {len(interfaces)} ports for device {device.name}')
+                    logger.debug(f'Creating {len(interfaces)} ports for device {device.name}')
                     for interface in interfaces:
                         port, created_ports = Port.objects.get_or_create(
                             name=interface,
@@ -153,5 +153,5 @@ class InstallControllerView(APIView):
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f'Error in InstallControllerView: {str(e)}', exc_info=True)
+            logger.exception(f'Error in InstallControllerView: {str(e)}')
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)

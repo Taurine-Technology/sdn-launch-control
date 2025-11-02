@@ -39,7 +39,8 @@ from network_device.models import NetworkDevice
 from general.models import Device, Bridge
 from .serializers import OdlMeterSerializer, OdlNodeSerializer
 from channels.layers import get_channel_layer
-
+from classifier.models import ModelConfiguration
+from classifier.state_manager import state_manager
 
 from django.utils.timezone import now as django_now
 from django.db.models import Q
@@ -59,7 +60,7 @@ logger = logging.getLogger(__name__)
 # Initialize the model manager
 try:
     # The model manager will automatically load the active model
-    logger.info("Initializing model manager...")
+    logger.debug("Initializing model manager...")
     # Ensure the default active model is loaded
     active_model = model_manager.active_model
     if active_model:
@@ -67,22 +68,22 @@ try:
         if active_model not in model_manager.loaded_models:
             success = model_manager.load_model(active_model)
             if success:
-                logger.info(f"Model manager initialized with active model: {active_model}")
+                logger.debug(f"Model manager initialized with active model: {active_model}")
             else:
                 logger.error(f"Failed to load active model: {active_model}")
         else:
-            logger.info(f"Active model {active_model} already loaded")
+            logger.debug(f"Active model {active_model} already loaded")
     else:
         logger.warning("No active model configured in model manager")
         # Try to restore from database
-        from classifier.models import ModelConfiguration
+        
         try:
             active_model_config = ModelConfiguration.objects.filter(is_active=True).first()
             if active_model_config:
-                logger.info(f"Found active model in database: {active_model_config.name}")
+                logger.debug(f"Found active model in database: {active_model_config.name}")
                 state_manager.set_active_model(active_model_config.name)
                 if model_manager.load_model(active_model_config.name):
-                    logger.info(f"Successfully restored active model: {active_model_config.name}")
+                    logger.debug(f"Successfully restored active model: {active_model_config.name}")
         except Exception as db_error:
             logger.error(f"Error restoring active model from database: {db_error}")
 except Exception as e:
@@ -197,12 +198,12 @@ class CreateOpenDaylightMeterView(APIView):
             numeric_meter_id_val = max_existing_id + 1
             numeric_meter_id_to_store_str = str(numeric_meter_id_val)
 
-            print(f"Generated ODL Meter ID: {numeric_meter_id_val} for switch {switch_node_id_input}")
+            logger.debug(f"Generated ODL Meter ID: {numeric_meter_id_val} for switch {switch_node_id_input}")
             # TODO see if ODL has a meter ID limit
 
             numeric_meter_id_to_store_str = str(numeric_meter_id_val)
 
-            print(f"Generated ODL Meter ID: {numeric_meter_id_val} for switch {switch_node_id_input}")
+            logger.debug(f"Generated ODL Meter ID: {numeric_meter_id_val} for switch {switch_node_id_input}")
 
             # --- Check 1: ODL Meter ID Uniqueness on Switch (using the generated ID) ---
             # This check is implicitly handled by the generation logic if it's robust,
@@ -321,8 +322,8 @@ class CreateOpenDaylightMeterView(APIView):
             }
 
             odl_api_url = f"http://{controller_ip}:8181/rests/data/opendaylight-inventory:nodes/node={switch_node_id_input}/flow-node-inventory:meter={numeric_meter_id_val}"
-            print(f"Sending ODL meter creation request to: {odl_api_url}")  # For debugging
-            print(f"Sending ODL meter creation payload: {json.dumps(odl_meter_payload)}")  # For debugging
+            logger.debug(f"Sending ODL meter creation request to: {odl_api_url}")  # For debugging
+            logger.debug(f"Sending ODL meter creation payload: {json.dumps(odl_meter_payload)}")  # For debugging
 
             try:
                 response = requests.put(
@@ -333,11 +334,11 @@ class CreateOpenDaylightMeterView(APIView):
                 response.raise_for_status() # Will raise an exception for 4xx/5xx errors
             except requests.exceptions.HTTPError as e:
                 err_msg = f"Failed to create meter on ODL. Status: {e.response.status_code}. Response: {e.response.text}"
-                print(err_msg)  # For debugging
+                logger.exception(err_msg)  # For debugging
                 return Response({'status': 'error', 'message': err_msg}, status=e.response.status_code)
             except requests.exceptions.RequestException as e:
                 err_msg = f"Network error communicating with ODL: {e}"
-                print(err_msg)  # For debugging
+                logger.exception(err_msg)  # For debugging
                 return Response({'status': 'error', 'message': err_msg}, status=status.HTTP_504_GATEWAY_TIMEOUT)
 
             # Create OdlMeter instance
@@ -376,7 +377,7 @@ class CreateOpenDaylightMeterView(APIView):
         except NetworkDevice.DoesNotExist:
             return Response({'status': 'error', 'message': 'NetworkDevice not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            print(f"Unexpected error in CreateOpenDaylightMeterView: {e}")
+            logger.exception(f"Unexpected error in CreateOpenDaylightMeterView: {e}")
             return Response(
                 {'status': 'error', 'message': f'An unexpected server error occurred: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -502,11 +503,11 @@ def odl_classify_and_apply_policy(request):
                         category_obj = Category.objects.get(name=application_name, model_configuration__isnull=True)
                     
                     if not category_obj.category_cookie:
-                        print(f"Category '{application_name}' found but has no pre-calculated cookie. Regenerating.")
+                        logger.debug(f"Category '{application_name}' found but has no pre-calculated cookie. Regenerating.")
                         category_obj.save()
                     category_cookie_to_use = category_obj.category_cookie
                 except Category.DoesNotExist:
-                    print(f"Category '{application_name}' not found in database. Cannot apply policy.")
+                    logger.debug(f"Category '{application_name}' not found in database. Cannot apply policy.")
                     results.append({
                         "status": "error",
                         "message": f"Category '{application_name}' not found."
@@ -578,7 +579,7 @@ def odl_classify_and_apply_policy(request):
                     )
                     flow_application_results = odl_flow_manager.apply_metered_flow_rules(controller_device_obj)
                 else:
-                    print(f"No active ODL Meter found for app {application_name} on switch {odl_switch_node_id} for MAC {client_mac}")
+                    logger.debug(f"No active ODL Meter found for app {application_name} on switch {odl_switch_node_id} for MAC {client_mac}")
                 channel_layer = get_channel_layer()
                 async_to_sync(channel_layer.group_send)(
                     'flow_updates',
@@ -595,14 +596,14 @@ def odl_classify_and_apply_policy(request):
                     'flow_results': flow_application_results
                 })
             except ValueError as e:
-                print(f"Invalid data for classification: {e}")
+                logger.exception(f"Invalid data for classification: {e}")
                 results.append({"status": "error", "message": str(e)})
             except Exception as e:
-                logger.info(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Error during ODL classification/policy application: {e}")
+                logger.exception(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Error during ODL classification/policy application")
                 results.append({"status": "error", "message": f"An internal error occurred: {str(e)}"})
         # After the loop, batch log the flow entries
         if flow_entries_to_log:
-            logger.info(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Batching {len(flow_entries_to_log)} flow entries")
+            logger.debug(f"[ODL_CLASSIFY_AND_APPLY_POLICY] Batching {len(flow_entries_to_log)} flow entries")
             create_flow_entries_batch.delay(flow_entries_to_log)
         # Return a list if input was a list, or a single result if input was a dict
         if single_input:
@@ -759,8 +760,8 @@ class OdlMeterDetailView(APIView):
                     }]
                 }
                 odl_api_url = f"http://{requested_controller_ip}:8181/rests/data/opendaylight-inventory:nodes/node={requested_switch_node_id}/flow-node-inventory:meter={requested_meter_id_on_odl_int}"
-                print(f"Sending ODL meter PUT request to: {odl_api_url}")
-                print(f"Sending ODL meter PUT payload: {json.dumps(odl_meter_payload)}")
+                logger.debug(f"Sending ODL meter PUT request to: {odl_api_url}")
+                logger.debug(f"Sending ODL meter PUT payload: {json.dumps(odl_meter_payload)}")
 
                 try:
                     response = requests.put(
@@ -771,11 +772,11 @@ class OdlMeterDetailView(APIView):
                     response.raise_for_status()
                 except requests.exceptions.HTTPError as e:
                     err_msg = f"Failed to update/create meter on ODL. Status: {e.response.status_code}. Response: {e.response.text}"
-                    print(err_msg)
+                    logger.exception(err_msg)
                     return Response({'status': 'error', 'message': err_msg}, status=e.response.status_code)
                 except requests.exceptions.RequestException as e:
                     err_msg = f"Network error communicating with ODL: {e}"
-                    print(err_msg)
+                    logger.exception(err_msg)
                     return Response({'status': 'error', 'message': err_msg}, status=status.HTTP_504_GATEWAY_TIMEOUT)
 
             # --- 5. Update Database Instance ---
@@ -816,9 +817,7 @@ class OdlMeterDetailView(APIView):
         except NetworkDevice.DoesNotExist:
             return Response({'status': 'error', 'message': 'Target NetworkDevice not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            print(f"Unexpected error in OdlMeterDetailView PUT: {e}") # Log the full error
-            import traceback
-            traceback.print_exc() # Print stack trace for debugging
+            logger.exception(f"Unexpected error in OdlMeterDetailView PUT: {e}") # Log the full error
             return Response(
                 {'status': 'error', 'message': f'An unexpected server error occurred: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -841,11 +840,11 @@ class OdlMeterDetailView(APIView):
             response.raise_for_status()  # Will raise an exception for 4xx/5xx errors
         except requests.exceptions.HTTPError as e:
             err_msg = f"Failed to create meter on ODL. Status: {e.response.status_code}. Response: {e.response.text}"
-            print(err_msg)  # For debugging
+            logger.exception(err_msg)  # For debugging
             return Response({'status': 'error', 'message': err_msg}, status=e.response.status_code)
         except requests.exceptions.RequestException as e:
             err_msg = f"Network error communicating with ODL: {e}"
-            print(err_msg)  # For debugging
+            logger.exception(err_msg)  # For debugging
             return Response({'status': 'error', 'message': err_msg}, status=status.HTTP_504_GATEWAY_TIMEOUT)
         meter.delete()
 

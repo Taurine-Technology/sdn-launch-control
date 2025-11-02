@@ -80,8 +80,8 @@ class GetDevicePorts(APIView):
             result = run_playbook(get_ports, playbook_dir_path, inventory_path)  # Ensure these variables are defined
             interfaces = check_system_details(result)
             interface_speeds = get_interface_speeds_from_results(result)
-            logger.info(f'Interfaces discovered: {interfaces}')
-            logger.info(f'Interface speeds: {interface_speeds}')
+            logger.debug(f'Interfaces discovered: {interfaces}')
+            logger.debug(f'Interface speeds: {interface_speeds}')
 
             existing_ports = device.ports.all()  # Get all ports currently associated with the device
             existing_port_names = [port.name for port in existing_ports]
@@ -94,7 +94,7 @@ class GetDevicePorts(APIView):
                     new_port.save()
                     new_ports.append(new_port.name)
             if new_ports:
-                logger.info(f'New ports added: {new_ports}')
+                logger.debug(f'New ports added: {new_ports}')
             # remove bridges from port list returned
             bridges = device.bridges.all()
             bridge_names = [bridge.name for bridge in bridges]
@@ -110,7 +110,7 @@ class GetDevicePorts(APIView):
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f'Error in GetDeviceInterfaces: {str(e)}', exc_info=True)
+            logger.exception(f'Error in GetDeviceInterfaces: {str(e)}')
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -173,7 +173,7 @@ class GetUnassignedDevicePorts(APIView):
             return Response({"status": "error", "message": "Invalid IP address format."},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f'Error in GetUnassignedDevicePorts: {str(e)}', exc_info=True)
+            logger.exception(f'Error in GetUnassignedDevicePorts: {str(e)}')
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -260,7 +260,7 @@ class GetDeviceBridges(APIView):
             # Sync the device with the inventory and run the playbook
 
             # write_to_inventory(lan_ip_address, device.username, device.password, inventory_path)
-            logger.info(f'Running OVS show for device {lan_ip_address}')
+            logger.debug(f'Running OVS show for device {lan_ip_address}')
             result = run_playbook_with_extravars(ovs_show, playbook_dir_path, inv_path)
 
             if result['status'] == 'failed':
@@ -272,7 +272,7 @@ class GetDeviceBridges(APIView):
             # Format the result into bridges
             bridges = format_ovs_show(result['results'])
             new_ports = []
-            logger.info(f'Found {len(bridges)} bridges: {list(bridges.keys())}')
+            logger.debug(f'Found {len(bridges)} bridges: {list(bridges.keys())}')
             for bridge in bridges:
                 # save_bridge_name_to_config(bridge, config_path)
                 get_bridge_details = run_playbook_with_extravars(
@@ -348,10 +348,10 @@ class GetDeviceBridges(APIView):
             return Response({'status': 'success', 'bridges': bridges}, status=status.HTTP_200_OK)
 
         except ValidationError as e:
-            logger.error(f'Validation error: {str(e)}', exc_info=True)
+            logger.exception(f'Validation error: {str(e)}')
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f'Error in GetDeviceBridges: {str(e)}', exc_info=True)
+            logger.exception(f'Error in GetDeviceBridges: {str(e)}')
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class GetDeviceBridgeDpid(APIView):
@@ -369,10 +369,10 @@ class GetDeviceBridgeDpid(APIView):
             bridges = format_ovs_show(result)
             return Response({'status': 'success', 'bridges': bridges}, status=status.HTTP_200_OK)
         except ValidationError as e:
-            logger.error(f'Validation error: {str(e)}', exc_info=True)
+            logger.exception(f'Validation error: {str(e)}')
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f'Error in GetDeviceBridges: {str(e)}', exc_info=True)
+            logger.exception(f'Error in GetDeviceBridges: {str(e)}')
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -430,7 +430,7 @@ class EditBridge(APIView):
             if 'api_url' in data:
                 new_api_url = data.get('api_url') # Can be None or empty string
                 if original_bridge.api_url != new_api_url:
-                     logger.info(f"Updating api_url for bridge {bridge_name} to '{new_api_url}'")
+                     logger.debug(f"Updating api_url for bridge {bridge_name} to '{new_api_url}'")
                      original_bridge.api_url = new_api_url
                      api_url_changed = True
                      bridge_needs_save = True
@@ -456,7 +456,7 @@ class EditBridge(APIView):
 
                 # --- 2a. Remove Ports from Device and Update DB ---
                 if ports_to_remove:
-                    logger.info(f"Removing ports {ports_to_remove} from bridge {bridge_name}")
+                    logger.debug(f"Removing ports {ports_to_remove} from bridge {bridge_name}")
                     delete_ports_playbook = 'ovs-delete-ports' # Assumes this playbook exists
                     delete_ports_vars = {
                         'interfaces': ports_to_remove,
@@ -468,18 +468,18 @@ class EditBridge(APIView):
                     )
                     if delete_interfaces_result.get('status') == 'failed':
                         error_detail = delete_interfaces_result.get('error', 'Unknown Ansible error')
-                        logger.error(f"Playbook '{delete_ports_playbook}' failed for {bridge_name}: {error_detail}")
+                        logger.exception(f"Playbook '{delete_ports_playbook}' failed for {bridge_name}: {error_detail}")
                         raise Exception(f"Failed to remove interfaces from bridge via Ansible: {error_detail}")
 
                     # Update DB for removed ports
                     ports_qs = Port.objects.filter(name__in=ports_to_remove, device=device, bridge=original_bridge)
                     updated_count = ports_qs.update(bridge=None, ovs_port_number=None)
-                    logger.info(f"Unassigned {updated_count} ports from bridge {bridge_name} in DB.")
+                    logger.debug(f"Unassigned {updated_count} ports from bridge {bridge_name} in DB.")
 
 
                 # --- 2b. Add Ports to Device ---
                 if ports_to_add:
-                    logger.info(f"Adding ports {ports_to_add} to bridge {bridge_name}")
+                    logger.debug(f"Adding ports {ports_to_add} to bridge {bridge_name}")
                     add_ports_playbook = 'ovs-port-setup'
                     add_ports_vars = {
                         'interfaces': ports_to_add,
@@ -491,7 +491,7 @@ class EditBridge(APIView):
                     )
                     if add_interfaces_result.get('status') == 'failed':
                         error_detail = add_interfaces_result.get('error', 'Unknown Ansible error')
-                        logger.error(f"Playbook '{add_ports_playbook}' failed for {bridge_name}: {error_detail}")
+                        logger.exception(f"Playbook '{add_ports_playbook}' failed for {bridge_name}: {error_detail}")
                         raise Exception(f"Failed to add interfaces to bridge via Ansible: {error_detail}")
 
                 # --- 2c. Get OVS Port Numbers for *Current* Bridge State ---
@@ -507,7 +507,7 @@ class EditBridge(APIView):
                             'interfaces': final_port_names,
                             'ip_address': lan_ip_address,
                         }
-                        logger.info(f"Running playbook '{get_ovs_nums_playbook}' for bridge {bridge_name} (ports: {final_port_names})")
+                        logger.debug(f"Running playbook '{get_ovs_nums_playbook}' for bridge {bridge_name} (ports: {final_port_names})")
                         get_ovs_nums_result = run_playbook_with_extravars(
                             get_ovs_nums_playbook, playbook_dir_path, inv_path, get_ovs_nums_vars
                         )
@@ -517,23 +517,23 @@ class EditBridge(APIView):
                         if not ovs_port_map:
                              if get_ovs_nums_result.get('status') == 'failed':
                                  error_detail = get_ovs_nums_result.get('error', 'Extraction failed')
-                                 logger.error(f"Playbook '{get_ovs_nums_playbook}' failed during edit for {bridge_name}: {error_detail}")
+                                 logger.exception(f"Playbook '{get_ovs_nums_playbook}' failed during edit for {bridge_name}: {error_detail}")
                                  raise Exception(f"Failed to execute OVS port number retrieval during edit: {error_detail}")
                              else:
-                                 logger.error(f"Failed to parse OVS port numbers during edit for bridge {bridge_name}.")
+                                 logger.exception(f"Failed to parse OVS port numbers during edit for bridge {bridge_name}.")
                                  raise Exception(f"Critical error: Could not determine OVS port numbers for bridge {bridge_name} during edit.")
                     else:
-                        logger.info(f"Bridge {bridge_name} has no ports after edit, skipping OVS number retrieval.")
+                        logger.debug(f"Bridge {bridge_name} has no ports after edit, skipping OVS number retrieval.")
                         ovs_port_map = {} # Ensure it's empty
 
                 # --- 2c2. Get Interface Speeds (after ports are UP) ---
                 interface_speeds = {}
                 if ports_to_add:
-                    logger.info(f"Gathering interface speeds for newly added ports on {lan_ip_address}")
+                    logger.debug(f"Gathering interface speeds for newly added ports on {lan_ip_address}")
                     speed_result = run_playbook_with_extravars('get-ports-ip-link', playbook_dir_path, inv_path)
                     if speed_result.get('status') == 'success':
                         interface_speeds = get_interface_speeds_from_results(speed_result)
-                        logger.info(f"Interface speeds after adding ports: {interface_speeds}")
+                        logger.debug(f"Interface speeds after adding ports: {interface_speeds}")
                     else:
                         logger.warning(f"Failed to gather interface speeds for {lan_ip_address} during edit")
 
@@ -553,13 +553,13 @@ class EditBridge(APIView):
                         port_obj.link_speed = interface_speeds.get(port_name)
                     port_obj.save(update_fields=['bridge', 'ovs_port_number', 'link_speed'])
                     if created:
-                        logger.info(f"Created new port entry for {port_name} on device {device.name} during edit.")
+                        logger.debug(f"Created new port entry for {port_name} on device {device.name} during edit.")
                     if port_obj.ovs_port_number is None:
                         logger.warning(f"Port {port_name} added to bridge {bridge_name} during edit, but OVS port number was not found/assigned.")
                     if port_obj.link_speed:
-                        logger.info(f"Port {port_name} link speed set to {port_obj.link_speed} Mb/s")
+                        logger.debug(f"Port {port_name} link speed set to {port_obj.link_speed} Mb/s")
                     else:
-                        logger.info(f"Port {port_name} link speed not available (interface may be down)")
+                        logger.debug(f"Port {port_name} link speed not available (interface may be down)")
 
                 # Optional: Refresh OVS numbers for ports that remained on the bridge
                 if ports_changed: # Only if adds/removes happened
@@ -568,7 +568,7 @@ class EditBridge(APIView):
                          port_obj = Port.objects.get(name=port_name, device=device, bridge=original_bridge)
                          new_num = ovs_port_map.get(port_name)
                          if port_obj.ovs_port_number != new_num:
-                              logger.info(f"Updating OVS port number for existing port {port_name} on bridge {bridge_name} to {new_num}")
+                              logger.debug(f"Updating OVS port number for existing port {port_name} on bridge {bridge_name} to {new_num}")
                               port_obj.ovs_port_number = new_num
                               port_obj.save(update_fields=['ovs_port_number'])
 
@@ -602,7 +602,7 @@ class EditBridge(APIView):
 
                 # --- 3a. Remove Old Controller from Device ---
                 if current_controller:
-                    logger.info(f"Removing bridge {bridge_name} from old controller {current_controller.device.lan_ip_address}")
+                    logger.debug(f"Removing bridge {bridge_name} from old controller {current_controller.device.lan_ip_address}")
                     remove_controller_playbook = 'remove-controller'
                     remove_controller_vars = {
                          'ip_address': lan_ip_address,
@@ -613,14 +613,14 @@ class EditBridge(APIView):
                     )
                     if delete_controller_result.get('status') == 'failed':
                         error_detail = delete_controller_result.get('error', 'Unknown Ansible error')
-                        logger.error(f"Playbook '{remove_controller_playbook}' failed for {bridge_name}: {error_detail}")
+                        logger.exception(f"Playbook '{remove_controller_playbook}' failed for {bridge_name}: {error_detail}")
                         raise Exception(f'Failed to remove old controller from bridge via Ansible: {error_detail}')
                     # Remove switch from controller's M2M relation in DB
                     current_controller.switches.remove(device)
 
                 # --- 3b. Add New Controller to Device ---
                 if new_controller:
-                    logger.info(f"Assigning bridge {bridge_name} to new controller {new_controller.device.lan_ip_address}")
+                    logger.debug(f"Assigning bridge {bridge_name} to new controller {new_controller.device.lan_ip_address}")
                     connect_controller_playbook = 'connect-to-controller'
                     connect_controller_vars = {
                         'ip_address': lan_ip_address,
@@ -633,7 +633,7 @@ class EditBridge(APIView):
                     )
                     if assign_controller_result.get('status') == 'failed':
                         error_detail = assign_controller_result.get('error', 'Unknown Ansible error')
-                        logger.error(f"Playbook '{connect_controller_playbook}' failed for {bridge_name}: {error_detail}")
+                        logger.exception(f"Playbook '{connect_controller_playbook}' failed for {bridge_name}: {error_detail}")
                         raise Exception(f'Failed to assign new controller to bridge via Ansible: {error_detail}')
                     # Add switch to new controller's M2M relation in DB
                     new_controller.switches.add(device)
@@ -646,7 +646,7 @@ class EditBridge(APIView):
             if run_monitors:
                  monitor_api_url = original_bridge.api_url # Use the potentially updated URL
                  if monitor_api_url: # Only run if api_url is set
-                    logger.info(f"API URL or ports changed for {bridge_name}, updating monitors...")
+                    logger.debug(f"API URL or ports changed for {bridge_name}, updating monitors...")
                     monitor_vars = {
                         'ip_address': lan_ip_address,
                         'bridge_name': bridge_name,
@@ -662,23 +662,23 @@ class EditBridge(APIView):
                         # Decide if this should be a hard failure or just a warning
 
                     # Update QoS Monitor
-                    logger.info(f"Updating qos monitor for bridge {bridge_name} during edit.")
+                    logger.debug(f"Updating qos monitor for bridge {bridge_name} during edit.")
                     install_qos_monitor_result = run_playbook_with_extravars(install_qos_monitor, playbook_dir_path, inv_path, monitor_vars)
 
                     if install_qos_monitor_result.get('status') == 'failed':
                         logger.warning(f'Failed to update qos monitor for bridge {bridge_name} during edit.')
                  elif api_url_changed and not monitor_api_url:
-                     logger.info(f"API URL removed for bridge {bridge_name}. Consider stopping monitors if applicable.")
-                     # Add logic here to stop/remove monitors if necessary
+                     logger.debug(f"API URL removed for bridge {bridge_name}. Stopping monitors if applicable.")
+                     # TODO Add logic here to stop/remove monitors if necessary
 
 
             # --- 5. Save Bridge Model Changes ---
             if bridge_needs_save:
-                logger.info(f"Saving changes to bridge {bridge_name} model (API URL/Controller).")
+                logger.debug(f"Saving changes to bridge {bridge_name} model (API URL/Controller).")
                 original_bridge.save(update_fields=['api_url', 'controller']) # Save only changed fields
 
             # --- 6. Return Success ---
-            logger.info(f"Bridge {bridge_name} updated successfully on device {lan_ip_address}.")
+            logger.debug(f"Bridge {bridge_name} updated successfully on device {lan_ip_address}.")
             return Response({'status': 'success', 'message': f'Bridge {bridge_name} updated successfully.'}, status=status.HTTP_200_OK)
 
         # --- Exception Handling ---
@@ -695,7 +695,7 @@ class EditBridge(APIView):
             return Response({'status': 'error', 'message': messages}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             # Catches exceptions raised within the transaction (e.g., playbook failures)
-            logger.error(f'Unhandled error in EditBridge for {bridge_name}: {str(e)}', exc_info=True)
+            logger.exception(f'Unhandled error in EditBridge for {bridge_name}: {str(e)}')
             return Response({'status': 'error', 'message': f'An internal error occurred during bridge update: {str(e)}'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -759,13 +759,13 @@ class CreateBridge(APIView):
                 'ip_address': lan_ip_address,
                 'bridge_name': bridge_name
             }
-            logger.info(f"Running playbook '{create_bridge_playbook}' for bridge {bridge_name} on {lan_ip_address}")
+            logger.debug(f"Running playbook '{create_bridge_playbook}' for bridge {bridge_name} on {lan_ip_address}")
             create_bridge_result = run_playbook_with_extravars(
                 create_bridge_playbook, playbook_dir_path, inv_path, create_bridge_vars
             )
             if create_bridge_result.get('status') == 'failed':
                 error_detail = create_bridge_result.get('error', 'Unknown Ansible error')
-                logger.error(f"Playbook '{create_bridge_playbook}' failed for {bridge_name}: {error_detail}")
+                logger.exception(f"Playbook '{create_bridge_playbook}' failed for {bridge_name}: {error_detail}")
                 raise Exception(f"Failed to create bridge structure via Ansible: {error_detail}") # Raise to rollback
 
             # --- 2. Add Ports to Bridge on Device (if any specified) ---
@@ -777,13 +777,13 @@ class CreateBridge(APIView):
                     'interfaces': ports_to_add,
                     # 'api_url': api_url
                 }
-                logger.info(f"Running playbook '{add_ports_playbook}' for bridge {bridge_name} with ports {ports_to_add}")
+                logger.debug(f"Running playbook '{add_ports_playbook}' for bridge {bridge_name} with ports {ports_to_add}")
                 add_interfaces_result = run_playbook_with_extravars(
                     add_ports_playbook, playbook_dir_path, inv_path, add_ports_vars
                 )
                 if add_interfaces_result.get('status') == 'failed':
                     error_detail = add_interfaces_result.get('error', 'Unknown Ansible error')
-                    logger.error(f"Playbook '{add_ports_playbook}' failed for {bridge_name}: {error_detail}")
+                    logger.exception(f"Playbook '{add_ports_playbook}' failed for {bridge_name}: {error_detail}")
                     # TODO delete the bridge created in step 1 before raising
                     raise Exception(f"Failed to add interfaces to bridge via Ansible: {error_detail}") # Raise to rollback
 
@@ -794,21 +794,21 @@ class CreateBridge(APIView):
                 'ip_address': lan_ip_address,
                 'openflow_version': 'Openflow13',
             }
-            logger.info(f"Running playbook '{get_details_playbook}' for bridge {bridge_name}")
+            logger.debug(f"Running playbook '{get_details_playbook}' for bridge {bridge_name}")
             get_bridge_details_result = run_playbook_with_extravars(
                 get_details_playbook, playbook_dir_path, inv_path, get_details_vars, quiet=False
             )
 
             if get_bridge_details_result.get('status') == 'failed':
                  error_detail = get_bridge_details_result.get('error', 'Unknown Ansible error')
-                 logger.error(f"Playbook '{get_details_playbook}' failed for {bridge_name}: {error_detail}")
+                 logger.exception(f"Playbook '{get_details_playbook}' failed for {bridge_name}: {error_detail}")
                  raise Exception(f"Failed to get bridge details (DPID) via Ansible: {error_detail}")
 
             # Ensure format function handles potential errors in results
             bridge_details = format_ovs_show_bridge_command(get_bridge_details_result.get('results', {}))
             dpid = bridge_details.get('dpid')
             if not dpid:
-                 logger.error(f"Could not extract DPID for bridge {bridge_name} from playbook results.")
+                 logger.exception(f"Could not extract DPID for bridge {bridge_name} from playbook results.")
                  raise Exception(f"Failed to determine DPID for bridge {bridge_name}.")
             cleaned_hex_dpid = dpid.lower().replace('"', '')
             if cleaned_hex_dpid.startswith("0x"):
@@ -817,10 +817,10 @@ class CreateBridge(APIView):
             try:
                 decimal_dpid_val = int(cleaned_hex_dpid, 16)
                 odl_node_id = f"openflow:{decimal_dpid_val}"
-                logger.info(
+                logger.debug(
                     f"Calculated ODL Node ID for bridge {bridge_name} (DPID: {cleaned_hex_dpid}): {odl_node_id}")
             except ValueError:
-                logger.error(
+                logger.exception(
                     f"Invalid DPID format '{cleaned_hex_dpid}' for bridge {bridge_name}. Cannot generate ODL Node ID.")
                 # raise Exception(f"Invalid DPID format for bridge {bridge_name}, cannot create ODL Node ID.")
             except TypeError:  # Handles if cleaned_hex_dpid is None (though 'if not hex_dpid' should catch it)
@@ -850,17 +850,17 @@ class CreateBridge(APIView):
                     'controller_ip': controller_ip,
                     'bridge_name': bridge_name
                 }
-                logger.info(f"Running playbook '{connect_controller_playbook}' for bridge {bridge_name} to controller {controller_ip}:{controller_port}")
+                logger.debug(f"Running playbook '{connect_controller_playbook}' for bridge {bridge_name} to controller {controller_ip}:{controller_port}")
                 assign_controller_result = run_playbook_with_extravars(
                     connect_controller_playbook, playbook_dir_path, inv_path, connect_controller_vars
                 )
                 if assign_controller_result.get('status') == 'failed':
                     error_detail = assign_controller_result.get('error', 'Unknown Ansible error')
-                    logger.error(f"Playbook '{connect_controller_playbook}' failed for {bridge_name}: {error_detail}")
+                    logger.exception(f"Playbook '{connect_controller_playbook}' failed for {bridge_name}: {error_detail}")
                     raise Exception(f"Failed to connect bridge to controller via Ansible: {error_detail}")
 
             # --- 5. Create Bridge Object in Database ---
-            logger.info(f"Creating bridge record for {bridge_name} in database.")
+            logger.debug(f"Creating bridge record for {bridge_name} in database.")
             bridge = Bridge.objects.create(
                 name=bridge_name,
                 device=device,
@@ -882,7 +882,7 @@ class CreateBridge(APIView):
                     'interfaces': ports_to_add,
                     'ip_address': lan_ip_address,
                 }
-                logger.info(f"Running playbook '{get_ovs_nums_playbook}' for bridge {bridge_name}")
+                logger.debug(f"Running playbook '{get_ovs_nums_playbook}' for bridge {bridge_name}")
                 get_ovs_nums_result = run_playbook_with_extravars(
                     get_ovs_nums_playbook, playbook_dir_path, inv_path, get_ovs_nums_vars
                 )
@@ -908,12 +908,12 @@ class CreateBridge(APIView):
             # --- 6b. Get Interface Speeds (NOW that ports are UP) ---
             interface_speeds = {}
             if ports_to_add:
-                logger.info(f"Gathering interface speeds for ports on {lan_ip_address} (after bringing ports UP)")
+                logger.debug(f"Gathering interface speeds for ports on {lan_ip_address} (after bringing ports UP)")
                 # Use get-ports-ip-link playbook to get current interface speeds
                 speed_result = run_playbook_with_extravars('get-ports-ip-link', playbook_dir_path, inv_path)
                 if speed_result.get('status') == 'success':
                     interface_speeds = get_interface_speeds_from_results(speed_result)
-                    logger.info(f"Interface speeds after bringing ports UP: {interface_speeds}")
+                    logger.debug(f"Interface speeds after bringing ports UP: {interface_speeds}")
                 else:
                     logger.warning(f"Failed to gather interface speeds for {lan_ip_address}, continuing without speeds")
 
@@ -938,17 +938,17 @@ class CreateBridge(APIView):
                     port_obj.save(update_fields=['bridge', 'ovs_port_number', 'link_speed'])
 
                     if created:
-                        logger.info(f"Created new port entry for {port_name} on device {device.name}.")
+                        logger.debug(f"Created new port entry for {port_name} on device {device.name}.")
                     if port_obj.ovs_port_number is None:
                         logger.warning(f"Port {port_name} added to bridge {bridge_name} but OVS port number was not found/assigned.")
                     if port_obj.link_speed:
-                        logger.info(f"Port {port_name} link speed set to {port_obj.link_speed} Mb/s")
+                        logger.debug(f"Port {port_name} link speed set to {port_obj.link_speed} Mb/s")
                     else:
-                        logger.info(f"Port {port_name} link speed not available (interface may be down)")
+                        logger.debug(f"Port {port_name} link speed not available (interface may be down)")
 
                 except Exception as e:
                     # Catch specific errors if possible, otherwise log and raise generic
-                    logger.error(f"Error updating port {port_name} DB record for bridge {bridge_name}: {e}", exc_info=True)
+                    logger.exception(f"Error updating port {port_name} DB record for bridge {bridge_name}: {e}")
                     raise Exception(f"Database error while updating port {port_name} for bridge {bridge_name}.") from e
 
 
@@ -961,19 +961,19 @@ class CreateBridge(APIView):
                     'api_url': api_url
                 }
                 # Install Flow Monitor
-                logger.info(f"Running playbook 'run-ovs-flow-monitor' for bridge {bridge_name}")
+                logger.debug(f"Running playbook 'run-ovs-flow-monitor' for bridge {bridge_name}")
                 install_flow_monitor_result = run_playbook_with_extravars(
                     'run-ovs-flow-monitor', playbook_dir_path, inv_path, monitor_vars
                 )
                 if install_flow_monitor_result.get('status') == 'failed':
                     # Log as warning
-                    logger.error(f"Failed to install flow monitor for bridge {bridge_name}. Bridge created, but monitoring may be inactive.")
+                    logger.exception(f"Failed to install flow monitor for bridge {bridge_name}. Bridge created, but monitoring may be inactive.")
                     raise Exception(
                         f"Critical error: Could not install Flow Monitor for {bridge_name}.")
 
 
             # --- 9. Return Success ---
-            logger.info(f"Bridge {bridge_name} created successfully on device {lan_ip_address}.")
+            logger.debug(f"Bridge {bridge_name} created successfully on device {lan_ip_address}.")
             return Response({'status': 'success', 'message': f'Bridge {bridge_name} created successfully.'},
                             status=status.HTTP_201_CREATED)
 
@@ -989,7 +989,7 @@ class CreateBridge(APIView):
 
         except Exception as e:
             # Exceptions raised within the transaction block will trigger rollback
-            logger.error(f'Unhandled error in CreateBridge: {str(e)}', exc_info=True)
+            logger.exception(f'Unhandled error in CreateBridge: {str(e)}')
             # Return the specific error message if it was one we raised deliberately
             return Response({'status': 'error', 'message': f'An internal error occurred: {str(e)}'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1014,11 +1014,9 @@ class DeleteBridge(APIView):
 
             # Find the bridge within the transaction
             try:
-                # Use select_for_update if high concurrency is a concern, otherwise optional
-                # bridge = Bridge.objects.select_for_update().get(device=device, name=bridge_name)
                 bridge = Bridge.objects.get(device=device, name=bridge_name)
             except Bridge.DoesNotExist:
-                logger.warning(f"Deletion failed: Bridge {bridge_name} not found on device {lan_ip_address}.")
+                logger.exception(f"Deletion failed: Bridge {bridge_name} not found on device {lan_ip_address}.")
                 return Response({'status': 'error', 'message': 'Bridge not found.'},
                                 status=status.HTTP_404_NOT_FOUND)
 
@@ -1034,7 +1032,7 @@ class DeleteBridge(APIView):
             # --- 2. Cleanup port setup effects if bridge has ports ---
             # This removes cron jobs, scripts, and netplan config created by ovs-port-setup
             if associated_port_names:
-                logger.info(f"Cleaning up port setup effects for bridge {bridge_name} with ports: {associated_port_names}")
+                logger.debug(f"Cleaning up port setup effects for bridge {bridge_name} with ports: {associated_port_names}")
                 cleanup_port_setup_vars = {
                     'interfaces': associated_port_names,
                     'ip_address': lan_ip_address,
@@ -1047,12 +1045,12 @@ class DeleteBridge(APIView):
                     logger.warning(f"Failed to cleanup port setup effects for bridge {bridge_name}: {error_detail}")
                     # Don't fail the deletion for cleanup issues, just log them
                 else:
-                    logger.info(f"Successfully cleaned up port setup effects for bridge {bridge_name}")
+                    logger.debug(f"Successfully cleaned up port setup effects for bridge {bridge_name}")
 
             # --- 3. Cleanup controller automation if bridge has a controller ---
             # This removes controller connection, automation scripts, cron jobs, and log files
             if bridge.controller:
-                logger.info(f"Cleaning up controller automation for bridge {bridge_name} with controller {bridge.controller.device.lan_ip_address}")
+                logger.debug(f"Cleaning up controller automation for bridge {bridge_name} with controller {bridge.controller.device.lan_ip_address}")
                 cleanup_controller_vars = {
                     'bridge_name': bridge_name,
                     'ip_address': lan_ip_address,
@@ -1065,11 +1063,11 @@ class DeleteBridge(APIView):
                     logger.warning(f"Failed to cleanup controller automation for bridge {bridge_name}: {error_detail}")
                     # Don't fail the deletion for cleanup issues, just log them
                 else:
-                    logger.info(f"Successfully cleaned up controller automation for bridge {bridge_name}")
+                    logger.debug(f"Successfully cleaned up controller automation for bridge {bridge_name}")
 
             # --- 4. Cleanup flow monitoring if bridge has an API URL ---
             if bridge.api_url:
-                logger.info(f"Cleaning up flow monitoring for bridge {bridge_name} with API URL: {bridge.api_url}")
+                logger.debug(f"Cleaning up flow monitoring for bridge {bridge_name} with API URL: {bridge.api_url}")
                 cleanup_flow_monitoring_vars = {
                     'bridge_name': bridge_name,
                     'ip_address': lan_ip_address,
@@ -1082,12 +1080,12 @@ class DeleteBridge(APIView):
                     logger.warning(f"Failed to cleanup flow monitoring for bridge {bridge_name}: {error_detail}")
                     # Don't fail the deletion for cleanup issues, just log them
                 else:
-                    logger.info(f"Successfully cleaned up flow monitoring for bridge {bridge_name}")
+                    logger.debug(f"Successfully cleaned up flow monitoring for bridge {bridge_name}")
 
             # --- 5. Cleanup port monitoring if bridge has ports ---
             # Port monitoring is only installed when bridge has ports assigned
             if associated_port_names:
-                logger.info(f"Cleaning up port monitoring for bridge {bridge_name} with ports: {associated_port_names}")
+                logger.debug(f"Cleaning up port monitoring for bridge {bridge_name} with ports: {associated_port_names}")
                 cleanup_port_monitoring_vars = {
                     'bridge_name': bridge_name,
                     'ip_address': lan_ip_address,
@@ -1100,29 +1098,29 @@ class DeleteBridge(APIView):
                     logger.warning(f"Failed to cleanup port monitoring for bridge {bridge_name}: {error_detail}")
                     # Don't fail the deletion for cleanup issues, just log them
                 else:
-                    logger.info(f"Successfully cleaned up port monitoring for bridge {bridge_name}")
+                    logger.debug(f"Successfully cleaned up port monitoring for bridge {bridge_name}")
 
             # --- 6. Cleanup sniffer if installed for this bridge ---
             # The sniffer is installed if a SnifferInstallationConfig exists for this device and bridge
             try:
                 sniffer_installation = PluginInstallation.objects.get(device=device, plugin__name='tau-traffic-classification-sniffer')
                 sniffer_config = SnifferInstallationConfig.objects.get(installation=sniffer_installation, bridge_name=bridge_name)
-                logger.info(f"Cleaning up sniffer for bridge {bridge_name} on device {lan_ip_address}")
+                logger.debug(f"Cleaning up sniffer for bridge {bridge_name} on device {lan_ip_address}")
                 # --- Uninstall sniffer from device ---
                 uninstall_result = uninstall_sniffer_util(lan_ip_address)
                 if uninstall_result.get('status') != 'success':
-                    logger.error(f"Failed to uninstall sniffer from device {lan_ip_address}: {uninstall_result.get('message')}")
+                    logger.exception(f"Failed to uninstall sniffer from device {lan_ip_address}: {uninstall_result.get('message')}")
                     raise Exception(f"Failed to uninstall sniffer from device {lan_ip_address}: {uninstall_result.get('message')}")
                 else:
-                    logger.info(f"Successfully uninstalled sniffer from device {lan_ip_address}")
+                    logger.debug(f"Successfully uninstalled sniffer from device {lan_ip_address}")
                 # Optionally, delete the sniffer config and installation from DB
                 sniffer_config.delete()
                 sniffer_installation.delete()
             except (PluginInstallation.DoesNotExist, SnifferInstallationConfig.DoesNotExist):
-                logger.info(f"No sniffer installed for bridge {bridge_name} on device {lan_ip_address}, skipping sniffer uninstall.")
+                logger.debug(f"No sniffer installed for bridge {bridge_name} on device {lan_ip_address}, skipping sniffer uninstall.")
 
             # --- 7. Run Ansible playbook to delete the bridge from the device ---
-            logger.info(f"Attempting to delete bridge {bridge_name} from device {lan_ip_address} via Ansible.")
+            logger.debug(f"Attempting to delete bridge {bridge_name} from device {lan_ip_address} via Ansible.")
             inv_content = create_inv_data(lan_ip_address, device.username, device.password)
             inv_path = create_temp_inv(inv_content)
             delete_bridge_playbook = 'ovs-delete-bridge'
@@ -1138,7 +1136,7 @@ class DeleteBridge(APIView):
             if delete_bridge_result.get('status') != 'success':
                  # Log the error from Ansible if available
                  ansible_error = delete_bridge_result.get('error', 'Unknown Ansible error')
-                 logger.error(f"Ansible failed to delete bridge {bridge_name} on {lan_ip_address}: {ansible_error}")
+                 logger.exception(f"Ansible failed to delete bridge {bridge_name} on {lan_ip_address}: {ansible_error}")
                  # Check if the error indicates the bridge didn't exist - maybe proceed?
                  # Example check (adjust based on actual Ansible error message):
                  if "does not exist" in ansible_error.lower():
@@ -1149,41 +1147,41 @@ class DeleteBridge(APIView):
             # --- 8. Update associated ports in the database ---
             # Set ovs_port_number to None. Bridge FK is handled by on_delete=SET_NULL.
             if associated_port_pks:
-                logger.info(f"Clearing OVS port numbers for ports previously associated with bridge {bridge_name}.")
+                logger.debug(f"Clearing OVS port numbers for ports previously associated with bridge {bridge_name}.")
                 updated_count = Port.objects.filter(pk__in=associated_port_pks).update(ovs_port_number=None)
-                logger.info(f"Cleared OVS number for {updated_count} ports.")
+                logger.debug(f"Cleared OVS number for {updated_count} ports.")
 
             # --- 9. Delete the bridge interface port itself if it exists ---
             # OVS often creates a port with the same name as the bridge
             try:
                 bridge_interface_port = Port.objects.get(device=device, name=bridge_name)
-                logger.info(f"Deleting port entry named '{bridge_name}' associated with the bridge.")
+                logger.debug(f"Deleting port entry named '{bridge_name}' associated with the bridge.")
                 bridge_interface_port.delete()
             except Port.DoesNotExist:
-                logger.info(f"No port entry named '{bridge_name}' found to delete.")
+                logger.debug(f"No port entry named '{bridge_name}' found to delete.")
                 pass # No port named after the bridge, which is fine
 
             # --- 10. Delete the bridge from the database ---
             bridge_pk = bridge.pk # Get pk for logging
-            logger.info(f"Deleting bridge {bridge_name} (PK: {bridge_pk}) from database.")
+            logger.debug(f"Deleting bridge {bridge_name} (PK: {bridge_pk}) from database.")
             bridge.delete()
 
             # --- 11. Return Success ---
-            logger.info(f"Bridge {bridge_name} deleted successfully from device {lan_ip_address} and database.")
+            logger.debug(f"Bridge {bridge_name} deleted successfully from device {lan_ip_address} and database.")
             # 204 No Content is also appropriate for successful deletions
             return Response({'status': 'success', 'message': f'Bridge {bridge_name} deleted successfully.'},
                             status=status.HTTP_204_NO_CONTENT)
 
         # --- Exception Handling ---
         except Device.DoesNotExist: # Should be caught by initial get_object_or_404
-             logger.error(f"Deletion failed: Device {lan_ip_address} not found.")
+             logger.exception(f"Deletion failed: Device {lan_ip_address} not found.")
              return Response({'status': 'error', 'message': 'Device not found.'}, status=status.HTTP_404_NOT_FOUND)
         except ValidationError as e:
-            logger.warning(f'Validation error during bridge deletion: {e}')
+            logger.exception(f'Validation error during bridge deletion: {e}')
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             # Catches exceptions raised within the transaction (like Ansible failure)
-            logger.error(f'Unhandled error in DeleteBridge for {bridge_name} on {lan_ip_address}: {str(e)}', exc_info=True)
+            logger.exception(f'Unhandled error in DeleteBridge for {bridge_name} on {lan_ip_address}: {str(e)}')
             return Response({'status': 'error', 'message': f'An internal error occurred during bridge deletion: {str(e)}'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

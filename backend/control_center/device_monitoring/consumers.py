@@ -17,6 +17,7 @@
 #
 # For inquiries, contact Keegan White at keeganwhite@taurinetech.com.
 
+import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from urllib.parse import parse_qs
 import json
@@ -25,6 +26,7 @@ from knox.auth import TokenAuthentication
 from django.contrib.auth.models import AnonymousUser
 from rest_framework.exceptions import AuthenticationFailed
 
+logger = logging.getLogger(__name__)
 
 class DeviceConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -58,16 +60,16 @@ class OpenFlowMetricsConsumer(AsyncWebsocketConsumer):
         self.user = await self.authenticate_token()
 
         if self.user is None or self.user == AnonymousUser():
-            print("🔴 WebSocket Authentication Failed: Closing connection")
+            logger.debug("🔴 WebSocket Authentication Failed: Closing connection")
             await self.close()
         else:
-            print(f"🟢 WebSocket Connected: {self.user.username}")
+            logger.debug(f"🟢 WebSocket Connected: {self.user.username}")
             await self.channel_layer.group_add("openflow_metrics", self.channel_name)
             await self.accept()
 
     async def disconnect(self, close_code):
         """ Remove the connection from the WebSocket group """
-        print(f"🔴 WebSocket Disconnected: {close_code}")
+        logger.debug(f"🔴 WebSocket Disconnected: {close_code}")
         await self.channel_layer.group_discard("openflow_metrics", self.channel_name)
 
     async def receive(self, text_data):
@@ -96,14 +98,14 @@ class OpenFlowMetricsConsumer(AsyncWebsocketConsumer):
         token_key = query_params.get("token", [None])[0]
 
         if not token_key:
-            print("🔴 No token found in WebSocket request")
+            logger.debug("🔴 No token found in WebSocket request")
             return None
 
         # Use Knox TokenAuthentication to validate the full token
         try:
             user, _ = TokenAuthentication().authenticate_credentials(token_key.encode())
-            print(f"🟢 Authenticated user: {user.username}")
+            logger.debug(f"🟢 Authenticated user: {user.username}")
             return user
         except AuthenticationFailed:
-            print(f"🔴 Invalid or expired token: {token_key[:8]}")
+            logger.debug(f"🔴 Invalid or expired token: {token_key[:8]}")
             return None

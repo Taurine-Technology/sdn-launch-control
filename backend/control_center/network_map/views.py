@@ -76,7 +76,7 @@ class OnosNetworkMap(APIView):
                 return Response({"status": "error", "message": 'Failed to fetch data from ONOS API'},
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-            print(e)
+            logger.exception(e)
             return Response({"status": "error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -126,5 +126,5 @@ class OvsNetworkMap(APIView):
             return Response({'status': 'success', 'data': data_resp},
                             status=status.HTTP_200_OK)
         except Exception as e:
-            print(e)
+            logger.exception(e)
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

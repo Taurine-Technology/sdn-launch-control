@@ -11,6 +11,7 @@ import logging
 from typing import Dict, List, Optional, Tuple, Any
 from django.conf import settings
 from django.utils import timezone
+from django.db import close_old_connections
 from datetime import timedelta
 import keras
 import threading
@@ -34,10 +35,13 @@ def _run_in_thread(func):
         result_holder: Dict[str, Any] = {'res': None, 'exc': None}
 
         def _wrapper():
+            close_old_connections()
             try:
                 result_holder['res'] = func()
             except Exception as e:  # noqa: BLE001
                 result_holder['exc'] = e
+            finally:
+                close_old_connections()
 
         t = threading.Thread(target=_wrapper, daemon=True)
         t.start()

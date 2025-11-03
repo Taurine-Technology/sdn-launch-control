@@ -8,12 +8,47 @@ import os
 import pytz
 from dotenv import load_dotenv
 import re
+import logging
+from logging.handlers import RotatingFileHandler
 
 load_dotenv()
 bridge = os.getenv('BRIDGE')
 openflow_version = os.getenv('OPENFLOW_VERSION', 'openflow13')
 api_url = os.getenv('API_URL')
 device_ip = os.getenv('DEVICE_IP')
+
+# Minimal-by-default logging with env controls
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'WARNING').upper()
+ENABLE_CONSOLE_LOG = os.getenv('ENABLE_CONSOLE_LOG', '0').lower() in ('1', 'true', 'yes')
+VERBOSE = os.getenv('VERBOSE', '0').lower() in ('1', 'true', 'yes')
+
+logger = logging.getLogger("qos")
+level_map = {
+    'CRITICAL': logging.CRITICAL,
+    'ERROR': logging.ERROR,
+    'WARNING': logging.WARNING,
+    'INFO': logging.INFO,
+    'DEBUG': logging.DEBUG,
+}
+logger.setLevel(level_map.get(LOG_LEVEL, logging.WARNING))
+
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+error_handler = RotatingFileHandler("qos_errors.log", maxBytes=2 * 1024 * 1024, backupCount=3)
+error_handler.setLevel(logging.ERROR)
+error_handler.setFormatter(formatter)
+logger.addHandler(error_handler)
+
+if logger.level <= logging.DEBUG:
+    debug_handler = RotatingFileHandler("qos_debug.log", maxBytes=2 * 1024 * 1024, backupCount=2)
+    debug_handler.setLevel(logging.DEBUG)
+    debug_handler.setFormatter(formatter)
+    logger.addHandler(debug_handler)
+
+if ENABLE_CONSOLE_LOG:
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logger.level)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
 
 def log_data_to_csv(file_path, data, buffer_size=10):
@@ -138,10 +173,11 @@ def parse_port_interface_map(output):
 def get_interface_map(bridge):
     ret, output, _err = start_process(["sudo", "ovs-ofctl", "show", bridge, '-O', openflow_version])
     if ret == 0:
-        print(output)
+        if VERBOSE:
+            logger.debug(output)
         return parse_port_interface_map(output)
     else:
-        print(f"Error retrieving interface map: {_err}")
+        logger.error(f"Error retrieving interface map: {_err}")
         return {}
 
 
@@ -151,7 +187,8 @@ if __name__ == "__main__":
     while True:
         ret, out, _err = start_process(["sudo", "ovs-ofctl", "dump-ports", bridge, '-O', openflow_version])
         if ret == 0:
-            print(out)
+            if VERBOSE:
+                logger.debug(out)
             current_stats = parse_ovs_statistics(out)
             if old_stats:
                 differences = compute_differences(current_stats, old_stats)
@@ -166,9 +203,9 @@ if __name__ == "__main__":
                     'stats': interface_differences
                 }
                 code, response = send_data_to_api(f'{api_url}/api/v1/post_openflow_metrics/', data_to_send)
-                # print(data_to_send)
-                print(f"API Response: {code} - {response}")
+                if VERBOSE:
+                    logger.debug(f"API Response: {code} - {response}")
             old_stats = current_stats
         else:
-            print(f"Error retrieving statistics: {_err}")
+            logger.error(f"Error retrieving statistics: {_err}")
         time.sleep(1)

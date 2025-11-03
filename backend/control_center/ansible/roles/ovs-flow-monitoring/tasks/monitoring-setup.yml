@@ -10,12 +10,23 @@
     - "/mnt/ovs-flow-monitor/{{ bridge_name }}/venv"
 
 - name: Install Python and pip
-  ansible.builtin.package:
+  apt:
     name:
       - python3
       - python3-pip
       - python3-venv
     state: present
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_facts.pkg_mgr == 'apt'
+
+- name: Ensure Python and pip present (non-APT systems)
+  ansible.builtin.package:
+    name:
+      - python3
+      - python3-pip
+    state: present
+  when: ansible_facts.pkg_mgr != 'apt'
 
 - name: Install virtualenv
   ansible.builtin.pip:
@@ -44,6 +55,9 @@
       BRIDGE={{ bridge_name }}
       OPENFLOW_VERSION={{ openflow_version }}
       API_URL={{ api_url }}
+      LOG_LEVEL={{ log_level | default('WARNING') }}
+      ENABLE_CONSOLE_LOG={{ enable_console_log | default('0') }}
+      VERBOSE={{ verbose | default('0') }}
     mode: "0644"
 
 - name: Install Python libraries for flow monitor

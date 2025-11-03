@@ -38,6 +38,9 @@
   loop:
     - "DEVICE_IP={{ ip_address }}"
     - "API_URL={{ api_url }}"
+    - "LOG_LEVEL={{ log_level | default('WARNING') }}"
+    - "ENABLE_CONSOLE_LOG={{ enable_console_log | default('0') }}"
+    - "VERBOSE={{ verbose | default('0') }}"
 
 - name: Build Docker Container
 

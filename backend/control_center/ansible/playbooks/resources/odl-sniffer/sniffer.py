@@ -30,8 +30,6 @@ from scapy.all import sniff, Raw, IP, TCP, UDP, Ether, linehexdump
 import ipaddress
 import sys
 from logging.handlers import RotatingFileHandler
-import threading
-import time
 import datetime
 
 BATCH_INTERVAL = 5  # seconds
@@ -53,25 +51,41 @@ ODL_SWITCH_NODE_ID = os.environ.get('ODL_SWITCH_NODE_ID')  # e.g., "openflow:172
 ODL_CONTROLLER_IP = os.environ.get('ODL_CONTROLLER_IP')  # e.g., "10.10.10.10"
 GRACE_PERIOD = int(os.getenv('GRACE_PERIOD', 30))  # Default to 30 if not set
 
-# Logger setup
+# Logger setup (defaults to minimal output; configurable via env)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-debug_handler = RotatingFileHandler("debug.log", maxBytes=2 * 1024 * 1024, backupCount=5)
-debug_handler.setLevel(logging.DEBUG)
-debug_formatter = logging.Formatter(
-    '%(asctime)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s')  # Added module and funcName
-debug_handler.setFormatter(debug_formatter)
+
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'WARNING').upper()
+ENABLE_CONSOLE_LOG = os.getenv('ENABLE_CONSOLE_LOG', '0').lower() in ('1', 'true', 'yes')
+VERBOSE = os.getenv('VERBOSE', '0').lower() in ('1', 'true', 'yes')
+
+level_map = {
+    'CRITICAL': logging.CRITICAL,
+    'ERROR': logging.ERROR,
+    'WARNING': logging.WARNING,
+    'INFO': logging.INFO,
+    'DEBUG': logging.DEBUG,
+}
+logger.setLevel(level_map.get(LOG_LEVEL, logging.WARNING))
+
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s')
+
 error_handler = RotatingFileHandler("error.log", maxBytes=2 * 1024 * 1024, backupCount=5)
 error_handler.setLevel(logging.ERROR)
-error_formatter = logging.Formatter(
-    '%(asctime)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s')  # Added module and funcName
-error_handler.setFormatter(error_formatter)
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(logging.DEBUG)
-console_handler.setFormatter(debug_formatter)
-logger.addHandler(debug_handler)
+error_handler.setFormatter(formatter)
 logger.addHandler(error_handler)
-logger.addHandler(console_handler)
+
+# Only create a debug log file if explicitly configured via LOG_LEVEL
+if logger.level <= logging.DEBUG:
+    debug_handler = RotatingFileHandler("debug.log", maxBytes=2 * 1024 * 1024, backupCount=5)
+    debug_handler.setLevel(logging.DEBUG)
+    debug_handler.setFormatter(formatter)
+    logger.addHandler(debug_handler)
+
+if ENABLE_CONSOLE_LOG:
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logger.level)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
 # Global dictionaries for flow state
 flow_dict = {}  # Holds packet arrays per flow key: flow_key -> [packet_data_list]
@@ -104,17 +118,17 @@ def batch_sender():
                     batch_to_send = classification_batch.copy()
                     flow_keys = [item[0] for item in batch_to_send]
                     data_list = [item[1] for item in batch_to_send]
-                    print(f"[BATCH SENDER] Sending batch of {len(data_list)} classifications to API: {api_url}")
+                    if VERBOSE:
+                        logger.debug(f"[BATCH SENDER] Sending batch of {len(data_list)} classifications to API: {api_url}")
                     response = requests.post(api_url, headers=headers, json=data_list, timeout=10)
                     response.raise_for_status()
                     logger.info(f"Sent batch of {len(data_list)} classifications to API. Response: {response.status_code}")
-                    print(f"[BATCH SENDER] API response status: {response.status_code}")
                     # Expect a list of results in the response
                     results = response.json()
-                    print(f"[BATCH SENDER] API response JSON: {results}")
+                    if VERBOSE:
+                        logger.debug(f"[BATCH SENDER] API response JSON: {results}")
                     if not isinstance(results, list):
                         logger.error("Batch API response is not a list!")
-                        print("[BATCH SENDER] ERROR: Batch API response is not a list!")
                     else:
                         for idx, result in enumerate(results):
                             flow_key = flow_keys[idx] if idx < len(flow_keys) else None
@@ -122,7 +136,6 @@ def batch_sender():
                                 handle_classification_response(flow_key, result)
                 except Exception as e:
                     logger.error(f"Batch send failed: {e}")
-                    print(f"[BATCH SENDER] Batch send failed: {e}")
                 classification_batch.clear()
 
 # Start the batch sender thread
@@ -167,7 +180,8 @@ def get_active_flow_matches_from_ovs():
 
             if match_criteria_only:  # Ensure there's something left
                 active_flow_match_parts.add(match_criteria_only)
-                print(match_criteria_only)
+                if VERBOSE:
+                    logger.debug(match_criteria_only)
 
     except subprocess.CalledProcessError as e:
         logger.error(f"Error running ovs-ofctl dump-flows: {e.stderr}")
@@ -263,9 +277,10 @@ def clear_expired_flows():
                     logger.debug(
                         f"Flow key {flow_key} still has active OVS flows (c2s found: {c2s_match_in_ovs}, s2c found: {s2c_match_in_ovs}). "
                         f"Cookie: {details.get('cookie')}")
-                    print(
-                        f"Flow key {flow_key} still has active OVS flows (c2s found: {c2s_match_in_ovs}, s2c found: {s2c_match_in_ovs}). "
-                        f"Cookie: {details.get('cookie')}")
+                    if VERBOSE:
+                        logger.debug(
+                            f"Flow key {flow_key} still has active OVS flows (c2s found: {c2s_match_in_ovs}, s2c found: {s2c_match_in_ovs}). "
+                            f"Cookie: {details.get('cookie')}")
 
             for key_to_delete in expired_flow_keys:
                 flow_dict.pop(key_to_delete, None)
@@ -430,7 +445,8 @@ def classify_and_apply_policy(flow_key, ip_src, ip_dst, src_port, dst_port, clie
 
 def handle_classification_response(flow_key, result):
     global flow_installation_details
-    print(f"[HANDLE RESPONSE] Processing API response for flow key {flow_key}: {result}")
+    if VERBOSE:
+        logger.debug(f"[HANDLE RESPONSE] Processing API response for flow key {flow_key}: {result}")
     logger.info(f"API Response for flow key {flow_key}: {result}")
     if result.get("status") == "success" and result.get("flow_results"):
         c2s_match_str_from_payload = None

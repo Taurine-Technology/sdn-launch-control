@@ -23,13 +23,39 @@ STATS_ENDPOINT = os.getenv('STATS_API_ENDPOINT', '/api/v1/network/log-flow-stats
 
 POLL_INTERVAL = 10 
 
-# Set up a logger that only logs errors to a rotating file (max 2MB)
+# Configurable, minimal-by-default logging
 logger = logging.getLogger("flow")
-logger.setLevel(logging.ERROR)
-handler = RotatingFileHandler("flow_errors.log", maxBytes=2 * 1024 * 1024, backupCount=5)
+
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'WARNING').upper()
+ENABLE_CONSOLE_LOG = os.getenv('ENABLE_CONSOLE_LOG', '0').lower() in ('1', 'true', 'yes')
+VERBOSE = os.getenv('VERBOSE', '0').lower() in ('1', 'true', 'yes')
+
+level_map = {
+    'CRITICAL': logging.CRITICAL,
+    'ERROR': logging.ERROR,
+    'WARNING': logging.WARNING,
+    'INFO': logging.INFO,
+    'DEBUG': logging.DEBUG,
+}
+logger.setLevel(level_map.get(LOG_LEVEL, logging.WARNING))
+
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+error_handler = RotatingFileHandler("flow_errors.log", maxBytes=2 * 1024 * 1024, backupCount=5)
+error_handler.setLevel(logging.ERROR)
+error_handler.setFormatter(formatter)
+logger.addHandler(error_handler)
+
+if logger.level <= logging.DEBUG:
+    debug_handler = RotatingFileHandler("flow_debug.log", maxBytes=2 * 1024 * 1024, backupCount=2)
+    debug_handler.setLevel(logging.DEBUG)
+    debug_handler.setFormatter(formatter)
+    logger.addHandler(debug_handler)
+
+if ENABLE_CONSOLE_LOG:
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logger.level)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
 def get_flows_from_ovs(bridge, of_version):
     """Retrieve flow statistics from the specified OVS bridge."""
@@ -183,7 +209,8 @@ def send_stats_to_api(records_for_api):
 
 
 def main():
-    print(f"Flow stats monitor started. Bridge: {BRIDGE}, Poll Interval: {POLL_INTERVAL}s")
+    if VERBOSE:
+        logger.debug(f"Flow stats monitor started. Bridge: {BRIDGE}, Poll Interval: {POLL_INTERVAL}s")
     logger.info(f"Flow stats monitor started. Bridge: {BRIDGE}, Poll Interval: {POLL_INTERVAL}s")
     if not BRIDGE:
         logger.error("BRIDGE environment variable not set. Exiting.")
@@ -230,10 +257,11 @@ def main():
                 api_response = None
                 while not api_sent_successfully:
                     api_sent_successfully, api_response = send_stats_to_api(parsed_records_for_api)
-                    if api_sent_successfully:
-                        print(f"Submitted batch with {len(parsed_records_for_api)} flows. API response: "
-                              f"{api_response.status_code if api_response else 'No response'} - "
-                              f"{api_response.text[:200] if api_response else ''}")
+                    if api_sent_successfully and VERBOSE:
+                        logger.debug(
+                            f"Submitted batch with {len(parsed_records_for_api)} flows. API response: "
+                            f"{api_response.status_code if api_response else 'No response'} - "
+                            f"{api_response.text[:200] if api_response else ''}")
                     else:
                         logger.warning(f"API send failed. Retrying in {POLL_INTERVAL * 2} seconds...")
                         time.sleep(POLL_INTERVAL * 2)  # Wait longer on API failure before retry

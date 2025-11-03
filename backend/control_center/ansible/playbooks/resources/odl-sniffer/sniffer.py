@@ -1,4 +1,4 @@
-# File: views.py
+# File: sniffer.py
 # Copyright (C) 2025 Taurine Technology
 #
 # This file is part of the SDN Launch Control project.
@@ -277,10 +277,6 @@ def clear_expired_flows():
                     logger.debug(
                         f"Flow key {flow_key} still has active OVS flows (c2s found: {c2s_match_in_ovs}, s2c found: {s2c_match_in_ovs}). "
                         f"Cookie: {details.get('cookie')}")
-                    if VERBOSE:
-                        logger.debug(
-                            f"Flow key {flow_key} still has active OVS flows (c2s found: {c2s_match_in_ovs}, s2c found: {s2c_match_in_ovs}). "
-                            f"Cookie: {details.get('cookie')}")
 
             for key_to_delete in expired_flow_keys:
                 flow_dict.pop(key_to_delete, None)

@@ -4,7 +4,7 @@ Connection pool setup for django-db-connection-pool
 import os
 import dj_db_conn_pool
 from django.conf import settings
-
+from dj_db_conn_pool.core import pool_container
 
 def setup_connection_pool():
     """
@@ -68,7 +68,7 @@ def get_pool_stats():
     Get current pool statistics
     """
     try:
-        from dj_db_conn_pool.core import pool_container
+        
         
         stats = {
             'total_pools': len(pool_container.pools),

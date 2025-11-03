@@ -5,8 +5,23 @@ import time
 import logging
 import os
 
-# Set up logging
-logging.basicConfig(filename='system_stats.log', level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
+# Minimal-by-default logging with env controls
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'WARNING').upper()
+VERBOSE = os.getenv('VERBOSE', '0').lower() in ('1', 'true', 'yes')
+
+level_map = {
+    'CRITICAL': logging.CRITICAL,
+    'ERROR': logging.ERROR,
+    'WARNING': logging.WARNING,
+    'INFO': logging.INFO,
+    'DEBUG': logging.DEBUG,
+}
+
+logging.basicConfig(
+    filename='system_stats.log',
+    level=level_map.get(LOG_LEVEL, logging.WARNING),
+    format='%(asctime)s:%(levelname)s:%(message)s'
+)
 
 
 def get_system_stats():
@@ -30,7 +45,9 @@ def send_stats_to_server(stats):
 if __name__ == "__main__":
     while True:
         stats = get_system_stats()
-        logging.info(f"Collected stats: {stats}")
+        if VERBOSE:
+            logging.debug(f"Collected stats: {stats}")
         rsp = send_stats_to_server(stats)
-        print(rsp)
+        if VERBOSE:
+            logging.debug(f"Post status: {rsp}")
         time.sleep(1)

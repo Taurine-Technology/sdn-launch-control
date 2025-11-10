@@ -487,11 +487,9 @@ class CategoryListView(APIView):
             
             if model_name:
                 # Get categories for a specific model
-                
+                # Use model_manager to ensure fallback categories (Unknown, DNS, VPN, Apple) are included
                 try:
-                    model_config = ModelConfiguration.objects.get(name=model_name)
-                    categories = Category.objects.filter(model_configuration=model_config)
-                    category_names = list(categories.values_list('name', flat=True))
+                    category_names = model_manager.get_model_categories(model_name)
                     
                     return JsonResponse({
                         'categories': category_names,

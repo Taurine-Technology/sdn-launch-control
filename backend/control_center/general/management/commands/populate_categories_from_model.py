@@ -128,7 +128,7 @@ class Command(BaseCommand):
         
         if model_config:
             # Standard fallback categories that should always exist
-            standard_categories = ["Unknown", "DNS", "Apple"]
+            standard_categories = ["Unknown", "DNS", "VPN", "Apple"]
             
             for standard_category_name in standard_categories:
                 try:

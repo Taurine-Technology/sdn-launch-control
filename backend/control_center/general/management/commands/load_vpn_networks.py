@@ -109,7 +109,9 @@ class Command(BaseCommand):
                     # Extract a test IP from the CIDR range
                     try:
                         network = ipaddress.IPv4Network(cidr, strict=False)
-                        test_ip = str(list(network.hosts())[0]) if network.num_addresses > 2 else str(network.network_address)
+                        # Use next() to get first host without materializing entire list (avoids OOM for large CIDRs)
+                        # Falls back to network_address for /31 and /32 networks where hosts() is empty
+                        test_ip = str(next(network.hosts(), network.network_address))
                         
                         if loader.verify_vpn_ip(test_ip):
                             self.stdout.write(self.style.SUCCESS(f'   {test_ip} (from {cidr}) - Verified'))

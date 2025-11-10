@@ -64,6 +64,7 @@ services:
     # Use same published image as django service
     image: ${DOCKER_IMAGE:-sdn-launch-control-backend:latest}
     restart: unless-stopped
+    env_file: .env
     command: celery -A control_center worker -l ERROR -c 2
     environment:
       - TF_CPP_MIN_LOG_LEVEL=2
@@ -78,6 +79,7 @@ services:
     # Use same published image as django service
     image: ${DOCKER_IMAGE:-sdn-launch-control-backend:latest}
     restart: unless-stopped
+    env_file: .env
     command: celery -A control_center beat -l ERROR --scheduler django_celery_beat.schedulers:DatabaseScheduler
     environment:
       - TF_CPP_MIN_LOG_LEVEL=2

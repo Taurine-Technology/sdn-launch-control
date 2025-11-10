@@ -6,7 +6,7 @@ This command tests VPN IP lookup functionality with specific test cases.
 
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from classifier.vpn_loader import VPNNetworkLoader
+from classifier.vpn_loader import VPNNetworkLoader, REDIS_VPN_KEY
 import redis
 import time
 
@@ -52,8 +52,8 @@ class Command(BaseCommand):
         # Initialize VPN loader (reused for both loading and testing)
         loader = VPNNetworkLoader(redis_conn=redis_conn)
         
-        # Check if VPN networks are loaded
-        vpn_count = redis_conn.scard('vpn_networks:cidr_set')
+        # Check if VPN networks are loaded (using loader's exported constant)
+        vpn_count = redis_conn.scard(REDIS_VPN_KEY)
         if vpn_count == 0:
             if load_first:
                 self.stdout.write(self.style.WARNING('VPN networks not found in Redis. Loading...'))

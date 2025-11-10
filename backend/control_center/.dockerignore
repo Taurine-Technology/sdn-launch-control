@@ -7,14 +7,16 @@ db.sqlite3
 
 # Exclude Python cache directories and files
 __pycache__/
-*.pyc
+
 
 # Exclude git files
 .git
 .gitignore
 
-# Exclude environment variable files
-.env.example
+# Exclude environment variable files (in all directories)
+**/.env
+**/.env.*
+!**/.env.example
 env
 
 # Exclude Ansible artifacts
@@ -29,3 +31,37 @@ docker-compose.dev.yml
 # Exclude bash
 run.sh
 install.sh
+
+# Exclude log files
+*.log
+*.log.*
+
+# Exclude test files and coverage
+tests/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Exclude IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Exclude documentation
+*.md
+docs/
+README*
+
+# Exclude temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Exclude cursor files
+*.mdc
+.cursor/

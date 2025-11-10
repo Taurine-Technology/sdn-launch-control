@@ -173,6 +173,7 @@ class ModelStateManager:
                 "classification_stats:multiple_candidates",
                 "classification_stats:uncertain",
                 "classification_stats:dns_detections",
+                "classification_stats:vpn_detections",
                 "classification_stats:asn_fallback",
             ]
             vals = self.redis_client.mget(keys)
@@ -180,7 +181,7 @@ class ModelStateManager:
             # Map results to dictionary
             stats = dict(zip(
                 ['total', 'high_confidence', 'low_confidence', 'multiple_candidates', 
-                 'uncertain', 'dns_detections', 'asn_fallback'],
+                 'uncertain', 'dns_detections', 'vpn_detections', 'asn_fallback'],
                 [int(v or 0) for v in vals]
             ))
             
@@ -236,6 +237,7 @@ class ModelStateManager:
                 'classification_stats:multiple_candidates',
                 'classification_stats:uncertain',
                 'classification_stats:dns_detections',
+                'classification_stats:vpn_detections',
                 'classification_stats:asn_fallback'
             }
             local result = {}
@@ -256,7 +258,7 @@ class ModelStateManager:
             redis.call('DEL', 'classification_stats:prediction_times')
             
             -- Return snapshot [counters..., times]
-            return {result[1], result[2], result[3], result[4], result[5], result[6], result[7], times}
+            return {result[1], result[2], result[3], result[4], result[5], result[6], result[7], result[8], times}
             """
             
             # Register and execute Lua script
@@ -271,8 +273,9 @@ class ModelStateManager:
                 'multiple_candidates': int(data[3]),
                 'uncertain': int(data[4]),
                 'dns_detections': int(data[5]),
-                'asn_fallback': int(data[6]),
-                'prediction_times': [float(x) for x in data[7]] if data[7] else [],
+                'vpn_detections': int(data[6]),
+                'asn_fallback': int(data[7]),
+                'prediction_times': [float(x) for x in data[8]] if data[8] else [],
             }
             
         except redis.exceptions.RedisError:

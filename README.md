@@ -9,6 +9,7 @@ There is an installation manual for the v1.0.0-beta realease [here](./SDN-Launch
 Alternatively follow the instructions below to set up the software.
 
 ### Prerequisites
+
 Successfully Tested on Ubuntu Desktop, Ubuntu Server, Windows WSL and Mac.
 
 - Docker and Docker Compose
@@ -165,7 +166,20 @@ npm run lint         # Run ESLint
 
 #### Backend (.env)
 
+To generate a secret key use the following:
+
+```bash
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
 ```env
+# Celery
+CELERY_BROKER_URL=redis://redis:6379/1
+
+# Channels (Redis for WebSockets)
+CHANNEL_REDIS_HOST=redis
+CHANNEL_REDIS_PORT=6379
+
 # Database
 DB_HOST=pgdatabase
 DB_NAME=postgres
@@ -173,19 +187,38 @@ DB_USER=postgres
 DB_PASS=postgres
 DB_PORT=5432
 
-# Redis
-CELERY_BROKER_URL=redis://redis:6379/1
-CHANNEL_REDIS_HOST=redis
-CHANNEL_REDIS_PORT=6379
+# Database Connection Pool Settings (Production)
+DB_MAX_CONNS=20
+DB_MAX_OVERFLOW=10
+DB_POOL_RECYCLE=3600
 
-# Django
-DEBUG=False
-DJANGO_LOG_LEVEL=INFO
+# Database Connection Pool Settings (Development)
+DB_MAX_CONNS_DEV=10
+DB_MAX_OVERFLOW_DEV=5
+
+# Default User Login
 DJANGO_SUPERUSER_USERNAME=admin
+DJANGO_SUPERUSER_EMAIL=admin@example.com
 DJANGO_SUPERUSER_PASSWORD=admin
 
+# Django Settings
+SECRET_KEY=your-secret-key-here
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1
+DJANGO_LOG_LEVEL=INFO
+
+# CORS Settings
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+CORS_ORIGIN_ALLOW_ALL=False
+
 # Telegram
-TELEGRAM_API_KEY=your_telegram_api_key
+TELEGRAM_API_KEY=your-telegram-api-key-here
+
+# Docker Image (for docker-compose.yml production)
+# Set this to the published Docker Hub image you want to use
+# Format: username/repository:tag or repository:tag
+# Example: myusername/sdn-launch-control-backend:latest
+# DOCKER_IMAGE=sdn-launch-control-backend:latest
 ```
 
 #### Frontend (.env.local)

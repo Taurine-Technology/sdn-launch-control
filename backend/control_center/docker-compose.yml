@@ -27,7 +27,10 @@ services:
 
   django:
     container_name: launch-control-api
-    build: .
+    # Use published Docker Hub image (configurable via DOCKER_IMAGE env var)
+    # Default: sdn-launch-control-backend:latest
+    # To use a custom image, set DOCKER_IMAGE in .env file
+    image: ${DOCKER_IMAGE:-sdn-launch-control-backend:latest}
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -44,6 +47,7 @@ services:
                python manage.py migrate_categories_to_models &&
                python manage.py populate_redis_asn &&
                python manage.py load_dns_servers &&
+               python manage.py load_vpn_networks &&
                python manage.py setup_classification_stats &&
                python manage.py initialise_plugins &&
                python manage.py create_default_user &&
@@ -51,20 +55,16 @@ services:
                python manage.py setup_port_utilization_monitor &&
                python manage.py setup_device_ping_monitor &&
                gunicorn control_center.asgi:application -w 2 -k uvicorn.workers.UvicornWorker --max-requests 1000 --max-requests-jitter 200 --timeout 120 --graceful-timeout 120 --keep-alive 5 --worker-tmp-dir /dev/shm -b 0.0.0.0:8000 --log-level warning --access-logfile /dev/null"
-    volumes:
-      - .:/usr/app/
     depends_on:
       - redis
       - pgdatabase
 
   celery:
     container_name: launch-control-celery
-    build:
-      context: .
+    # Use same published image as django service
+    image: ${DOCKER_IMAGE:-sdn-launch-control-backend:latest}
     restart: unless-stopped
     command: celery -A control_center worker -l ERROR -c 2
-    volumes:
-      - .:/usr/app/
     environment:
       - TF_CPP_MIN_LOG_LEVEL=2
       - CELERY_WORKER_RUNNING=1
@@ -75,12 +75,10 @@ services:
 
   celery_beat:
     container_name: launch-control-celery-beat
-    build:
-      context: .
+    # Use same published image as django service
+    image: ${DOCKER_IMAGE:-sdn-launch-control-backend:latest}
     restart: unless-stopped
     command: celery -A control_center beat -l ERROR --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    volumes:
-      - .:/usr/app/
     environment:
       - TF_CPP_MIN_LOG_LEVEL=2
       - CELERY_WORKER_RUNNING=1

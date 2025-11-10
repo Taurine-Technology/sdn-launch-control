@@ -1,9 +1,0 @@
----
-- name: Test if remote connection and SUDO privileges work
-  hosts: localserver
-  gather_facts: yes
-  become: true
-
-  tasks:
-    - name: Connection
-      debug: msg="Connected"

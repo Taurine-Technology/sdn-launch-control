@@ -33,3 +33,4 @@ artifacts/
 # Taurine Tech Internals
 scan-image.sh
 build-and-publish.sh
+requirements.old.txt

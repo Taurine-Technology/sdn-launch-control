@@ -1,4 +1,4 @@
-tensorflow==2.12.1
+tensorflow-cpu==2.12.1
 Django==5.1.14
 celery==5.4.0
 channels==4.1.0

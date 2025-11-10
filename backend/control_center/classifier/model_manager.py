@@ -21,11 +21,14 @@ import redis
 from .models import ModelConfiguration, ModelState, ClassificationStats
 from .state_manager import state_manager
 from utils.ip_lookup_service import get_asn_from_ip
+from .vpn_loader import VPNNetworkLoader, REDIS_VPN_KEY
 
 logger = logging.getLogger(__name__)
 
 # DNS Redis key - same as in dns_loader.py
 REDIS_DNS_KEY = "dns_servers:ip_set"
+# VPN Redis key - same as in vpn_loader.py
+REDIS_VPN_KEY = "vpn_networks:cidr_set"
 
 def _run_in_thread(func):
         """Run a callable in a dedicated thread and return its result, raising exceptions.
@@ -69,7 +72,7 @@ class ModelManager:
     
     
     def _init_redis_connection(self):
-        """Initialize Redis connection for DNS server lookups"""
+        """Initialize Redis connection for DNS server and VPN network lookups"""
         try:
             redis_host = getattr(settings, 'CHANNEL_REDIS_HOST', 'redis')
             redis_port = getattr(settings, 'CHANNEL_REDIS_PORT', 6379)
@@ -89,6 +92,11 @@ class ModelManager:
         except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError, redis.exceptions.RedisError):
             logger.exception("Failed to initialize DNS Redis connection")
             self.redis_dns = None
+        
+        # VPN uses the same Redis connection as DNS
+        self.redis_vpn = self.redis_dns
+        # Initialize VPN loader with optimized binary search
+        self.vpn_loader = VPNNetworkLoader(redis_conn=self.redis_dns) if self.redis_dns else None
     
     def _with_fallback_categories(self, categories: List[str]) -> List[str]:
         """
@@ -101,10 +109,10 @@ class ModelManager:
             categories: Original list of categories from model
             
         Returns:
-            List with Unknown, DNS, and Apple appended if missing
+            List with Unknown, DNS, VPN, and Apple appended if missing
         """
         out = list(categories)  # Create copy to avoid modifying original
-        for category in ("Unknown", "DNS", "Apple"):
+        for category in ("Unknown", "DNS", "VPN", "Apple"):
             if category not in out:
                 out.append(category)
         return out
@@ -572,11 +580,12 @@ class ModelManager:
         logger.debug(f"Final Prediction: {final_prediction}")
         logger.debug("************************************************")
         
-        # Track DNS and ASN usage
+        # Track DNS, VPN, and ASN usage
         dns_detected = False
+        vpn_detected = False
         asn_used = False
         
-        # Enhanced ASN-based category matching with DNS detection
+        # Enhanced ASN-based category matching with DNS and VPN detection
         if client_ip_address and (final_prediction == "Unknown" or final_prediction == "QUIC"):
             try:
                 # First check if it's a known DNS server IP
@@ -587,10 +596,21 @@ class ModelManager:
                     logger.debug(f"DNS server detected: {client_ip_address} -> {dns_category}")
                     logger.debug("************************************************")
                     # Track stats before returning
-                    self._increment_stats(confidence_level, time_elapsed, dns_detected=True, asn_used=False)
+                    self._increment_stats(confidence_level, time_elapsed, dns_detected=True, vpn_detected=False, asn_used=False)
                     return final_prediction, time_elapsed
                 
-                # If not DNS, proceed with ASN lookup
+                # If not DNS, check if it's a VPN IP
+                vpn_category = self._check_vpn_ip(client_ip_address, class_names)
+                if vpn_category:
+                    final_prediction = vpn_category
+                    vpn_detected = True
+                    logger.debug(f"VPN network detected: {client_ip_address} -> {vpn_category}")
+                    logger.debug("************************************************")
+                    # Track stats before returning
+                    self._increment_stats(confidence_level, time_elapsed, dns_detected=False, vpn_detected=True, asn_used=False)
+                    return final_prediction, time_elapsed
+                
+                # If not DNS or VPN, proceed with ASN lookup
                 asn_info = get_asn_from_ip(client_ip_address)
                 
                 if asn_info:
@@ -633,7 +653,7 @@ class ModelManager:
                 logger.error(f"Error during ASN lookup for IP {client_ip_address}: {e}")
         
         # Track classification stats
-        self._increment_stats(confidence_level, time_elapsed, dns_detected=dns_detected, asn_used=asn_used)
+        self._increment_stats(confidence_level, time_elapsed, dns_detected=dns_detected, vpn_detected=vpn_detected, asn_used=asn_used)
         
         return final_prediction, time_elapsed
     
@@ -922,7 +942,37 @@ class ModelManager:
         # Neither Redis nor fallback detected this IP as a DNS server
         return None
     
-    def _increment_stats(self, confidence_level: str, prediction_time: float, dns_detected: bool = False, asn_used: bool = False):
+    def _check_vpn_ip(self, ip_address: str, available_categories: List[str]) -> Optional[str]:
+        """
+        Check if the IP address falls within any known VPN CIDR range.
+        Uses optimized binary search for efficient O(log n) lookup.
+        
+        Args:
+            ip_address: IP address to check
+            available_categories: List of available categories in the model
+            
+        Returns:
+            'VPN' if IP is in a VPN CIDR range and VPN category exists, None otherwise
+        """
+        # Check VPN category is available first
+        if 'VPN' not in available_categories:
+            return None
+        
+        # Use optimized VPN loader if available
+        if self.vpn_loader:
+            try:
+                if self.vpn_loader.verify_vpn_ip(ip_address):
+                    logger.debug(f"Detected VPN network: {ip_address}")
+                    return 'VPN'
+                return None
+            except Exception:
+                logger.exception("Error checking VPN network")
+                return None
+        else:
+            logger.debug("VPN loader not available")
+            return None
+    
+    def _increment_stats(self, confidence_level: str, prediction_time: float, dns_detected: bool = False, vpn_detected: bool = False, asn_used: bool = False):
         """
         Increment classification statistics counters in Redis (cross-process safe)
         
@@ -930,6 +980,7 @@ class ModelManager:
             confidence_level: One of 'HIGH', 'LOW', 'MULTIPLE_CANDIDATES', 'UNCERTAIN'
             prediction_time: Time taken for prediction in seconds
             dns_detected: Whether DNS detection was used
+            vpn_detected: Whether VPN detection was used
             asn_used: Whether ASN fallback was used
         """
         try:
@@ -949,6 +1000,9 @@ class ModelManager:
             # Increment detection methods
             if dns_detected:
                 state_manager.increment_classification_stat('dns_detections', 1)
+            
+            if vpn_detected:
+                state_manager.increment_classification_stat('vpn_detections', 1)
             
             if asn_used:
                 state_manager.increment_classification_stat('asn_fallback', 1)
@@ -1033,6 +1087,7 @@ class ModelManager:
                     multiple_candidates_count=redis_stats['multiple_candidates'],
                     uncertain_count=redis_stats['uncertain'],
                     dns_detections=redis_stats['dns_detections'],
+                    vpn_detections=redis_stats.get('vpn_detections', 0),
                     asn_fallback_count=redis_stats['asn_fallback'],
                     avg_prediction_time_ms=avg_prediction_time
                 )

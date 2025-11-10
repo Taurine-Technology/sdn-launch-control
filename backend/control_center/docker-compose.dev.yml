@@ -36,6 +36,7 @@ services:
                python manage.py migrate_categories_to_models &&
                python manage.py populate_redis_asn &&
                python manage.py load_dns_servers &&
+               python manage.py load_vpn_networks &&
                python manage.py setup_classification_stats &&
                python manage.py initialise_plugins &&
                python manage.py create_default_user &&
@@ -54,6 +55,7 @@ services:
     build:
       context: .
     restart: "no"
+    env_file: .env
     command: celery -A control_center worker -l INFO
     environment:
       - TF_CPP_MIN_LOG_LEVEL=2
@@ -70,6 +72,7 @@ services:
     build:
       context: .
     restart: "no"
+    env_file: .env
     command: celery -A control_center beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler
     environment:
       - TF_CPP_MIN_LOG_LEVEL=2

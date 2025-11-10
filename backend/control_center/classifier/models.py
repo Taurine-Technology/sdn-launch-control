@@ -143,6 +143,7 @@ class ClassificationStats(models.Model):
     
     # DNS and other special detections
     dns_detections = models.IntegerField(default=0)
+    vpn_detections = models.IntegerField(default=0)
     asn_fallback_count = models.IntegerField(default=0)
     
     # Average prediction time

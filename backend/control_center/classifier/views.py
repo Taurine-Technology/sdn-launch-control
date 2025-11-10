@@ -280,6 +280,7 @@ class ClassificationStatsView(APIView):
                 multiple_candidates=Sum('multiple_candidates_count'),
                 uncertain=Sum('uncertain_count'),
                 dns_detections=Sum('dns_detections'),
+                vpn_detections=Sum('vpn_detections'),
                 asn_fallback=Sum('asn_fallback_count')
             )
             
@@ -322,6 +323,10 @@ class ClassificationStatsView(APIView):
                         'count': totals['dns_detections'] or 0,
                         'percentage': round((totals['dns_detections'] or 0) / total_count * 100, 2) if total_count > 0 else 0
                     },
+                    'vpn_detections': {
+                        'count': totals['vpn_detections'] or 0,
+                        'percentage': round((totals['vpn_detections'] or 0) / total_count * 100, 2) if total_count > 0 else 0
+                    },
                     'asn_fallback': {
                         'count': totals['asn_fallback'] or 0,
                         'percentage': round((totals['asn_fallback'] or 0) / total_count * 100, 2) if total_count > 0 else 0
@@ -359,6 +364,7 @@ class ClassificationStatsView(APIView):
                         'uncertain_count': stat.uncertain_count,
                         'uncertain_percentage': round(stat.uncertain_percentage, 2),
                         'dns_detections': stat.dns_detections,
+                        'vpn_detections': stat.vpn_detections,
                         'asn_fallback_count': stat.asn_fallback_count,
                         'avg_prediction_time_ms': round(stat.avg_prediction_time_ms, 2)
                     })

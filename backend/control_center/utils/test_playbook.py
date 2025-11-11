@@ -56,7 +56,9 @@ from utils.ansible_formtter import (
     get_interfaces_from_results, 
     get_filtered_interfaces, 
     extract_ovs_port_map,
-    get_interface_speeds_from_results
+    get_interface_speeds_from_results,
+    get_single_port_speed_from_results,
+    get_port_status_from_results
 )
 from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, create_inv_data
 
@@ -219,6 +221,35 @@ def test_custom_playbook(ip, user, password, playbook_dir, playbook_name, extra_
     
     return result
 
+def test_check_port_details(ip, user, password, playbook_dir, port_name):
+    """
+    Run the `check-port-details` Ansible playbook against a temporary inventory and log the port speed and status.
+    
+    Parameters:
+        ip (str): IP address of the target host.
+        user (str): SSH username for the target host.
+        password (str): SSH password for the target host.
+        playbook_dir (str): Filesystem path to the directory containing the playbooks.
+        port_name (str): Name of the port to check.
+    
+    Returns:
+        result: Raw result object returned by the playbook runner containing playbook execution details.
+    """
+    logger.info(f"Testing check-port-details playbook for port {port_name}...")
+    
+    inv_content = create_inv_data(ip, user, password)
+    inv_path = create_temp_inv(inv_content)
+    
+    result = run_playbook_with_extravars('check-port-details', playbook_dir, inv_path, {'port_name': port_name, 'ip_address': ip})
+    
+    port_speed = get_single_port_speed_from_results(result, port_name)
+    port_status = get_port_status_from_results(result, port_name)
+    
+    logger.info(f"Port speed: {port_speed}")
+    logger.info(f"Port status: {port_status}")
+    
+    return result
+
 
 def main():
     """
@@ -252,8 +283,14 @@ def main():
     # ========================================
     
     # Example 1: Test get-ports-ip-link (with speed detection)
-    result = test_get_ports_ip_link(ip, user, password, ansible_dir)
-    print_result("GET-PORTS-IP-LINK RESULT", result)
+    # result = test_get_ports_ip_link(ip, user, password, ansible_dir)
+    # print_result("GET-PORTS-IP-LINK RESULT", result)
+    
+    # Example 2: Test check-port-details (with speed and status detection)
+    # NOTE: Change port_name to match an interface on your target device
+    port_name = 'enx9ca2f4fc1e81'
+    result = test_check_port_details(ip, user, password, ansible_dir, port_name)
+    print_result("CHECK-PORT-DETAILS RESULT", result)
     
     # Example 2: Test OVS port numbers
     # Uncomment and modify as needed:

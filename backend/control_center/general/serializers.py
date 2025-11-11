@@ -38,7 +38,38 @@ class ControllerSerializer(serializers.ModelSerializer):
 class PortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Port
-        fields = ['id', 'name', 'ovs_port_number', 'link_speed']
+        fields = ['id', 'name', 'ovs_port_number', 'link_speed', 'is_up']
+
+
+class PortUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating port link_speed only.
+    All other fields are read-only.
+    """
+
+    class Meta:
+        model = Port
+        fields = ['id', 'name', 'ovs_port_number', 'link_speed', 'is_up']
+        read_only_fields = ['id', 'name', 'ovs_port_number', 'is_up']
+
+    def save(self, **kwargs):
+        # Only save link_speed, filter validated_data to just link_speed
+        if 'link_speed' in self.validated_data:
+            # Filter validated_data to only include link_speed
+            filtered_data = {'link_speed': self.validated_data['link_speed']}
+            # Temporarily store original validated_data
+            original_validated_data = self.validated_data
+            # Replace with filtered data
+            self._validated_data = filtered_data
+            try:
+                instance = super().save(**kwargs)
+                # Ensure only link_speed was updated in the database
+                instance.save(update_fields=['link_speed'])
+                return instance
+            finally:
+                # Restore original validated_data
+                self._validated_data = original_validated_data
+        return super().save(**kwargs)
 
 
 class DeviceSerializer(serializers.ModelSerializer):

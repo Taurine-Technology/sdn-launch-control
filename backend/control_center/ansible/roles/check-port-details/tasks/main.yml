@@ -1,0 +1,29 @@
+---
+- name: Get port speed from sysfs
+  shell: |
+    if [ -f /sys/class/net/{{ port_name }}/speed ]; then
+      speed=$(cat /sys/class/net/{{ port_name }}/speed 2>/dev/null || echo "")
+      if [ -n "$speed" ] && [ "$speed" != "-1" ]; then
+        echo "$speed"
+      else
+        echo ""
+      fi
+    else
+      echo ""
+    fi
+  register: port_speed_output
+  changed_when: false
+
+- name: Get port status using ip link show
+  shell: ip link show {{ port_name }} 2>/dev/null || echo "NOT_FOUND"
+  register: port_status_output
+  changed_when: false
+  failed_when: false
+
+- name: Debug port speed
+  debug:
+    var: port_speed_output.stdout
+
+- name: Debug port status
+  debug:
+    var: port_status_output.stdout_lines

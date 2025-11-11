@@ -2,6 +2,8 @@
 
 A comprehensive Software-Defined Networking (SDN) management platform that enables easy and automated adoption of the SDN paradigm into new or pre-existing networks. This monorepo contains both the backend API and frontend.
 
+For detailed documentation consult our [website](https://taurine-technology.github.io/).
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -154,13 +156,6 @@ Please keep your contributions focused and small to help with pull request manag
 3. Make your changes
 4. Run linting and integration tests
 5. Submit a pull request
-
-### Development Guidelines
-
-- Follow TypeScript best practices for frontend code
-- Use Django coding standards for backend code
-- Write comprehensive tests for new features
-- Update documentation for API changes
 
 ## 📄 License
 

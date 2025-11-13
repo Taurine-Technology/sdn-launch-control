@@ -142,6 +142,19 @@ export interface Port {
   device: number;
 }
 
+// Bridge Port Types (for port management API)
+export interface BridgePort {
+  id: number;
+  name: string;
+  ovs_port_number: number | null;
+  link_speed: number | null;
+  is_up: boolean | null;
+}
+
+export interface BridgePortsResponse {
+  ports: BridgePort[];
+}
+
 // Bridge Types
 export interface Bridge {
   id: number;

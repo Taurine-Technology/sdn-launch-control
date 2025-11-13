@@ -23,6 +23,7 @@ import { RingLoader } from "react-spinners";
 import DeviceStatsGraphRealTime from "@/components/graphs/DeviceStatsGraphRealTime";
 import PortStatsGraph from "@/components/graphs/PortStatsGraph";
 import BridgeDataComponent from "@/components/devices/BridgeDataComponent";
+import PortManagementComponent from "@/components/devices/PortManagementComponent";
 import ConnectionIndicator from "@/components/devices/ConnectionIndicator";
 import { useLanguage } from "@/context/languageContext";
 
@@ -145,6 +146,11 @@ export default function SwitchEditPage() {
                     isLoading={isLoadingBridgeData}
                     bridgeData={bridgeData}
                     deviceIp={switchData?.lan_ip_address as string}
+                  />
+                  <PortManagementComponent
+                    switchId={id as string}
+                    fetchData={fetchData}
+                    isLoading={isLoadingSwitchData || isLoadingBridgeData}
                   />
                   {bridgeData?.bridges &&
                     bridgeData.bridges.length > 0 &&

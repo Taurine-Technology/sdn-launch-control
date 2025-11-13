@@ -193,32 +193,45 @@ export default function SwitchEditComponent({
                 </SelectContent>
               </Select>
             </div>
-            {Boolean(switchData.ovs_enabled) && (
+            {!!(
+              (switchData.ovs_version &&
+                String(switchData.ovs_version).trim()) ||
+              (switchData.openflow_version &&
+                String(switchData.openflow_version).trim())
+            ) && (
               <>
-                <div>
-                  <Label htmlFor="ovs_version">
-                    {getT("components.devices.switch_edit.ovs_version")}
-                  </Label>
-                  <Input
-                    id="ovs_version"
-                    name="ovs_version"
-                    value={formData.ovs_version || ""}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="openflow_version">
-                    {getT("components.devices.switch_edit.openflow_version")}
-                  </Label>
-                  <Input
-                    id="openflow_version"
-                    name="openflow_version"
-                    value={formData.openflow_version || ""}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
+                {switchData.ovs_version &&
+                  String(switchData.ovs_version).trim() && (
+                    <div>
+                      <Label htmlFor="ovs_version">
+                        {getT("components.devices.switch_edit.ovs_version")}
+                      </Label>
+                      <Input
+                        id="ovs_version"
+                        name="ovs_version"
+                        value={formData.ovs_version || ""}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  )}
+                {switchData.openflow_version &&
+                  String(switchData.openflow_version).trim() && (
+                    <div>
+                      <Label htmlFor="openflow_version">
+                        {getT(
+                          "components.devices.switch_edit.openflow_version"
+                        )}
+                      </Label>
+                      <Input
+                        id="openflow_version"
+                        name="openflow_version"
+                        value={formData.openflow_version || ""}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  )}
               </>
             )}
           </div>

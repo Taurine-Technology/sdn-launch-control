@@ -81,6 +81,7 @@ class Port(models.Model):
     name = models.CharField(max_length=100)
     ovs_port_number = models.IntegerField(null=True, blank=True)
     link_speed = models.IntegerField(null=True, blank=True, help_text="Link speed in Mb/s")
+    is_up = models.BooleanField(null=True, blank=True, help_text="Port status: True if up, False if down, None if unknown")
 
     class Meta:
         unique_together = ('device', 'name')

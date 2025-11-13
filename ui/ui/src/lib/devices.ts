@@ -28,6 +28,8 @@ import {
   BridgeApiResponse,
   DeleteDeviceRequest,
   DeleteDeviceResponse,
+  BridgePort,
+  BridgePortsResponse,
 } from "./types";
 
 export const fetchNetworkDevices = async (
@@ -43,7 +45,7 @@ export const fetchNetworkDevices = async (
 export const fetchDevices = async (token: string): Promise<Device[]> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.get("/devices/");
-  console.log("[DEVICES.ts] fetchDevices", data);
+  // console.log("[DEVICES.ts] fetchDevices", data);
   return data;
 };
 // this is the original function for devices
@@ -52,9 +54,9 @@ export const fetchNetworkDevice = async (
   id: string
 ): Promise<NetworkDeviceDetails> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
-  console.log("[DEVICES.ts] fetchNetworkDevice", id);
+  // console.log("[DEVICES.ts] fetchNetworkDevice", id);
   const { data } = await axiosInstance.get(`/device-details/${id}/`);
-  console.log("[DEVICES.ts] fetchNetworkDevice result", data);
+  // console.log("[DEVICES.ts] fetchNetworkDevice result", data);
   return data;
 };
 
@@ -72,7 +74,7 @@ export const updateNetworkDevice = async (
   id: string,
   payload: Partial<NetworkDeviceDetails>
 ): Promise<NetworkDeviceDetails> => {
-  console.log("[DEVICES.ts] updateNetworkDevice", id, payload);
+  // console.log("[DEVICES.ts] updateNetworkDevice", id, payload);
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.patch(
     `/network-devices/${id}/`,
@@ -108,7 +110,7 @@ export const updateSwitch = async (
 ): Promise<NetworkDeviceDetails> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.put(`/switches/${id}/`, deviceData);
-  console.log("[DEVICES.ts] updateSwitch result", data);
+  // console.log("[DEVICES.ts] updateSwitch result", data);
   return data;
 };
 
@@ -128,7 +130,7 @@ export const fetchBridges = async (
 ): Promise<BridgeApiResponse> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
   const { data } = await axiosInstance.get(`/switches/${id}/bridges/`);
-  console.log("[DEVICES.ts] fetchBridges", data);
+  // console.log("[DEVICES.ts] fetchBridges", data);
   return data;
 };
 
@@ -146,9 +148,9 @@ export const addBridge = async (
   bridgeData: Partial<Bridge>
 ): Promise<Bridge> => {
   const axiosInstance = createAxiosInstanceWithToken(token);
-  console.log("[DEVICES.ts] addBridge", bridgeData);
+  // console.log("[DEVICES.ts] addBridge", bridgeData);
   const { data } = await axiosInstance.post("/add-bridge/", bridgeData);
-  console.log("[DEVICES.ts] addBridge result", data);
+  // console.log("[DEVICES.ts] addBridge result", data);
   return data;
 };
 
@@ -211,7 +213,7 @@ export const deleteController = async (
   const response = await axiosInstance.delete("/delete-device/", {
     data: payload,
   });
-  console.log("[DEVICES.ts] deleteController result", response);
+  // console.log("[DEVICES.ts] deleteController result", response);
 
   // Django returns 204 No Content on successful deletion
   if (response.status === 204) {
@@ -254,6 +256,39 @@ export const fetchUnassignedPorts = async (
   return data;
 };
 
+// Bridge Port Management methods
+export const fetchBridgePorts = async (
+  token: string,
+  switchId: string
+): Promise<BridgePortsResponse> => {
+  const axiosInstance = createAxiosInstanceWithToken(token);
+  const { data } = await axiosInstance.get(
+    `/switches/${switchId}/bridge-ports/`
+  );
+  return data;
+};
+
+export const updatePortLinkSpeed = async (
+  token: string,
+  portId: number,
+  linkSpeed: number
+): Promise<BridgePort> => {
+  const axiosInstance = createAxiosInstanceWithToken(token);
+  const { data } = await axiosInstance.patch(`/ports/${portId}/`, {
+    link_speed: linkSpeed,
+  });
+  return data;
+};
+
+export const syncPortDetails = async (
+  token: string,
+  portId: number
+): Promise<BridgePort> => {
+  const axiosInstance = createAxiosInstanceWithToken(token);
+  const { data } = await axiosInstance.post(`/ports/${portId}/sync/`, {});
+  return data;
+};
+
 // QoS methods
 export const installQosMonitoring = async (
   token: string,
@@ -276,7 +311,7 @@ export const deleteSwitch = async (
   const response = await axiosInstance.delete("/delete-device/", {
     data: payload,
   });
-  console.log("[DEVICES.ts] deleteSwitch result", response);
+  // console.log("[DEVICES.ts] deleteSwitch result", response);
 
   // Django returns 204 No Content on successful deletion
   if (response.status === 204) {
@@ -303,7 +338,7 @@ export const forceDeleteSwitch = async (
   const response = await axiosInstance.delete("/force-delete-device/", {
     data: payload,
   });
-  console.log("[DEVICES.ts] forceDeleteSwitch result", response);
+  // console.log("[DEVICES.ts] forceDeleteSwitch result", response);
 
   // Django returns 204 No Content on successful deletion
   if (response.status === 204) {

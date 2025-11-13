@@ -512,7 +512,10 @@
         "cancel": "Cancel",
         "saving": "Saving...",
         "success": "Switch updated successfully!",
-        "error": "Failed to update switch."
+        "error": "Failed to update switch.",
+        "ovs_version": "OVS Version",
+        "openflow_version": "OpenFlow Version",
+        "number_of_ports": "Number of Ports"
       },
       "controller_edit": {
         "title": "Controller",
@@ -586,6 +589,31 @@
         "cancel": "Cancel",
         "delete": "Delete Bridge",
         "deleting": "Deleting..."
+      },
+      "port_management": {
+        "title": "Port Management",
+        "port_name": "Port Name",
+        "ovs_port_number": "OVS Port Number",
+        "link_speed": "Link Speed",
+        "status": "Status",
+        "status_up": "UP",
+        "status_down": "DOWN",
+        "status_unknown": "UNKNOWN",
+        "edit_speed": "Edit Speed",
+        "save": "Save",
+        "cancel": "Cancel",
+        "sync": "Sync",
+        "syncing": "Syncing...",
+        "no_ports": "No ports assigned to bridges",
+        "loading": "Loading ports...",
+        "error_fetching": "Error fetching ports",
+        "update_success": "Port updated successfully",
+        "update_error": "Failed to update port",
+        "sync_success": "Port details synced successfully",
+        "sync_error": "Failed to sync port details",
+        "link_speed_placeholder": "Enter link speed (Mb/s)",
+        "link_speed_invalid": "Link speed must be a positive number between 10 and 100000 Mb/s",
+        "actions": "Actions"
       }
     },
     "network": {

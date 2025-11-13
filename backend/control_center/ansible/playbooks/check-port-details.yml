@@ -1,0 +1,6 @@
+---
+- name: Check port details (speed and status)
+  become: true
+  hosts: localserver
+  roles:
+    - ../roles/check-port-details

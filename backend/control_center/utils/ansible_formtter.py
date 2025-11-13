@@ -182,3 +182,99 @@ def extract_ovs_port_map(playbook_result):
 
     logger.warning("Could not find 'ovs_port_map' in any expected location within the playbook results.")
     return ovs_map  # Return empty dict if not found
+
+
+def get_single_port_speed_from_results(results, port_name):
+    """
+    Extract the speed for a specific port from Ansible playbook results.
+    
+    Parameters:
+        results (dict): Ansible playbook result dictionary containing a 'results' mapping
+            with the key "Get port speed from sysfs" whose value provides 'stdout'.
+        port_name (str): Name of the port to get speed for.
+    
+    Returns:
+        int or None: Port speed in megabits per second, or None if not found or invalid.
+    """
+    results_data = results.get('results', results) if isinstance(results, dict) else results
+    
+    command_key = "Get port speed from sysfs"
+    
+    if command_key in results_data:
+        speed_output = results_data[command_key].get('stdout', '').strip()
+        if speed_output and speed_output != '':
+            try:
+                speed = int(speed_output)
+                if speed > 0:  # Valid speed (exclude -1 or 0)
+                    logger.debug(f"Extracted port speed for {port_name}: {speed} Mb/s")
+                    return speed
+            except ValueError:
+                logger.warning(f"Invalid speed value for {port_name}: {speed_output}")
+    
+    logger.debug(f"No valid speed found for port {port_name}")
+    return None
+
+
+def get_port_status_from_results(results, port_name):
+    """
+    Extract the port status (up/down) from Ansible playbook results.
+    
+    Parameters:
+        results (dict): Ansible playbook result dictionary containing a 'results' mapping
+            with the key "Get port status using ip link show" whose value provides 'stdout_lines'.
+        port_name (str): Name of the port to get status for.
+    
+    Returns:
+        bool or None: True if port is up, False if down, None if status cannot be determined.
+    """
+    results_data = results.get('results', results) if isinstance(results, dict) else results
+    
+    command_key = "Get port status using ip link show"
+    
+    if command_key in results_data:
+        output_lines = results_data[command_key].get('stdout_lines', [])
+        output_str = ' '.join(output_lines) if output_lines else ''
+        
+        # Check if port was not found
+        if 'NOT_FOUND' in output_str or not output_lines:
+            logger.warning(f"Port {port_name} not found on device")
+            return None
+        
+        # Parse ip link show output to find state
+        # Example formats:
+        # "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000"
+        # "2: eth0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000"
+        for line in output_lines:
+            line_lower = line.lower()
+            # Check for explicit state UP or DOWN
+            if 'state up' in line_lower:
+                logger.debug(f"Port {port_name} is UP (from state)")
+                return True
+            elif 'state down' in line_lower:
+                logger.debug(f"Port {port_name} is DOWN (from state)")
+                return False
+        
+        # If no explicit state found, check flags in angle brackets
+        # UP flag without NO-CARRIER usually means the interface is up
+        # But we need to be careful - LOWER_UP alone doesn't mean the interface is up
+        for line in output_lines:
+            line_lower = line.lower()
+            if '<' in line and '>' in line:
+                flags_section = line[line.find('<'):line.find('>')+1]
+                flags_lower = flags_section.lower()
+                # If we see UP in flags and no NO-CARRIER, it's likely up
+                # But state takes precedence, so only use flags if state wasn't found
+                # Split flags and check for exact 'up' flag (not lower_up, upper_up, etc.)
+                flags_list = [f.strip() for f in flags_lower.replace('<', '').replace('>', '').split(',')]
+                if 'up' in flags_list and 'no-carrier' not in flags_list:
+                    # Check if there's a state mentioned elsewhere in the line
+                    if 'state' not in line_lower:
+                        logger.debug(f"Port {port_name} appears to be UP (from flags)")
+                        return True
+        
+        # If we have output but couldn't determine state, default to None
+        logger.warning(f"Could not determine status for port {port_name} from output: {output_str}")
+        return None
+    
+    logger.warning(f"Could not find port status task results for {port_name}")
+    return None

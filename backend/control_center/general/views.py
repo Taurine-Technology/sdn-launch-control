@@ -34,7 +34,7 @@ from django.shortcuts import get_object_or_404
 from django.core.validators import validate_ipv4_address
 from django.core.exceptions import ValidationError
 import logging
-from .serializers import BridgeSerializer, ControllerSerializer
+from .serializers import BridgeSerializer, ControllerSerializer, PortSerializer, PortUpdateSerializer
 from .models import Controller, Plugins
 from .serializers import DeviceSerializer
 
@@ -44,6 +44,7 @@ from .serializers import ControllerSerializer
 from rest_framework.permissions import IsAuthenticated
 from knox.auth import TokenAuthentication
 from utils.ansible_utils import run_playbook_with_extravars, create_temp_inv, create_inv_data
+from utils.ansible_formtter import get_single_port_speed_from_results, get_port_status_from_results
 # Import the model manager
 from classifier.model_manager import model_manager
 from odl.models import Category
@@ -615,4 +616,132 @@ class SwitchViewSet(ModelViewSet):
             return Response({"bridges": data}, status=200)
         except Exception as e:
             logger.exception('Error getting switch bridges...')
-            return Response({"error": str(e)}, status=500)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'], url_path='bridge-ports')
+    def bridge_ports(self, request, pk=None):
+        """
+        Custom action to fetch all ports on a switch that are assigned to bridges.
+        Returns ports where bridge is not null.
+        """
+        try:
+            switch = self.get_object()
+            # Get all ports on this switch that have a bridge assigned
+            ports = Port.objects.filter(device=switch, bridge__isnull=False)
+            serializer = PortSerializer(ports, many=True)
+            return Response({"ports": serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception('Error getting switch bridge ports...')
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ----- PORT VIEWS ------
+class PortViewSet(ModelViewSet):
+    """
+    A viewset that provides actions for Port model.
+    """
+    queryset = Port.objects.all()
+    serializer_class = PortSerializer
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def get_serializer_class(self):
+        """
+        Use PortUpdateSerializer for partial updates (PATCH).
+        """
+        if self.action == 'partial_update':
+            return PortUpdateSerializer
+        return PortSerializer
+
+    def partial_update(self, request, pk=None):
+        """
+        Update port link_speed only.
+        All other fields are read-only.
+        """
+        try:
+            port = self.get_object()
+            serializer = PortUpdateSerializer(port, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                # Only allow link_speed to be updated
+                if 'link_speed' in serializer.validated_data:
+                    updated_port = serializer.save()
+                    return Response(PortSerializer(updated_port).data, status=status.HTTP_200_OK)
+                else:
+                    return Response(
+                        {"error": "Only link_speed can be updated"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(f'Error updating port: {str(e)}')
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'], url_path='sync')
+    def sync(self, request, pk=None):
+        """
+        Sync port details (speed and status) from the switch.
+        Connects to the device and checks the current port speed and status.
+        """
+        try:
+            port = self.get_object()
+            device = port.device
+            
+            if device.device_type != 'switch':
+                return Response(
+                    {"error": "Port sync is only available for switch devices"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create inventory for the device
+            inv_content = create_inv_data(device.lan_ip_address, device.username, device.password)
+            inv_path = create_temp_inv(inv_content)
+            
+            # Run the check-port-details playbook with port name as extravar
+            playbook_name = "check-port-details"
+            extra_vars = {
+                'port_name': port.name,
+                'ip_address': device.lan_ip_address,
+            }
+            
+            result = run_playbook_with_extravars(
+                playbook_name,
+                playbook_dir_path,
+                inv_path,
+                extra_vars,
+                quiet=True
+            )
+            
+            if result.get('status') != 'success':
+                error_msg = result.get('error', 'Unknown error occurred')
+                logger.error(f"Failed to sync port {port.name}: {error_msg}")
+                return Response(
+                    {"error": f"Failed to sync port details: {error_msg}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            # Parse results
+            port_speed = get_single_port_speed_from_results(result, port.name)
+            port_status = get_port_status_from_results(result, port.name)
+            
+            # Update port in database
+            update_fields = []
+            if port_speed is not None:
+                port.link_speed = port_speed
+                update_fields.append('link_speed')
+            if port_status is not None:
+                port.is_up = port_status
+                update_fields.append('is_up')
+            
+            if update_fields:
+                port.save(update_fields=update_fields)
+                logger.debug(f"Updated port {port.name}: speed={port_speed}, status={port_status}")
+            
+            # Return updated port data
+            serializer = PortSerializer(port)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.exception(f'Error syncing port: {str(e)}')
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

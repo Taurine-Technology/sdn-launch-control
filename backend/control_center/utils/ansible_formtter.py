@@ -266,7 +266,7 @@ def get_port_status_from_results(results, port_name):
                 # But state takes precedence, so only use flags if state wasn't found
                 # Split flags and check for exact 'up' flag (not lower_up, upper_up, etc.)
                 flags_list = [f.strip() for f in flags_lower.replace('<', '').replace('>', '').split(',')]
-                if 'up' in flags_list and 'no-carrier' not in flags_lower:
+                if 'up' in flags_list and 'no-carrier' not in flags_list:
                     # Check if there's a state mentioned elsewhere in the line
                     if 'state' not in line_lower:
                         logger.debug(f"Port {port_name} appears to be UP (from flags)")

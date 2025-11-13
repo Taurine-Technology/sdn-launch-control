@@ -7,3 +7,6 @@
 
 - name: Add ports to OVS bridge
   import_tasks: add_ports.yml
+
+- name: Setup interface monitoring
+  import_tasks: setup_interface_monitoring.yml

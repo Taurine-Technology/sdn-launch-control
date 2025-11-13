@@ -53,7 +53,7 @@ export default function ControllersPage() {
     }
     try {
       const controllers = await fetchControllers(token);
-      console.log("[CONTROLLERS PAGE] controllers", controllers);
+      // console.log("[CONTROLLERS PAGE] controllers", controllers);
       setControllers(controllers);
       setIsLoading(false);
     } catch (error) {

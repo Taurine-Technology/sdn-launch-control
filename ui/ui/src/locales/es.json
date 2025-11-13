@@ -512,7 +512,10 @@
         "cancel": "Cancelar",
         "saving": "Guardando...",
         "success": "¡Switch actualizado con éxito!",
-        "error": "No se pudo actualizar el switch."
+        "error": "No se pudo actualizar el switch.",
+        "ovs_version": "Versión de OVS",
+        "openflow_version": "Versión de OpenFlow",
+        "number_of_ports": "Número de Puertos"
       },
       "controller_edit": {
         "title": "Controlador",
@@ -586,6 +589,31 @@
         "cancel": "Cancelar",
         "delete": "Eliminar Bridge",
         "deleting": "Eliminando..."
+      },
+      "port_management": {
+        "title": "Gestión de Puertos",
+        "port_name": "Nombre del Puerto",
+        "ovs_port_number": "Número de Puerto OVS",
+        "link_speed": "Velocidad de Enlace",
+        "status": "Estado",
+        "status_up": "ACTIVO",
+        "status_down": "INACTIVO",
+        "status_unknown": "DESCONOCIDO",
+        "edit_speed": "Editar Velocidad",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "sync": "Sincronizar",
+        "syncing": "Sincronizando...",
+        "no_ports": "No hay puertos asignados a bridges",
+        "loading": "Cargando puertos...",
+        "error_fetching": "Error al obtener puertos",
+        "update_success": "Puerto actualizado con éxito",
+        "update_error": "Error al actualizar puerto",
+        "sync_success": "Detalles del puerto sincronizados con éxito",
+        "sync_error": "Error al sincronizar detalles del puerto",
+        "link_speed_placeholder": "Ingresa velocidad de enlace (Mb/s)",
+        "link_speed_invalid": "La velocidad de enlace debe ser un número positivo entre 10 y 100000 Mb/s",
+        "actions": "Acciones"
       }
     },
     "network": {

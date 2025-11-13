@@ -72,13 +72,12 @@ export const NetworkDiagramComponent: React.FC = () => {
   };
 
   useEffect(() => {
-    console.log("[NETWORKDIAGRAMCOMPONENT] fetching network map");
+    // console.log("[NETWORKDIAGRAMCOMPONENT] fetching network map");
 
     const fetchData = async () => {
       try {
         setIsLoading(true);
         await fetchNetworkMap();
-        setIsLoading(false);
       } catch (error) {
         console.error("[NETWORKDIAGRAMCOMPONENT] error", error);
       } finally {

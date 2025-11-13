@@ -258,6 +258,7 @@ def get_port_status_from_results(results, port_name):
         # UP flag without NO-CARRIER usually means the interface is up
         # But we need to be careful - LOWER_UP alone doesn't mean the interface is up
         for line in output_lines:
+            line_lower = line.lower()
             if '<' in line and '>' in line:
                 flags_section = line[line.find('<'):line.find('>')+1]
                 flags_lower = flags_section.lower()

@@ -15,3 +15,55 @@
     path: "/mnt/config_port_{{ item }}.sh"
     state: absent
   loop: "{{ interfaces }}"
+
+# Stop and disable the interface monitor timer
+- name: Stop and disable interface monitor timer
+  ansible.builtin.systemd:
+    name: "interface-monitor.timer"
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+
+# Remove the systemd timer file
+- name: Remove systemd timer file for interface monitor
+  file:
+    path: "/etc/systemd/system/interface-monitor.timer"
+    state: absent
+  ignore_errors: yes
+
+# Remove the systemd service file
+- name: Remove systemd service file for interface monitor
+  file:
+    path: "/etc/systemd/system/interface-monitor.service"
+    state: absent
+  ignore_errors: yes
+
+# Remove logrotate configuration
+- name: Remove logrotate configuration for interface monitor
+  file:
+    path: "/etc/logrotate.d/interface-monitor"
+    state: absent
+  ignore_errors: yes
+
+# Remove the interface monitor directory and all its contents
+- name: Remove interface monitor directory and all contents
+  file:
+    path: "/mnt/interface-monitor"
+    state: absent
+  ignore_errors: yes
+
+# Remove log files
+- name: Remove interface monitor log files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "/var/log/interface_monitor.log"
+    - "/var/log/interface_monitor.log.old"
+  ignore_errors: yes
+
+# Reload systemd to pick up the removed service and timer
+- name: Reload systemd after removing interface monitor service and timer
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  ignore_errors: yes

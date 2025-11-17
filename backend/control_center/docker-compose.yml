@@ -77,7 +77,7 @@ services:
   celery_beat:
     container_name: launch-control-celery-beat
     # Use same published image as django service
-    image: ${DOCKER_IMAGE:-sdn-launch-control-backend:latest}
+    image: ${DOCKER_IMAGE:-sdn-launch-control-backend:1.0.0-beta}
     restart: unless-stopped
     env_file: .env
     command: celery -A control_center beat -l ERROR --scheduler django_celery_beat.schedulers:DatabaseScheduler

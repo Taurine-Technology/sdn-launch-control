@@ -168,7 +168,7 @@ const AddBridgeDialog: React.FC<AddBridgeDialogProps> = ({
     try {
       const token = localStorage.getItem("taurineToken") || "";
       const response = await fetchControllers(token);
-      console.log("[ADDBRIDGEDIALOG.tsx] controllers", response);
+      // console.log("[ADDBRIDGEDIALOG.tsx] controllers", response);
       setControllers(response || []);
     } catch (error) {
       console.error("Error fetching controllers:", error);

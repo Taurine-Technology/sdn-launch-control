@@ -227,32 +227,90 @@ def get_port_status_from_results(results, port_name):
     Returns:
         bool or None: True if port is up, False if down, None if status cannot be determined.
     """
+    logger.debug(f"[PORT_STATUS] Starting status check for port: {port_name}")
+    
     results_data = results.get('results', results) if isinstance(results, dict) else results
     
     command_key = "Get port status using ip link show"
+    logger.debug(f"[PORT_STATUS] Looking for command key: {command_key}")
+    logger.debug(f"[PORT_STATUS] Available keys in results_data: {list(results_data.keys()) if isinstance(results_data, dict) else 'N/A'}")
     
     if command_key in results_data:
         output_lines = results_data[command_key].get('stdout_lines', [])
         output_str = ' '.join(output_lines) if output_lines else ''
         
-        # Check if port was not found
-        if 'NOT_FOUND' in output_str or not output_lines:
+        logger.debug(f"[PORT_STATUS] Raw output lines for {port_name}: {output_lines}")
+        logger.debug(f"[PORT_STATUS] Raw output string for {port_name}: {output_str}")
+        
+        # Check if port was not found or doesn't exist
+        # ip link show returns error messages when interface doesn't exist
+        not_found_conditions = [
+            'NOT_FOUND' in output_str,
+            not output_lines,
+            'does not exist' in output_str.lower(),
+            'cannot find device' in output_str.lower(),
+            'no such device' in output_str.lower()
+        ]
+        
+        logger.debug(f"[PORT_STATUS] Checking if port {port_name} exists:")
+        logger.debug(f"[PORT_STATUS]   - 'NOT_FOUND' in output: {'NOT_FOUND' in output_str}")
+        logger.debug(f"[PORT_STATUS]   - output_lines empty: {not output_lines}")
+        logger.debug(f"[PORT_STATUS]   - 'does not exist' in output: {'does not exist' in output_str.lower()}")
+        logger.debug(f"[PORT_STATUS]   - 'cannot find device' in output: {'cannot find device' in output_str.lower()}")
+        logger.debug(f"[PORT_STATUS]   - 'no such device' in output: {'no such device' in output_str.lower()}")
+        
+        if any(not_found_conditions):
+            logger.debug(f"[PORT_STATUS] Port {port_name} NOT FOUND - returning False")
             logger.warning(f"Port {port_name} not found on device")
-            return None
+            return False  # Interface doesn't exist, so it's down
+        
+        logger.debug(f"[PORT_STATUS] Port {port_name} exists, parsing output for state and flags")
         
         # Parse ip link show output to find state
         # Example formats:
         # "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000"
         # "2: eth0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state DOWN group default qlen 1000"
+        # "2: eth0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc mq state UP group default qlen 1000" (admin up, no carrier)
         for line in output_lines:
             line_lower = line.lower()
+            logger.debug(f"[PORT_STATUS] Processing line: {line}")
+            
+            # Extract flags from angle brackets to check for NO-CARRIER
+            has_no_carrier = False
+            has_lower_up = False
+            flags_list = []
+            
+            if '<' in line and '>' in line:
+                flags_section = line[line.find('<'):line.find('>')+1]
+                flags_lower = flags_section.lower()
+                flags_list = [f.strip() for f in flags_lower.replace('<', '').replace('>', '').split(',')]
+                has_no_carrier = 'no-carrier' in flags_list
+                has_lower_up = 'lower_up' in flags_list
+                
+                logger.debug(f"[PORT_STATUS] Extracted flags for {port_name}: {flags_list}")
+                logger.debug(f"[PORT_STATUS]   - has_no_carrier: {has_no_carrier}")
+                logger.debug(f"[PORT_STATUS]   - has_lower_up: {has_lower_up}")
+            
             # Check for explicit state UP or DOWN
             if 'state up' in line_lower:
+                logger.debug(f"[PORT_STATUS] Found 'state up' in line for {port_name}")
+                # Even if state is UP, check for NO-CARRIER - this means interface is admin up but has no physical link
+                if has_no_carrier:
+                    logger.debug(f"[PORT_STATUS] Port {port_name} has state UP but NO-CARRIER flag - returning False")
+                    logger.debug(f"Port {port_name} is DOWN (state UP but NO-CARRIER)")
+                    return False
+                # Also check for LOWER_UP - if state is UP but LOWER_UP is missing, it might not be fully operational
+                # However, LOWER_UP can be missing even when interface is up (e.g., some virtual interfaces)
+                # So we only return False if we have NO-CARRIER
+                logger.debug(f"[PORT_STATUS] Port {port_name} has state UP and no NO-CARRIER - returning True")
                 logger.debug(f"Port {port_name} is UP (from state)")
                 return True
             elif 'state down' in line_lower:
+                logger.debug(f"[PORT_STATUS] Found 'state down' in line for {port_name} - returning False")
                 logger.debug(f"Port {port_name} is DOWN (from state)")
                 return False
+        
+        logger.debug(f"[PORT_STATUS] No explicit state found in output, checking flags in angle brackets")
         
         # If no explicit state found, check flags in angle brackets
         # UP flag without NO-CARRIER usually means the interface is up
@@ -262,19 +320,29 @@ def get_port_status_from_results(results, port_name):
             if '<' in line and '>' in line:
                 flags_section = line[line.find('<'):line.find('>')+1]
                 flags_lower = flags_section.lower()
-                # If we see UP in flags and no NO-CARRIER, it's likely up
-                # But state takes precedence, so only use flags if state wasn't found
                 # Split flags and check for exact 'up' flag (not lower_up, upper_up, etc.)
                 flags_list = [f.strip() for f in flags_lower.replace('<', '').replace('>', '').split(',')]
-                if 'up' in flags_list and 'no-carrier' not in flags_list:
+                logger.debug(f"[PORT_STATUS] Checking flags for {port_name}: {flags_list}")
+                
+                # Check for NO-CARRIER first - if present, interface is down
+                if 'no-carrier' in flags_list:
+                    logger.debug(f"[PORT_STATUS] Port {port_name} has NO-CARRIER flag - returning False")
+                    logger.debug(f"Port {port_name} is DOWN (NO-CARRIER flag)")
+                    return False
+                if 'up' in flags_list:
                     # Check if there's a state mentioned elsewhere in the line
                     if 'state' not in line_lower:
+                        logger.debug(f"[PORT_STATUS] Port {port_name} has 'up' flag and no state mentioned - returning True")
                         logger.debug(f"Port {port_name} appears to be UP (from flags)")
                         return True
+                    else:
+                        logger.debug(f"[PORT_STATUS] Port {port_name} has 'up' flag but state is mentioned in line, skipping flag check")
         
         # If we have output but couldn't determine state, default to None
+        logger.debug(f"[PORT_STATUS] Could not determine status for port {port_name} from output - returning None")
         logger.warning(f"Could not determine status for port {port_name} from output: {output_str}")
         return None
     
+    logger.debug(f"[PORT_STATUS] Command key '{command_key}' not found in results_data")
     logger.warning(f"Could not find port status task results for {port_name}")
     return None

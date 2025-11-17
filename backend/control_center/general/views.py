@@ -688,7 +688,11 @@ class PortViewSet(ModelViewSet):
             port = self.get_object()
             device = port.device
             
+            logger.debug(f"[PORT_SYNC] Starting sync for port {port.name} (ID: {port.id}) on device {device.name} (IP: {device.lan_ip_address})")
+            logger.debug(f"[PORT_SYNC] Current port state - is_up: {port.is_up}, link_speed: {port.link_speed}")
+            
             if device.device_type != 'switch':
+                logger.warning(f"[PORT_SYNC] Sync attempted on non-switch device {device.name}")
                 return Response(
                     {"error": "Port sync is only available for switch devices"},
                     status=status.HTTP_400_BAD_REQUEST
@@ -705,6 +709,8 @@ class PortViewSet(ModelViewSet):
                 'ip_address': device.lan_ip_address,
             }
             
+            logger.debug(f"[PORT_SYNC] Running playbook '{playbook_name}' with extra_vars: {extra_vars}")
+            
             result = run_playbook_with_extravars(
                 playbook_name,
                 playbook_dir_path,
@@ -713,8 +719,11 @@ class PortViewSet(ModelViewSet):
                 quiet=True
             )
             
+            logger.debug(f"[PORT_SYNC] Playbook result status: {result.get('status')}")
+            
             if result.get('status') != 'success':
                 error_msg = result.get('error', 'Unknown error occurred')
+                logger.error(f"[PORT_SYNC] Failed to sync port {port.name}: {error_msg}")
                 logger.error(f"Failed to sync port {port.name}: {error_msg}")
                 return Response(
                     {"error": f"Failed to sync port details: {error_msg}"},
@@ -722,21 +731,35 @@ class PortViewSet(ModelViewSet):
                 )
             
             # Parse results
+            logger.debug(f"[PORT_SYNC] Parsing results for port {port.name}")
             port_speed = get_single_port_speed_from_results(result, port.name)
             port_status = get_port_status_from_results(result, port.name)
+            
+            logger.debug(f"[PORT_SYNC] Parsed results for port {port.name}:")
+            logger.debug(f"[PORT_SYNC]   - port_speed: {port_speed}")
+            logger.debug(f"[PORT_SYNC]   - port_status: {port_status}")
+            logger.debug(f"[PORT_SYNC]   - Current DB is_up: {port.is_up}")
+            logger.debug(f"[PORT_SYNC]   - Current DB link_speed: {port.link_speed}")
             
             # Update port in database
             update_fields = []
             if port_speed is not None:
+                old_speed = port.link_speed
                 port.link_speed = port_speed
                 update_fields.append('link_speed')
+                logger.debug(f"[PORT_SYNC] Updating link_speed: {old_speed} -> {port_speed}")
             if port_status is not None:
+                old_status = port.is_up
                 port.is_up = port_status
                 update_fields.append('is_up')
+                logger.debug(f"[PORT_SYNC] Updating is_up: {old_status} -> {port_status}")
             
             if update_fields:
                 port.save(update_fields=update_fields)
+                logger.debug(f"[PORT_SYNC] Successfully updated port {port.name} with fields: {update_fields}")
                 logger.debug(f"Updated port {port.name}: speed={port_speed}, status={port_status}")
+            else:
+                logger.debug(f"[PORT_SYNC] No fields to update for port {port.name}")
             
             # Return updated port data
             serializer = PortSerializer(port)

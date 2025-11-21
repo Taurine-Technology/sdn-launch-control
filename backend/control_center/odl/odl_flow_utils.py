@@ -12,7 +12,7 @@ class OdlMeterFlowRule:
                  in_port_of_number_server_to_client, out_port_of_number_server_to_client,
                  client_mac_address, server_mac_address, category_obj_cookie,
                  controller_ip_str, odl_meter_id_numeric, odl_switch_node_id_str,
-                 flow_priority=60000, flow_timeout_seconds=360, table_id=0): # Added table_id
+                 flow_priority=60000, flow_timeout_seconds=90, table_id=0): # Added table_id
 
         self.protocol_str = protocol_str.lower() # 'tcp' or 'udp'
         self.client_port_num = int(client_port_num)

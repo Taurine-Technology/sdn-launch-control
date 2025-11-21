@@ -641,6 +641,21 @@ class EditBridge(APIView):
                 # Update the bridge's controller field in the database object (will be saved later)
                 original_bridge.controller = new_controller
 
+                # Setup OVS Flow Check if not already set up (idempotent - systemd handles duplicates)
+                logger.debug(f"Setting up OVS flow check for bridge {bridge_name} after controller connection")
+                flow_check_vars = {
+                    'bridge_name': bridge_name,
+                    'ip_address': lan_ip_address,
+                }
+                setup_flow_check_result = run_playbook_with_extravars(
+                    'ovs-setup-flow-check', playbook_dir_path, inv_path, flow_check_vars
+                )
+                if setup_flow_check_result.get('status') == 'failed':
+                    error_detail = setup_flow_check_result.get('error', 'Unknown Ansible error')
+                    logger.warning(f"Failed to setup flow check for bridge {bridge_name} during edit: {error_detail}")
+                else:
+                    logger.debug(f"Successfully set up flow check for bridge {bridge_name} during edit")
+
             # --- 4. Update Monitors if API URL or Ports Changed ---
             run_monitors = api_url_changed or ports_changed
             if run_monitors:
@@ -951,6 +966,21 @@ class CreateBridge(APIView):
                     logger.exception(f"Error updating port {port_name} DB record for bridge {bridge_name}: {e}")
                     raise Exception(f"Database error while updating port {port_name} for bridge {bridge_name}.") from e
 
+            # --- 7b. Setup OVS Flow Check (ensures essential flows are always present) ---
+            logger.debug(f"Setting up OVS flow check for bridge {bridge_name}")
+            flow_check_vars = {
+                'bridge_name': bridge_name,
+                'ip_address': lan_ip_address,
+            }
+            setup_flow_check_result = run_playbook_with_extravars(
+                'ovs-setup-flow-check', playbook_dir_path, inv_path, flow_check_vars
+            )
+            if setup_flow_check_result.get('status') == 'failed':
+                error_detail = setup_flow_check_result.get('error', 'Unknown Ansible error')
+                logger.warning(f"Failed to setup flow check for bridge {bridge_name}: {error_detail}")
+                logger.warning(f"Bridge {bridge_name} created successfully, but flow check automation may not be active.")
+            else:
+                logger.debug(f"Successfully set up flow check for bridge {bridge_name}")
 
             # --- 8. Install Monitors (Optional, only if api_url provided) ---
             if api_url:
@@ -1099,6 +1129,23 @@ class DeleteBridge(APIView):
                     # Don't fail the deletion for cleanup issues, just log them
                 else:
                     logger.debug(f"Successfully cleaned up port monitoring for bridge {bridge_name}")
+
+            # --- 5b. Cleanup flow check automation ---
+            # Flow check is set up for all bridges, so always attempt cleanup
+            logger.debug(f"Cleaning up flow check for bridge {bridge_name}")
+            cleanup_flow_check_vars = {
+                'bridge_name': bridge_name,
+                'ip_address': lan_ip_address,
+            }
+            cleanup_flow_check_result = run_playbook_with_extravars(
+                'ovs-cleanup-flow-check', playbook_dir_path, inv_path, cleanup_flow_check_vars
+            )
+            if cleanup_flow_check_result.get('status') == 'failed':
+                error_detail = cleanup_flow_check_result.get('error', 'Unknown Ansible error')
+                logger.warning(f"Failed to cleanup flow check for bridge {bridge_name}: {error_detail}")
+                # Don't fail the deletion for cleanup issues, just log them
+            else:
+                logger.debug(f"Successfully cleaned up flow check for bridge {bridge_name}")
 
             # --- 6. Cleanup sniffer if installed for this bridge ---
             # The sniffer is installed if a SnifferInstallationConfig exists for this device and bridge

@@ -1,0 +1,57 @@
+---
+# Stop and disable the systemd timer for flow check
+- name: Stop and disable OVS Flow Check timer
+  ansible.builtin.systemd:
+    name: "ovs-flow-check-{{ bridge_name }}.timer"
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+
+# Stop and disable the systemd service for flow check
+- name: Stop and disable OVS Flow Check service
+  ansible.builtin.systemd:
+    name: "ovs-flow-check-{{ bridge_name }}.service"
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+
+# Remove the systemd timer file
+- name: Remove systemd timer file for flow check
+  ansible.builtin.file:
+    path: "/etc/systemd/system/ovs-flow-check-{{ bridge_name }}.timer"
+    state: absent
+  ignore_errors: yes
+
+# Remove the systemd service file
+- name: Remove systemd service file for flow check
+  ansible.builtin.file:
+    path: "/etc/systemd/system/ovs-flow-check-{{ bridge_name }}.service"
+    state: absent
+  ignore_errors: yes
+
+# Remove the script from /usr/local/bin
+- name: Remove flow check script
+  ansible.builtin.file:
+    path: "/usr/local/bin/check_ovs_flows_{{ bridge_name }}.sh"
+    state: absent
+  ignore_errors: yes
+
+# Remove the logrotate configuration
+- name: Remove logrotate configuration for flow check
+  ansible.builtin.file:
+    path: "/etc/logrotate.d/ovs-flow-check-{{ bridge_name }}"
+    state: absent
+  ignore_errors: yes
+
+# Remove the log file
+- name: Remove flow check log file
+  ansible.builtin.file:
+    path: "/var/log/ovs_flow_check_{{ bridge_name }}.log"
+    state: absent
+  ignore_errors: yes
+
+# Reload systemd to pick up the removed service and timer
+- name: Reload systemd after removing service and timer
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  ignore_errors: yes

@@ -1,0 +1,79 @@
+---
+- name: Create log file with correct ownership and permissions
+  ansible.builtin.file:
+    path: "/var/log/ovs_flow_check_{{ bridge_name }}.log"
+    state: touch
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Copy check_ovs_flows.sh script to /usr/local/bin
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/resources/ovs-flow-check/check_ovs_flows.sh"
+    dest: "/usr/local/bin/check_ovs_flows_{{ bridge_name }}.sh"
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Create systemd service file for OVS flow check
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/ovs-flow-check-{{ bridge_name }}.service"
+    content: |
+      [Unit]
+      Description=OVS Flow Check for {{ bridge_name }}
+      Documentation=Ensure essential OVS flows are always present on bridge {{ bridge_name }}
+      After=network.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/check_ovs_flows_{{ bridge_name }}.sh {{ bridge_name }}
+      User=root
+      StandardOutput=null
+      StandardError=journal
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: "0644"
+
+- name: Create systemd timer file for OVS flow check
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/ovs-flow-check-{{ bridge_name }}.timer"
+    content: |
+      [Unit]
+      Description=OVS Flow Check Timer for {{ bridge_name }}
+      Requires=ovs-flow-check-{{ bridge_name }}.service
+
+      [Timer]
+      OnBootSec=360s
+      OnUnitActiveSec=30s
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+    mode: "0644"
+
+- name: Create logrotate configuration for OVS flow check
+  ansible.builtin.copy:
+    dest: "/etc/logrotate.d/ovs-flow-check-{{ bridge_name }}"
+    content: |
+      /var/log/ovs_flow_check_{{ bridge_name }}.log {
+          size 2M
+          rotate 3
+          copytruncate
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 644 root root
+      }
+    mode: "0644"
+
+- name: Reload systemd to pick up new service and timer files
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Enable and start OVS flow check timer
+  ansible.builtin.systemd:
+    name: "ovs-flow-check-{{ bridge_name }}.timer"
+    enabled: yes
+    state: started

@@ -34,3 +34,5 @@ artifacts/
 scan-image.sh
 build-and-publish.sh
 requirements.old.txt
+backend/control_center/env/extravars
+backend/control_center/utils/env/extravars

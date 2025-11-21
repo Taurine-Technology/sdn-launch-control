@@ -1,0 +1,7 @@
+---
+- name: Set up OVS flow check
+  hosts: localserver
+  gather_facts: yes
+  become: true
+  roles:
+    - ../roles/ovs-flow-check

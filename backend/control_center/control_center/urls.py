@@ -74,6 +74,9 @@ urlpatterns = [
 
     path('api/v1/', include('device_monitoring.urls', namespace='device_monitoring')),
 
+    # ---- SNMP Monitoring ----
+    path('api/v1/snmp-monitoring/', include('snmp_monitoring.urls', namespace='snmp_monitoring')),
+
     # ---- Notification ----
     path('api/v1/', include('notification.urls', namespace='notification')),
 

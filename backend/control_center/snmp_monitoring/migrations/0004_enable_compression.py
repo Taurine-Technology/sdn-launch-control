@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 ALTER TABLE snmp_monitoring_snmpmetrics SET (timescaledb.compress = false);
             """
         ),
-        
+
         # Add compression policy to compress chunks older than 1 day
         migrations.RunSQL(
             sql="""
@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
                 SELECT remove_compression_policy('snmp_monitoring_snmpmetrics', if_exists => TRUE);
             """
         ),
-        
+
         # Enable compression on SNMPInterfaceStats hypertable
         migrations.RunSQL(
             sql="""
@@ -52,7 +52,7 @@ class Migration(migrations.Migration):
                 ALTER TABLE snmp_monitoring_snmpinterfacestats SET (timescaledb.compress = false);
             """
         ),
-        
+
         # Add compression policy to compress chunks older than 6 hours
         # (keeps recent data uncompressed for fast per-second queries)
         migrations.RunSQL(
@@ -68,4 +68,3 @@ class Migration(migrations.Migration):
             """
         ),
     ]
-

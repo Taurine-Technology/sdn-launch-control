@@ -1,3 +1,10 @@
+# ARCHIVED
+
+> [!CAUTION]
+> This repo is no longer maintained.
+
+For a similar, more scalable project browse the SmartSDN repos: [UI](https://github.com/keeganwhite/smartsdn-user-interface), [API](https://github.com/keeganwhite/smartsdn-api), and [switching layer](https://github.com/keeganwhite/smartsdn-agent)
+
 # SDN Launch Control
 
 A comprehensive Software-Defined Networking (SDN) management platform that enables easy and automated adoption of the SDN paradigm into new or pre-existing networks. This monorepo contains both the backend API and frontend.

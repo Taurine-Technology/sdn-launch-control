@@ -1156,12 +1156,13 @@ export interface ByPortResponse {
 // Aggregate endpoint time series point
 export interface AggregateTimeSeriesPoint {
   bucket_time: string;
-  ip_address: string;
-  port_name: string;
-  avg_utilization: number | null;
-  max_utilization: number | null;
-  avg_throughput: number | null;
-  max_throughput: number | null;
+  ip_address?: string;
+  port_name?: string;
+  avg_utilization?: number | null;
+  max_utilization?: number | null;
+  avg_throughput?: number | null;
+  max_throughput?: number | null;
+  total_throughput?: number | null; // For network-wide aggregation
 }
 
 // Aggregate endpoint response

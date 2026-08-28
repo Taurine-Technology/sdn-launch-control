@@ -1,0 +1,32 @@
+name: Lint SNMP Monitoring
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "backend/control_center/snmp_monitoring/**"
+      - ".github/workflows/lint-snmp-monitoring.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "backend/control_center/snmp_monitoring/**"
+      - ".github/workflows/lint-snmp-monitoring.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install flake8
+        run: pip install flake8
+
+      - name: Run flake8 on snmp_monitoring
+        run: flake8 backend/control_center/snmp_monitoring/ --max-line-length=120

@@ -32,3 +32,4 @@ pyOpenSSL==24.1.0
 python-dotenv==1.0.0
 uvicorn[standard]
 pipreqs==0.4.12
+pysnmp==7.1.22

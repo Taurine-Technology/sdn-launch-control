@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'channels',
     # custom apps
     'network_device',
+    'snmp_monitoring',
     'odl',
     'software_plugin',
     'classifier',
@@ -224,7 +225,7 @@ LOG_LEVEL = os.environ.get('DJANGO_LOG_LEVEL', 'INFO')
 APP_LOGGERS = [
     'controller', 'general', 'ovs_install', 'ovs_management',
     'software_plugin', 'utils', 'network_device', 'odl', 'onos',
-    'account', 'notification', 'device_monitoring', 'network_data', 'classifier'
+    'account', 'notification', 'device_monitoring', 'network_data', 'classifier', 'snmp_monitoring'
 ]
 
 LOGGING = {
